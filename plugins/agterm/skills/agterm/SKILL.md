@@ -512,7 +512,7 @@ it render. Outside agterm (`AGTERM_ENABLED` unset) there is no overlay — fall 
 When the user hits a problem (a keymap editor that will not open, a custom action that does nothing,
 notifications missing), diagnose it from inside the session first: inspect `agtermctl tree --json`,
 run `agtermctl keymap reload` for the parse-diagnostic count, and read the unified logs under
-subsystem `com.umputun.agterm`. If it turns out to be a bug, offer to help file it.
+subsystem `uz.marshub.agx`. If it turns out to be a bug, offer to help file it.
 
 **Filing is opt-in and draft-first.** Never run a `gh` command without the user's explicit approval.
 Decide first whether it is a bug (a supported feature misbehaving → a GitHub **issue**) or something

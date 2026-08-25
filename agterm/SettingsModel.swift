@@ -2,7 +2,7 @@ import agtermCore
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.umputun.agterm", category: "SettingsModel")
+private let logger = Logger(subsystem: Brand.bundleID, category: "SettingsModel")
 
 /// Observable settings state for the Settings window, loaded from `SettingsStore` at init. Each mutation
 /// persists AND applies live: rewrites the ghostty settings file, rebroadcasts the config to every live
@@ -266,6 +266,40 @@ final class SettingsModel {
     func setCloseGraceUndoEnabled(_ value: Bool?) { settings.closeGraceUndoEnabled = value; try? settingsStore.save(settings) }
     /// Persist that the first-run welcome has been shown, so it never appears again on this state directory.
     func setWelcomeShown(_ value: Bool?) { settings.welcomeShown = value; try? settingsStore.save(settings) }
+
+    // MARK: - Agents
+
+    /// Append a connected agent and persist. Blank name/command rows are allowed here (the row is editable
+    /// in place, and a half-typed one must not vanish); `resolvedAgents` is what filters them out of the
+    /// workspace picker, so an unfinished row can never be pinned.
+    func addAgent(name: String, command: String) {
+        var agents = settings.agents ?? []
+        agents.append(AgentDefinition(name: name, command: command))
+        setAgents(agents)
+    }
+
+    /// Edit one agent in place; nil leaves that field alone. Nothing else references an agent by name, so a
+    /// rename cannot break a workspace default — those hold the id.
+    func updateAgent(id: UUID, name: String?, command: String?) {
+        var agents = settings.agents ?? []
+        guard let index = agents.firstIndex(where: { $0.id == id }) else { return }
+        if let name { agents[index].name = name }
+        if let command { agents[index].command = command }
+        setAgents(agents)
+    }
+
+    /// Remove an agent. Workspaces pinning it are deliberately left alone: the dangling id resolves to "no
+    /// agent" everywhere (a plain shell), and re-adding the same agent id is not possible anyway.
+    func removeAgent(id: UUID) {
+        setAgents((settings.agents ?? []).filter { $0.id != id })
+    }
+
+    /// Persist the agent list, storing an empty list as nil so `settings.json` stays minimal. Read on demand
+    /// at session-create time, so there is nothing to fan out.
+    func setAgents(_ agents: [AgentDefinition]) {
+        settings.agents = agents.isEmpty ? nil : agents
+        try? settingsStore.save(settings)
+    }
     /// Persist the user-idle auto-follow timeout (nil = off) and push it into every open window's `AppStore`
     /// (a newly opened window seeds itself via `applyAutoFollow(to:)`).
     func setAutoFollowAttention(_ value: String?) {
@@ -396,10 +430,15 @@ final class SettingsModel {
     /// The resolved config directory: the explicit setting, else `AGTERM_STATE_DIR/config` (test
     /// isolation), else `~/.config/agterm`. Both `keymap.conf` and `ghostty.conf` live here.
     private func configDirectoryURL() -> URL {
-        ConfigPaths.configDirectory(
-            setting: settings.configDirectory,
-            stateDir: ProcessInfo.processInfo.environment["AGTERM_STATE_DIR"],
-            home: FileManager.default.homeDirectoryForCurrentUser)
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let setting = settings.configDirectory
+        let stateDir = ProcessInfo.processInfo.environment["AGTERM_STATE_DIR"]
+        let directory = ConfigPaths.configDirectory(setting: setting, stateDir: stateDir, home: home)
+        // first launch of this fork inherits the keymap/ghostty tweaks already written for agterm; a
+        // no-op once the directory exists, and skipped entirely for a chosen or isolated directory.
+        ConfigPaths.seedFromLegacyIfNeeded(destination: directory, home: home,
+                                           setting: setting, stateDir: stateDir)
+        return directory
     }
 
     /// The resolved keymap file path: `<config dir>/keymap.conf`.

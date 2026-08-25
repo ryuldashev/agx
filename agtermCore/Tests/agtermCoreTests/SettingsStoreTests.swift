@@ -29,7 +29,7 @@ final class SettingsStoreTests {
     @Test func missingFileSeedsDefaultTheme() {
         #expect(!FileManager.default.fileExists(atPath: fileURL.path))
         #expect(store.load() == AppSettings(theme: AppSettings.defaultTheme))
-        #expect(store.load().theme == "agterm")
+        #expect(store.load().theme == "agx")
     }
 
     @Test func corruptFileSeedsDefaultTheme() throws {

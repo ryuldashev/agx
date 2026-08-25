@@ -20,7 +20,7 @@ One key chord syncs your current working directory to the opposite split pane (`
 
 Place `same-dir.zsh` in your `PATH` or a scripts directory (e.g. `~/.agterm-cookbook-bin/same-dir.zsh`) and make it executable (`chmod +x same-dir.zsh`).
 
-Add a custom command line to `~/.config/agterm/keymap.conf`:
+Add a custom command line to `~/.config/agx/keymap.conf`:
 
 ```
 command "Same Dir" ctrl+a>c ~/.agterm-cookbook-bin/same-dir.zsh

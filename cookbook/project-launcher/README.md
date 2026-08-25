@@ -30,7 +30,7 @@ cp project-launcher.sh ~/bin/
 chmod +x ~/bin/project-launcher.sh
 ```
 
-Add an entry to `~/.config/agterm/keymap.conf`:
+Add an entry to `~/.config/agx/keymap.conf`:
 
 ```
 command "Launch Project" cmd+shift+g zsh -lc "$HOME/bin/project-launcher.sh"

@@ -5,10 +5,13 @@ Full detail for every `agtermctl` command. See `SKILL.md` for the model and addr
 
 ## Connection and output
 
-- **Socket resolution** (when `--socket` is omitted): `AGTERM_SOCKET` is the path the running app
-  bound; agtermctl resolves the same rendezvous: `<AGTERM_STATE_DIR>/agterm.sock`, else
-  `<$HOME>/Library/Application Support/agterm/agterm.sock`. Passing `--socket "$AGTERM_SOCKET"` is the
-  safe explicit form.
+- **Socket resolution** (when `--socket` is omitted): `AGTERM_SOCKET` first — the path the app that
+  spawned this shell actually bound — then `<AGTERM_STATE_DIR>/agx.sock`, then
+  `<$HOME>/Library/Application Support/agx/agx.sock`. A command run inside a pane therefore addresses
+  the app it is running in even when several builds are installed and `PATH` resolves someone else's
+  CLI, which is why `--socket "$AGTERM_SOCKET"` and a bare invocation now agree rather than diverge.
+  Outside a session (a plain Terminal.app shell, a cron job) the variable is unset and the rendezvous
+  path is what resolves.
 - **`--json`**: prints the raw response object. Without it, ordinary mutations print `ok`, batch
   close/move prints the affected session count, and `tree`/`window list` print a human listing. Use
   `--json` when you need to read ids or values back.
@@ -190,7 +193,9 @@ list with NO workspace rows whatever the filter says, `tree` mode with the filte
 tree regardless of membership, and only `tree` mode with the filter ON narrows visibility to the
 members), and `collapsed` (whether this workspace is COLLAPSED in the sidebar tree — the read side of
 `workspace collapse`/`workspace expand` and `workspace new --collapsed`; `true` when collapsed, omitted
-when expanded, so an all-expanded tree carries no `collapsed` keys).
+when expanded, so an all-expanded tree carries no `collapsed` keys). They also carry `defaults` (the pinned
+new-session seed — `dir`, `agent`, `agentID` and the resolved `command`; the read side of
+`workspace defaults`, omitted when the workspace pins nothing).
 
 The tree object itself carries twelve top-level read-only fields: `idleMs` (milliseconds since the last
 user input in the window, omitted before any activity), `autoFollowMs` (the window's Auto-follow
@@ -235,6 +240,24 @@ All twelve are read-only projections of GUI state.
   node's `collapsed` flag, and the membership from its `focused` flag.
 - `workspace rename <name> [--target] [--window W]`.
 - `workspace delete [--target] [--window W]` — keep-at-least-one; deleting the last workspace errors.
+- `workspace defaults [--dir PATH] [--agent NAME|ID] [--target] [--window W]` — read or set what a NEW
+  session in that workspace starts as: the directory it opens in and the connected agent it runs. With
+  neither option it READS, so it is safe to poll. The two fields are independent tri-states: absent
+  leaves a field alone, an EMPTY string clears it (`--dir ''`), a value sets it. `--dir` may start with
+  `~`, which is expanded at session-create time against the current user's home, so a pinned `~/src`
+  keeps working after a home move; a `~other/x` path is stored verbatim, not expanded. `--agent` matches
+  a Settings ▸ Agents row by full id, by exact name (case-insensitive), or by a UNIQUE id prefix, and
+  errors with `no such agent: X` rather than pinning a dead id. Both are also what the sidebar's
+  right-click ▸ Workspace Defaults… writes. The response always echoes the resulting pair, so a write
+  reads back in the same call.
+  Precedence at create time: an explicit `session new --cwd/--command` wins, then the workspace default,
+  then the global new-session directory — so a pinned workspace never overrides a script that asked for
+  something specific, and `session new` with no options is the whole point of pinning. The same applies
+  to the GUI's "+" and New Session; dropping a folder onto a workspace still opens THAT folder while the
+  pinned agent runs. An agent removed in Settings degrades to a plain shell rather than failing the
+  create, so a stale pin can never block a new session.
+  Read back from the tree workspace node's `defaults` object (`dir`, `agent`, `agentID`, `command`),
+  omitted entirely when nothing is pinned.
 - `workspace select [--target] [--window W]`.
 - `workspace go --to next|prev [--window W]` — step the CURRENT workspace one place through the
   sidebar's visible order, wrapping at both ends, and select the workspace it lands on. Relative, so it
@@ -1043,7 +1066,7 @@ line can express — such an item is AppKit's own and never matches an action.
 
 ### keymap.conf format
 
-The file lives at `<config dir>/keymap.conf` (default `~/.config/agterm`; the dir is set in Settings ▸
+The file lives at `<config dir>/keymap.conf` (default `~/.config/agx`; the dir is set in Settings ▸
 Key Mapping). Three verbs, line-based; blank lines and `#` comments ignored:
 
 - `map <chord> <action>` — rebind a built-in menu action.
@@ -1112,7 +1135,7 @@ as the GUI's File ▸ Reload Config menu/palette item, which posts a warning ban
 
 ### ghostty.conf
 
-`<config dir>/ghostty.conf` (default `~/.config/agterm`, next to `keymap.conf`) is the agterm-scoped
+`<config dir>/ghostty.conf` (default `~/.config/agx`, next to `keymap.conf`) is the agterm-scoped
 ghostty config and the place to put agterm overrides/customizations. It is ALWAYS loaded. The app builds
 its terminal config in order, each source overriding the one before: ghostty's bundled defaults, then
 your global `~/.config/ghostty/config` (OFF by default — opt in with Settings ▸ General ▸ Use my global

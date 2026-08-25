@@ -15,7 +15,8 @@ extension AppStore {
             let sessions = workspace.sessions.map(sessionSnapshot)
             // only a collapsed workspace writes the flag, so an all-expanded tree matches a legacy snapshot.
             return WorkspaceSnapshot(id: workspace.id, name: workspace.name, sessions: sessions,
-                                     collapsed: workspace.isExpanded ? nil : true)
+                                     collapsed: workspace.isExpanded ? nil : true,
+                                     defaults: workspace.defaults.persisted)
         }
         // TREE order keeps the on-disk list deterministic (not the Set's hash order); an unmarked store omits
         // both focus keys, matching a file written before the set existed. `focusedWorkspaceID` stays unused.
@@ -43,7 +44,8 @@ extension AppStore {
 
     func workspaceSnapshot(_ workspace: Workspace) -> WorkspaceSnapshot {
         WorkspaceSnapshot(id: workspace.id, name: workspace.name, sessions: workspace.sessions.map(sessionSnapshot),
-                          collapsed: workspace.isExpanded ? nil : true)
+                          collapsed: workspace.isExpanded ? nil : true,
+                          defaults: workspace.defaults.persisted)
     }
 
     /// Rebuilds one session from its snapshot. `launchRestore` marks an APP-BOOTSTRAP restore, the only path
@@ -91,6 +93,6 @@ extension AppStore {
 
     func workspace(from snapshot: WorkspaceSnapshot) -> Workspace {
         Workspace(id: snapshot.id, name: snapshot.name, sessions: snapshot.sessions.map { session(from: $0) },
-                  isExpanded: !(snapshot.collapsed ?? false))
+                  isExpanded: !(snapshot.collapsed ?? false), defaults: snapshot.defaults ?? WorkspaceDefaults())
     }
 }

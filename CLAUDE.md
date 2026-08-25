@@ -1,6 +1,10 @@
-# agterm project notes
+# agx project notes
 
-agterm is a native macOS SwiftUI terminal on libghostty with a workspace-to-session sidebar.
+agx is a FORK of agterm — read `FORK.md` first: it owns what diverges (identity paths, connected
+agents, workspace defaults, the `AGTERM_SOCKET` precedence change) and the rebase procedure. The
+notes below are upstream's and still apply; where a path is named it is the fork's.
+
+agx is a native macOS SwiftUI terminal on libghostty with a workspace-to-session sidebar.
 Read `site/docs.html` for product behavior and `ARCHITECTURE.md` for modules, surface ownership, and
 C-boundary concurrency before changing the bridge.
 `README.md` is the product synopsis, not the reference.
@@ -29,9 +33,11 @@ C-boundary concurrency before changing the bridge.
   Leave the marker out only when the welcome itself is under test.
 - The control socket binds from the window scene's task, so a backgrounded `open -n -g` can leave the app
   running with no socket until a window renders. Activate the instance when the socket never appears.
-- `agtermctl` never reads `AGTERM_SOCKET`; it resolves `--socket`, then `AGTERM_STATE_DIR`, then
-  `~/Library/Application Support/agterm`. A shell inside the live terminal therefore defaults onto the
-  live socket, and exporting a short `AGTERM_STATE_DIR` is what keeps inherited commands off it.
+- `agtermctl` resolves `--socket`, then `AGTERM_SOCKET`, then `AGTERM_STATE_DIR`, then
+  `~/Library/Application Support/agx`. `AGTERM_SOCKET` comes FIRST (a fork divergence, see `FORK.md`):
+  a shell inside a pane addresses the app that spawned it, so a Debug instance's shells stay on the
+  Debug socket without exporting anything. Isolate a manual instance with `AGTERM_STATE_DIR` anyway —
+  state is shared otherwise, and a command typed in a NON-agterm shell still resolves the default path.
 - After launching an instance for manual testing, do not touch it. For an assisted experiment, announce
   every action. Ask before acting when unclear.
 - Put nontrivial work in an isolated worktree and remove it after merge. See the build section for artifact
@@ -91,17 +97,17 @@ C-boundary concurrency before changing the bridge.
   launch for current code.
 - `make deploy` copies Release to `~/Applications`, whose app, PATH CLI, and installed hooks shadow Debug.
   Test fresh CLI/hooks with the Debug binary or redeploy and reinstall them. Debug uses
-  `com.umputun.agterm.debug`, distinct from Release, but state/socket paths still require isolation.
+  `uz.marshub.agx.debug`, distinct from Release, but state/socket paths still require isolation.
 - Launching a second instance without `AGTERM_STATE_DIR` still shares state, but no longer takes the
   running app's control socket. `ControlServer.init` takes an exclusive `flock` on `<socket>.lock` and
   `start` refuses to bind while another live instance holds it, logging `already served by another
   instance`. Ownership is settled at init so the launch window's first shell, whose environment is
   snapshotted before `start` runs, cannot bake the owner's path.
-  A refused instance advertises `<socket>.unavailable` in `AGTERM_SOCKET`, so a command passing
-  `--socket "$AGTERM_SOCKET"` fails rather than reaching the owner. A BARE `agtermctl` still reaches it:
-  the CLI never reads that variable and resolves the default path. Isolate anyway — state is shared and
+  A refused instance advertises `<socket>.unavailable` in `AGTERM_SOCKET`, and since the CLI now reads
+  that variable first, a command from one of its shells fails instead of silently driving the owner's
+  terminal — bare or with `--socket "$AGTERM_SOCKET"`, both. Isolate anyway — state is shared and
   persisted session ids resolve in both instances, so an untargeted command lands on the live terminal.
-- `lsof -p <pid> | grep agterm.sock` showing an fd on a socket path `ls` cannot find means an orphaned
+- `lsof -p <pid> | grep agx.sock` showing an fd on a socket path `ls` cannot find means an orphaned
   socket; a window scene that never bound one is a different fault. Reaching it now takes a build
   predating the lock, or the socket file being deleted by hand.
 
@@ -119,7 +125,7 @@ C-boundary concurrency before changing the bridge.
   its CLI with `--socket` after the subcommand. Stop only its known PID with SIGTERM; clean quit triggers
   the visible quit-confirmation alert. Use clean quit only when testing its final cwd/running-command flush.
 - Never run the Help ▸ Install installers (agent hooks, CLI, agent skill) from a Debug or worktree
-  instance, and never invoke `AgentHooksInstaller` in a manual run. They write `~/.config/agterm/`,
+  instance, and never invoke `AgentHooksInstaller` in a manual run. They write `~/.config/agx/`,
   `~/.claude/settings.json`, and `~/.codex/`, which `AGTERM_STATE_DIR` does not isolate, and bake
   `Bundle.main`'s `agtermctl` path into the installed wrappers. A Debug install silently repoints the
   user's live hooks at DerivedData, and removing the worktree leaves them dead with no error.

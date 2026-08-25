@@ -419,13 +419,14 @@ struct AppSettingsTests {
         #expect(AppSettings.sidebarRowHeight(fontSize: 99) == AppSettings.sidebarFontSizeRange.upperBound.rounded() + 15)
     }
 
-    @Test func defaultThemeIsAgtermButNotBakedIntoAppSettings() {
-        #expect(AppSettings.defaultTheme == "agterm")
+    @Test func defaultThemeIsTheForkThemeButNotBakedIntoAppSettings() {
+        // the fork ships its own theme file, so the seeded default names IT, not upstream's.
+        #expect(AppSettings.defaultTheme == "agx")
         // the seed lives in SettingsStore.load, NOT the memberwise default — AppSettings() stays
         // theme-less so "nil = no theme line" holds (the ghostty built-in / "default ghostty" case).
         #expect(AppSettings().theme == nil)
         #expect(!AppSettings().ghosttyConfigLines().contains { $0.hasPrefix("theme = ") })
-        #expect(AppSettings(theme: AppSettings.defaultTheme).ghosttyConfigLines().contains("theme = agterm"))
+        #expect(AppSettings(theme: AppSettings.defaultTheme).ghosttyConfigLines().contains("theme = agx"))
     }
 
     @Test func inheritGlobalGhosttyConfigDefaultsOffAndIsNotAGhosttyKey() throws {
@@ -568,7 +569,7 @@ struct AppSettingsTests {
         let original = AppSettings(hiddenInterfaceElements: ["scratch", "flaggedView"])
         let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(original))
         #expect(decoded == original)
-        #expect(decoded.isInterfaceElementHidden(.scratch))
+        #expect(decoded.isInterfaceElementHidden(.zoom))
         #expect(decoded.isInterfaceElementHidden(.flaggedView))
         #expect(!decoded.isInterfaceElementHidden(.split))
         #expect(original.ghosttyConfigLines() == ["mouse-scroll-multiplier = 3", "right-click-action = paste"])
@@ -599,8 +600,8 @@ struct AppSettingsTests {
             AppSettings.self,
             from: Data(#"{ "hiddenInterfaceElements": ["scratch", "teleporter"], "fontSize": 16 }"#.utf8))
         #expect(decoded.fontSize == 16)
-        #expect(decoded.resolvedHiddenInterfaceElements == [.scratch])
-        #expect(decoded.isInterfaceElementHidden(.scratch))
+        #expect(decoded.resolvedHiddenInterfaceElements == [.zoom])
+        #expect(decoded.isInterfaceElementHidden(.zoom))
     }
 
     @Test func interfaceElementSectionsPartitionAllCases() {

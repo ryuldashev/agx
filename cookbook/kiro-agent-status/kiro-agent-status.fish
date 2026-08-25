@@ -26,7 +26,7 @@ if not set -q KIRO_STATUS_DETECTOR
     set -g KIRO_STATUS_DETECTOR "$_kas_dir/kiro-status-detector.sh"
 end
 if not set -q AGTERM_STATUS_WRAPPER
-    set -g AGTERM_STATUS_WRAPPER "$HOME/.config/agterm/agent-status/agterm-agent-status.sh"
+    set -g AGTERM_STATUS_WRAPPER "$HOME/.config/agx/agent-status/agterm-agent-status.sh"
 end
 
 # Is that pid still our detector? The poller has stop conditions of its own — a hard-killed app takes

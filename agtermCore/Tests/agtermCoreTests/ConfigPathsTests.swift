@@ -17,12 +17,44 @@ struct ConfigPathsTests {
 
     @Test func defaultWhenNeitherSettingNorStateDir() {
         let dir = ConfigPaths.configDirectory(setting: nil, stateDir: nil, home: home)
-        #expect(dir.path == "/Users/test/.config/agterm")
+        #expect(dir.path == "/Users/test/.config/\(Brand.configDirectoryName)")
     }
 
     @Test func emptyStringsFallThrough() {
         #expect(ConfigPaths.configDirectory(setting: "", stateDir: "/state", home: home).path == "/state/config")
-        #expect(ConfigPaths.configDirectory(setting: "", stateDir: "", home: home).path == "/Users/test/.config/agterm")
+        #expect(ConfigPaths.configDirectory(setting: "", stateDir: "", home: home).path
+            == "/Users/test/.config/\(Brand.configDirectoryName)")
+    }
+
+    /// Isolation must win over convenience: a chosen config dir or a test's `AGTERM_STATE_DIR` is never
+    /// seeded from the user's real agterm config, however empty it is.
+    @Test func seedSkipsAChosenOrIsolatedDirectory() throws {
+        let temp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("agx-seed-\(UUID().uuidString)")
+        #expect(!ConfigPaths.seedFromLegacyIfNeeded(destination: temp, home: home, setting: "/custom"))
+        #expect(!ConfigPaths.seedFromLegacyIfNeeded(destination: temp, home: home, stateDir: "/state"))
+        #expect(!FileManager.default.fileExists(atPath: temp.path))
+    }
+
+    /// The default path IS seeded — loose `.conf` files only, and only while it does not exist yet.
+    @Test func seedCopiesLooseConfFilesOnceIntoAFreshDefaultDirectory() throws {
+        let manager = FileManager.default
+        let root = manager.temporaryDirectory.appendingPathComponent("agx-seed-\(UUID().uuidString)")
+        let fakeHome = root.appendingPathComponent("home")
+        let legacy = fakeHome.appendingPathComponent(".config").appendingPathComponent(Brand.legacyConfigDirectoryName)
+        try manager.createDirectory(at: legacy.appendingPathComponent("agent-status"), withIntermediateDirectories: true)
+        try "map cmd+j new_session".write(to: legacy.appendingPathComponent("keymap.conf"), atomically: true, encoding: .utf8)
+        try "ignored".write(to: legacy.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
+        defer { try? manager.removeItem(at: root) }
+
+        let destination = fakeHome.appendingPathComponent(".config").appendingPathComponent(Brand.configDirectoryName)
+        #expect(ConfigPaths.seedFromLegacyIfNeeded(destination: destination, home: fakeHome))
+        #expect(manager.fileExists(atPath: destination.appendingPathComponent("keymap.conf").path))
+        // hooks bake in the OTHER app's agtermctl path, and a stray text file is not config
+        #expect(!manager.fileExists(atPath: destination.appendingPathComponent("agent-status").path))
+        #expect(!manager.fileExists(atPath: destination.appendingPathComponent("notes.txt").path))
+        // second call is a no-op: an existing directory is never touched again
+        #expect(!ConfigPaths.seedFromLegacyIfNeeded(destination: destination, home: fakeHome))
     }
 
     @Test func keymapPathIsKeymapConfInDir() {

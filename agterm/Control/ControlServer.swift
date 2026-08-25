@@ -4,7 +4,7 @@ import Darwin
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.umputun.agterm", category: "ControlServer")
+private let logger = Logger(subsystem: Brand.bundleID, category: "ControlServer")
 
 /// The programmatic control channel: a POSIX unix-domain-socket listener turning newline-delimited JSON
 /// `ControlRequest`s into calls on the `AppActions`/`AppStore` seam the toolbar, menu bar and palettes
@@ -51,7 +51,7 @@ final class ControlServer {
     /// instance is serving. Not `boundSocketPath`: the launch window's surfaces can materialize BEFORE
     /// `start()` binds, and a nil there would leak `AGTERM_SOCKET` permanently. Equals it once bound.
     var resolvedSocketPath: String { refused ? socketPath + ControlServer.unavailableSuffix : socketPath }
-    private let acceptQueue = DispatchQueue(label: "com.umputun.agterm.control.accept")
+    private let acceptQueue = DispatchQueue(label: Brand.bundleID + ".control.accept")
 
     /// Thread-safe window-list cache: refreshed on the main actor after every dispatched command, read under
     /// the lock from the background accept loop, so a post-window-close main-thread stall can't wedge the
@@ -420,7 +420,7 @@ final class ControlServer {
                 .sessionReveal, .sessionMove,
                 .workspaceNew, .workspaceSelect, .workspaceGo, .workspaceRename, .workspaceDelete, .workspaceMove,
                 .workspaceFocus,
-                .workspaceFilter, .workspaceCollapse, .workspaceExpand,
+                .workspaceFilter, .workspaceCollapse, .workspaceExpand, .workspaceDefaults,
                 .sessionSplit, .sessionSplitClose, .sessionScratch, .sessionFocus, .sessionResize, .surfaceZoom,
                 .sessionStatus, .sessionFlag, .sessionSeen, .sessionRestore, .notify,
                 .fontInc, .fontDec, .fontReset, .keymapReload, .keymapList, .configReload, .themeSet, .themeList,
@@ -633,7 +633,9 @@ final class ControlServer {
                 case .fixed: return "fixed"
                 case .untouched: return "untouched"
                 }
-            }
+            },
+            // the store holds the agent id; only settings know its name and launch line.
+            workspaceDefaults: { [weak self] defaults in self?.controlDefaults(defaults) }
         )
     }
 
@@ -645,9 +647,14 @@ final class ControlServer {
     /// background, selection and focus untouched.
     func makeSessionResponse(in store: AppStore, workspaceID: UUID,
                              options: ControlSessionCreateOptions, at index: Int? = nil) -> ControlResponse {
-        let cwd = options.cwd ?? FileManager.default.homeDirectoryForCurrentUser.path
-        guard let session = store.addSession(toWorkspace: workspaceID, cwd: cwd,
-                                             command: options.command, name: options.name,
+        // an explicit --cwd/--command wins; otherwise the destination workspace's defaults seed the session,
+        // so a scripted `session new` into a project workspace opens the same thing ⌘N would. $HOME stays the
+        // last resort here (NOT the GUI's new-session-directory setting) — the documented control default.
+        let seed = actions.newSessionSeed(in: store, workspaceID: workspaceID, requestedCwd: options.cwd,
+                                          requestedCommand: options.command,
+                                          fallbackCwd: FileManager.default.homeDirectoryForCurrentUser.path)
+        guard let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd,
+                                             command: seed.command, name: options.name,
                                              wait: options.wait ?? false, at: index, select: !options.noSelect) else {
             return ControlResponse(ok: false, error: "could not create session")
         }

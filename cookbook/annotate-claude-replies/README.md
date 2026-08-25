@@ -64,7 +64,7 @@ Register the Stop hook by adding an entry to the `Stop` array in `~/.claude/sett
 }
 ```
 
-Then add the keybinding to `~/.config/agterm/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
+Then add the keybinding to `~/.config/agx/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
 
 ```
 command "Annotate replies"  cmd+ctrl+e  ~/.local/bin/agterm-annotate/annotate-replies.sh "{AGT_SESSION_ID}" "{AGT_PANE}"
@@ -80,7 +80,7 @@ Two settings, read from the environment. Put them in front of the script in the 
 
 Two further flags are added automatically, but only when the binary advertises them, so a revdiff without them is never handed an unknown flag. `--no-tree` starts with the side panel hidden, which a single reply has no use for; it is in revdiff `master` but not in v1.12.0, so a released build simply will not get it yet. `--preview` starts in rendered markdown rather than source: annotations are placed in the source view, so the flow is read the rendered reply, toggle to source, mark it up. Setting `AGTERM_ANNOTATE_REVDIFF_FLAGS` yourself turns the probe off entirely and uses exactly what you give it.
 
-Every setting can also live in `~/.config/agterm-annotate/config`, a plain shell file sourced on each run. That is the better place for anything machine-specific: it takes effect on the next press, while a keymap line needs a reload first, and it keeps the script itself identical to the published one. `AGTERM_ANNOTATE_REVDIFF_NAMES` belongs there — it lists the binary names to try in order, so a local build under its own name is a config line rather than an edit.
+Every setting can also live in `~/.config/agx-annotate/config`, a plain shell file sourced on each run. That is the better place for anything machine-specific: it takes effect on the next press, while a keymap line needs a reload first, and it keeps the script itself identical to the published one. `AGTERM_ANNOTATE_REVDIFF_NAMES` belongs there — it lists the binary names to try in order, so a local build under its own name is a config line rather than an edit.
 
 ## Usage
 

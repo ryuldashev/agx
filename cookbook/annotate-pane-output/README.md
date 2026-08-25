@@ -39,7 +39,7 @@ Copy `annotate-pane.py` somewhere on your machine, say `~/.local/bin/`, and make
 chmod +x annotate-pane.py
 ```
 
-Bind it in `~/.config/agterm/keymap.conf`, with the full path to wherever you put it:
+Bind it in `~/.config/agx/keymap.conf`, with the full path to wherever you put it:
 
 ```
 command "Annotate" ctrl+a>k ~/.local/bin/annotate-pane.py

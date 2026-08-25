@@ -29,7 +29,9 @@ public enum InterfaceElement: String, Codable, Sendable, CaseIterable {
     case sessionName
     case windowName
     case recentSessions
-    case scratch
+    /// The title bar's pane-zoom button. Keeps the `scratch` rawValue: this slot used to toggle the scratch
+    /// terminal, and the stored hidden-element sets in existing settings.json files are keyed by rawValue.
+    case zoom = "scratch"
     case split
     case dashboard
     case quickTerminal
@@ -58,7 +60,7 @@ public enum InterfaceElement: String, Codable, Sendable, CaseIterable {
         case .sessionName: return "Session name"
         case .windowName: return "Window name"
         case .recentSessions: return "Recent sessions"
-        case .scratch: return "Scratch terminal"
+        case .zoom: return "Pane zoom"
         case .split: return "Split view"
         case .dashboard: return "Dashboard"
         case .quickTerminal: return "Quick terminal"
@@ -127,7 +129,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     /// The out-of-the-box bundled theme, seeded by `SettingsStore.load()` on a fresh install. Distinct
     /// from `theme == nil`, which means ghostty's own built-in default (the picker's "default ghostty").
-    public static let defaultTheme = "agterm"
+    /// The fork's own theme: a warm, marsian dark, deliberately unlike upstream's neutral #303030 so two
+    /// windows side by side are never mistaken for each other. `Resources/custom-themes/agx`.
+    public static let defaultTheme = "agx"
 
     /// The pane/backdrop mute strength (0...10, 0 = no mute) used when `inactivePaneMuteStrength` is nil.
     public static let defaultInactivePaneMuteStrength = 5
@@ -267,6 +271,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// Whether the first-launch pointer at the Help menu extras has been shown; nil/false = not yet.
     /// Written once, by the launch that shows it. See `FirstRunWelcome`.
     public var welcomeShown: Bool?
+    /// The agents the user has connected (Settings ▸ Agents), in display order. Each carries the shell
+    /// line that launches it; a workspace points at one by id (`WorkspaceDefaults.agentID`). nil/empty =
+    /// none connected, which is also a fresh install — detection only OFFERS agents, it never adds them.
+    public var agents: [AgentDefinition]?
 
     public init(fontFamily: String? = nil, fontSize: Double? = nil, theme: String? = nil,
                 darkTheme: String? = nil, followSystemAppearance: Bool? = nil,
@@ -288,7 +296,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
                 autoFollowStayOnActive: Bool? = nil, sidebarFontSize: Double? = nil,
                 interfaceFontSize: Double? = nil,
                 hiddenInterfaceElements: [String]? = nil,
-                autoHideSidebarInactiveWindows: Bool? = nil, welcomeShown: Bool? = nil) {
+                autoHideSidebarInactiveWindows: Bool? = nil, welcomeShown: Bool? = nil,
+                agents: [AgentDefinition]? = nil) {
         self.fontFamily = fontFamily
         self.fontSize = fontSize
         self.theme = theme
@@ -329,6 +338,20 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.hiddenInterfaceElements = hiddenInterfaceElements
         self.autoHideSidebarInactiveWindows = autoHideSidebarInactiveWindows
         self.welcomeShown = welcomeShown
+        self.agents = agents
+    }
+
+    /// The connected agents, nil read as empty and blank-named or blank-command rows dropped — the one
+    /// read point, so a hand-edited `settings.json` can't put an unrunnable row in the workspace picker.
+    public var resolvedAgents: [AgentDefinition] {
+        (agents ?? []).filter { $0.name.trimmedOrNil != nil && $0.launchCommand != nil }
+    }
+
+    /// The connected agent with this id, nil when unset or already deleted — how a workspace default
+    /// resolves to something runnable.
+    public func agent(withID id: UUID?) -> AgentDefinition? {
+        guard let id else { return nil }
+        return resolvedAgents.first { $0.id == id }
     }
 
     /// The hidden chrome elements, unknown (future-written) raw names dropped. The single read point.

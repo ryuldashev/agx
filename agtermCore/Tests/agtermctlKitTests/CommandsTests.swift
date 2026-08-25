@@ -1757,18 +1757,19 @@ struct CommandsTests {
     @Test func socketPathStateDirOverHome() throws {
         let command = try Tree.parse([])
         let env = ["AGTERM_STATE_DIR": "/tmp/state", "HOME": "/Users/x"]
-        #expect(command.options.socketPath(env: env) == "/tmp/state/agterm.sock")
+        #expect(command.options.socketPath(env: env) == "/tmp/state/\(Brand.socketFileName)")
     }
 
     @Test func socketPathFallsBackToHome() throws {
         let command = try Tree.parse([])
         let env = ["HOME": "/Users/x"]
-        #expect(command.options.socketPath(env: env) == "/Users/x/Library/Application Support/agterm/agterm.sock")
+        #expect(command.options.socketPath(env: env)
+            == "/Users/x/Library/Application Support/\(Brand.stateDirectoryName)/\(Brand.socketFileName)")
     }
 
     @Test func socketPathFallsBackToTmpWithoutHome() throws {
         let command = try Tree.parse([])
-        #expect(command.options.socketPath(env: [:]) == "/tmp/agterm/agterm.sock")
+        #expect(command.options.socketPath(env: [:]) == "/tmp/\(Brand.stateDirectoryName)/\(Brand.socketFileName)")
     }
 
     // MARK: - session background

@@ -20,6 +20,7 @@ public enum Command: String, Codable, Sendable {
     case workspaceFocus = "workspace.focus"
     case workspaceFilter = "workspace.filter"
     case workspaceCollapse = "workspace.collapse"
+    case workspaceDefaults = "workspace.defaults"
     case workspaceExpand = "workspace.expand"
     case sessionType = "session.type"
     case sessionStatus = "session.status"
@@ -93,8 +94,11 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// (blank/omitted leaves the auto basename); the `theme.set` theme (omitted/empty = ghostty's built-in
     /// colors / "default ghostty", NOT the seeded `agterm` app default).
     public var name: String?
-    /// Working directory for `session.new`.
+    /// Working directory for `session.new`; the pinned directory for `workspace.defaults` (empty clears).
     public var cwd: String?
+    /// The agent to pin for `workspace.defaults`, by exact name, id, or id prefix; empty clears. Absent
+    /// leaves whatever the workspace already pins.
+    public var agent: String?
     /// Additional session targets for batch-capable commands (`session.close`, `session.move`). When set,
     /// the command uses this ordered list instead of the top-level single `target`.
     public var targets: [String]?
@@ -322,9 +326,11 @@ public struct ControlArgs: Codable, Sendable, Equatable {
                 opacity: Double? = nil, fit: String? = nil,
                 position: String? = nil, repeats: Bool? = nil, all: Bool? = nil, lines: Int? = nil,
                 light: String? = nil, dark: String? = nil,
-                close: Bool? = nil, fontSize: Double? = nil, autoSize: Bool? = nil, mru: Bool? = nil) {
+                close: Bool? = nil, fontSize: Double? = nil, autoSize: Bool? = nil, mru: Bool? = nil,
+                agent: String? = nil) {
         self.name = name
         self.cwd = cwd
+        self.agent = agent
         self.targets = targets
         self.workspace = workspace
         self.workspaceName = workspaceName
@@ -639,6 +645,39 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
 }
 
 /// A workspace and its sessions as projected into the `tree` response.
+/// A workspace's new-session seed on the wire: the directory as STORED (a `~` path stays a `~` path, so
+/// a script reads back what the user typed) and the agent it runs, reported by name AND id so a caller can
+/// display one and address the other. Each field is omitted when unset; the whole object is omitted when
+/// the workspace pins nothing.
+public struct ControlWorkspaceDefaults: Codable, Sendable, Equatable {
+    public let cwd: String?
+    public let agent: String?
+    public let agentID: String?
+    /// The resolved launch line, so a script can tell "agent set but its command is gone" from "no agent".
+    public let command: String?
+    /// The pinned background IMAGE path (nil = none), with its fit/opacity, so a script reads back the
+    /// workspace's look the same way it reads back its directory.
+    public let background: String?
+    public let backgroundOpacity: Double?
+    public let backgroundFit: String?
+
+    public init(cwd: String? = nil, agent: String? = nil, agentID: String? = nil, command: String? = nil,
+                background: String? = nil, backgroundOpacity: Double? = nil, backgroundFit: String? = nil) {
+        self.cwd = cwd
+        self.agent = agent
+        self.agentID = agentID
+        self.command = command
+        self.background = background
+        self.backgroundOpacity = backgroundOpacity
+        self.backgroundFit = backgroundFit
+    }
+
+    /// Nil when every field is unset, so an untouched workspace omits the object entirely.
+    public var nonEmpty: ControlWorkspaceDefaults? {
+        cwd == nil && agent == nil && agentID == nil && command == nil && background == nil ? nil : self
+    }
+}
+
 public struct ControlWorkspaceNode: Codable, Sendable, Equatable {
     public let id: String
     public let name: String
@@ -664,15 +703,20 @@ public struct ControlWorkspaceNode: Codable, Sendable, Equatable {
     /// `workspace.collapse`/`workspace.expand` and `workspace.new --collapsed`. Reports the persisted
     /// `!isExpanded`, independent of a transient focus force-reveal.
     public let collapsed: Bool?
+    /// The workspace's new-session seed (directory + agent), nil when it pins neither — the read side of
+    /// `workspace.defaults`, so one `tree` call tells a script what a new tab here would start.
+    public let defaults: ControlWorkspaceDefaults?
     public let sessions: [ControlSessionNode]
 
     public init(id: String, name: String, active: Bool, focused: Bool? = nil,
-                collapsed: Bool? = nil, sessions: [ControlSessionNode]) {
+                collapsed: Bool? = nil, defaults: ControlWorkspaceDefaults? = nil,
+                sessions: [ControlSessionNode]) {
         self.id = id
         self.name = name
         self.active = active
         self.focused = focused
         self.collapsed = collapsed
+        self.defaults = defaults
         self.sessions = sessions
     }
 }
@@ -858,6 +902,9 @@ public struct ControlResult: Codable, Sendable, Equatable {
     public var keymap: ControlKeymap?
     /// The current or terminal picker outcome for `pick.result`.
     public var pick: ControlPickResult?
+    /// The workspace's new-session seed, for `workspace.defaults` (both the read form and the write's
+    /// echo of the stored state).
+    public var defaults: ControlWorkspaceDefaults?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -865,7 +912,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 theme: String? = nil, themes: [String]? = nil, ratio: Double? = nil,
                 sync: Bool? = nil, light: String? = nil, dark: String? = nil,
                 events: ControlEventBatch? = nil, keymap: ControlKeymap? = nil,
-                pick: ControlPickResult? = nil) {
+                pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -882,6 +929,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.events = events
         self.keymap = keymap
         self.pick = pick
+        self.defaults = defaults
     }
 }
 

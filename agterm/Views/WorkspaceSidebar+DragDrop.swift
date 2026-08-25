@@ -83,7 +83,10 @@ extension WorkspaceSidebar.Coordinator {
         }
         var created = false
         for url in drop.urls {
-            created = store.addSession(toWorkspace: drop.workspaceID, cwd: url.path) != nil || created
+            // the dropped folder is the explicit cwd; the destination workspace's default agent still runs.
+            let seed = actions.newSessionSeed(in: store, workspaceID: drop.workspaceID, requestedCwd: url.path)
+            created = store.addSession(toWorkspace: drop.workspaceID, cwd: seed.cwd,
+                                       command: seed.command) != nil || created
         }
         guard created else { return false }
         store.noteUserActivity()

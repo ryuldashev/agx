@@ -2,14 +2,13 @@
   "fill" : "automatic",
   "groups" : [
     {
-      "blend-mode" : "hard-light",
-      "blur-material" : 0.5,
+      "blend-mode" : "normal",
       "hidden" : false,
       "layers" : [
         {
           "glass" : false,
-          "image-name" : "21E595C3-2B37-478F-8762-21397D63C722.png",
-          "name" : "21E595C3-2B37-478F-8762-21397D63C722"
+          "image-name" : "agx-mars.png",
+          "name" : "agx-mars"
         }
       ],
       "opacity" : 1,
@@ -19,7 +18,7 @@
       },
       "specular" : true,
       "translucency" : {
-        "enabled" : true,
+        "enabled" : false,
         "value" : 0.5
       }
     }

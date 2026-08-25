@@ -3,11 +3,12 @@ import AppKit
 import os
 import SwiftUI
 
-private let logger = Logger(subsystem: "com.umputun.agterm", category: "SettingsView")
+private let logger = Logger(subsystem: Brand.bundleID, category: "SettingsView")
 
-/// The Settings window (Cmd+,): six tabs — General (mouse, sessions, ghostty config), Appearance
+/// The Settings window (Cmd+,): seven tabs — General (mouse, sessions, ghostty config), Appearance
 /// (font/theme + window translucency + mute), Interface (per-element title-bar and sidebar chrome
-/// visibility), Notifications (banner / badge / attention toggles), Agent Status (sidebar glyph colors and
+/// visibility), Notifications (banner / badge / attention toggles), Agents (the connected local agent CLIs a
+/// workspace can pin as its default), Agent Status (sidebar glyph colors and
 /// shapes + blocked sound + auto-follow), and Key Mapping (config directory + keymap diagnostics + Reload).
 /// Throughout, a control's binding maps its DEFAULT value back to nil so `settings.json` stays minimal.
 struct SettingsView: View {
@@ -15,7 +16,7 @@ struct SettingsView: View {
 
     /// Identifies each tab. The explicit selection binding keeps the window opening on General: without it
     /// SwiftUI's Settings scene persists the last tab to `selectedTabIndex` in defaults and restores it.
-    private enum Tab: Hashable { case general, appearance, interface, notifications, agentStatus, keyMapping }
+    private enum Tab: Hashable { case general, appearance, interface, notifications, agents, agentStatus, keyMapping }
     @State private var selection: Tab = .general
 
     var body: some View {
@@ -32,6 +33,9 @@ struct SettingsView: View {
             NotificationsSettingsView(model: model)
                 .tabItem { Label("Notifications", systemImage: "bell") }
                 .tag(Tab.notifications)
+            AgentsSettingsView(model: model)
+                .tabItem { Label("Agents", systemImage: "sparkles") }
+                .tag(Tab.agents)
             AgentStatusSettingsView(model: model)
                 .tabItem { Label("Agent Status", systemImage: "smallcircle.filled.circle") }
                 .tag(Tab.agentStatus)
@@ -62,7 +66,8 @@ private struct NonRestorableWindow: NSViewRepresentable {
 }
 
 /// A terse one-line caption under a control; only non-obvious controls carry one, so tabs fit unscrolled.
-private struct SettingHint: View {
+/// Not private: the Agents tab lives in its own file (`AgentsSettingsView.swift`) and uses the same hint style.
+struct SettingHint: View {
     let text: String
     init(_ text: String) { self.text = text }
     var body: some View {
@@ -127,7 +132,7 @@ private struct GeneralSettingsView: View {
             Section("Ghostty Config") {
                 Toggle("Use my global Ghostty config", isOn: inheritGlobalGhosttyConfig)
                     .accessibilityIdentifier("settings-inherit-global-ghostty")
-                SettingHint("Also loads ~/.config/ghostty/config on top of agterm's own. Edit ~/.config/agterm/ghostty.conf to customize.")
+                SettingHint("Also loads ~/.config/ghostty/config on top of this app's own. Edit ~/.config/\(Brand.configDirectoryName)/ghostty.conf to customize.")
             }
         }
         .formStyle(.grouped)

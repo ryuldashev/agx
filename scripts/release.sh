@@ -64,7 +64,7 @@ if [ "$PUBLISH" = "1" ]; then
     fi
   done
 fi
-APP="$BUILD_DIR/DerivedData/Build/Products/Release/agterm.app"
+APP="$BUILD_DIR/DerivedData/Build/Products/Release/agx.app"
 NOTARY_PROFILE="${AGTERM_NOTARY_PROFILE:-agterm-notary}"
 TAP_REPO="umputun/homebrew-apps"
 
@@ -124,7 +124,7 @@ release_notes() {
 Signed with a Developer ID certificate and notarized by Apple, so macOS Gatekeeper opens it with no extra steps. Apple Silicon (arm64) only, macOS 14 or later.
 
 - **Homebrew:** \`brew install --cask umputun/apps/agterm\`
-- **Direct download:** open the \`.dmg\` and drag \`agterm.app\` into \`/Applications\`.
+- **Direct download:** open the \`.dmg\` and drag \`agx.app\` into \`/Applications\`.
 EOF
 }
 

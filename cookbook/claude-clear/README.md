@@ -26,7 +26,7 @@ cp claude-clear.py ~/bin/
 chmod +x ~/bin/claude-clear.py
 ```
 
-Add an entry to `~/.config/agterm/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
+Add an entry to `~/.config/agx/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
 
 ```
 command "Claude Clear" ctrl+a>x ~/bin/claude-clear.py

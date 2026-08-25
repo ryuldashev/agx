@@ -132,12 +132,12 @@ extension WindowContentView {
     private var titlebarTrailingActions: some View {
         let showRecent = shows(.recentSessions)
         let showAttention = attentionButtonEnabled // the bell keeps its own separate Notifications setting
-        let showScratch = shows(.scratch)
+        let showZoom = shows(.zoom)
         let showSplit = shows(.split)
         let showDashboard = shows(.dashboard)
         let showQuick = shows(.quickTerminal)
         let countA = (showRecent ? 1 : 0) + (showAttention ? 1 : 0)
-        let countB = (showScratch ? 1 : 0) + (showSplit ? 1 : 0)
+        let countB = (showZoom ? 1 : 0) + (showSplit ? 1 : 0)
         let countC = (showDashboard ? 1 : 0) + (showQuick ? 1 : 0)
         // a separator only between two 2+-button groups (the host-free rule, unit-tested in agtermCore).
         let dividers = InterfaceElement.titlebarGroupDividers(countA: countA, countB: countB, countC: countC)
@@ -145,7 +145,7 @@ extension WindowContentView {
             if showRecent { recentSessionsButton.labelStyle(.iconOnly) }
             if showAttention { attentionButton.labelStyle(.iconOnly) }
             if dividers.afterA { titlebarDivider }
-            if showScratch { scratchButton.labelStyle(.iconOnly) }
+            if showZoom { zoomButton.labelStyle(.iconOnly) }
             if showSplit { splitButton.labelStyle(.iconOnly) }
             if dividers.afterB { titlebarDivider }
             if showDashboard { dashboardButton.labelStyle(.iconOnly) }
@@ -206,18 +206,19 @@ extension WindowContentView {
         .accessibilityIdentifier("split-toggle")
     }
 
-    /// Toggles the active session's scratch terminal — a third, full-overlay login shell kept alive when
-    /// hidden. 2-state glyph (filled while shown): no "hidden but exists" state, since its `exit` clears it.
-    private var scratchButton: some View {
-        let active = store.activeSession?.scratchActive ?? false
-        return Button {
-            actions.toggleScratch()
+    /// Zooms the focused pane to the whole window. Single-state, unlike the split glyph: a zoomed window
+    /// swaps this whole row for `zoomTitlebar`, whose own control unzooms, so the button is only ever seen
+    /// in the un-zoomed state. Replaces upstream's scratch toggle — the scratch terminal is a fourth terminal
+    /// surface per session that the split already covers, and it keeps ⌘J, the palette and `session.scratch`.
+    private var zoomButton: some View {
+        Button {
+            actions.toggleTerminalZoom()
         } label: {
-            Label("Scratch", systemImage: active ? "rectangle.inset.filled" : "rectangle")
+            Label("Zoom", systemImage: "arrow.up.left.and.arrow.down.right")
         }
-        .help(helpHint(active ? "Hide scratch terminal" : "Show scratch terminal", .toggleScratch))
+        .help(helpHint("Zoom pane", .toggleTerminalZoom))
         .disabled(store.activeSession == nil)
-        .accessibilityIdentifier("scratch-toggle")
+        .accessibilityIdentifier("zoom-toggle")
     }
 
     /// Toggles the quick terminal: one scratch terminal overlaid at 90% of the window, above the sidebar and

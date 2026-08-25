@@ -24,7 +24,7 @@ cp pick-dir.sh ~/bin/
 chmod +x ~/bin/pick-dir.sh
 ```
 
-Add an entry to `~/.config/agterm/keymap.conf`:
+Add an entry to `~/.config/agx/keymap.conf`:
 
 ```
 command "Pick Directory" ctrl+a>d zsh -lc "$HOME/bin/pick-dir.sh"

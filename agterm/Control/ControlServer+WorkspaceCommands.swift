@@ -104,4 +104,67 @@ extension ControlServer {
             return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
         }
     }
+
+    /// `workspace.defaults` — read (no fields) or write the workspace's new-session seed. A write applies
+    /// only the mentioned fields, so pinning a directory leaves the agent alone. The agent reference is
+    /// resolved against the CONNECTED agents (Settings ▸ Agents) by id, id prefix, or exact name; an
+    /// unmatched one is an error rather than a silently unset default. The response always carries the
+    /// stored state, so a write reads back without a second call.
+    func workspaceDefaults(_ target: String?, window: String?,
+                           update: ControlWorkspaceDefaultsUpdate?) -> ControlResponse {
+        resolver.resolveWorkspace(target, window: window) { store, id in
+            var defaults = store.workspaceDefaults(id)
+            if let update {
+                switch update.agent {
+                case .unchanged:
+                    break
+                case .clear:
+                    defaults.agentID = nil
+                case .set(let reference):
+                    guard let agent = self.agent(matching: reference) else {
+                        return ControlResponse(ok: false, error: "no such agent: \(reference)")
+                    }
+                    defaults.agentID = agent.id
+                }
+                defaults.cwd = update.cwd.applied(to: defaults.cwd)
+                let background = update.appliedBackground(to: defaults.background)
+                if let path = background?.imagePath, path != defaults.background?.imagePath {
+                    // same gate as `session.background`: a path that ghostty cannot read would pin a default
+                    // that silently renders nothing on every future session in this workspace.
+                    guard WatermarkRenderer.isSupportedImage(path) else {
+                        return ControlResponse(ok: false, error: "unsupported image (PNG or JPEG only): \(path)")
+                    }
+                    guard FileManager.default.fileExists(atPath: path) else {
+                        return ControlResponse(ok: false, error: "no such image file: \(path)")
+                    }
+                }
+                defaults.background = background
+                store.setWorkspaceDefaults(defaults, forWorkspace: id)
+            }
+            return ControlResponse(ok: true, result: ControlResult(id: id.uuidString,
+                                                                   defaults: self.controlDefaults(defaults)))
+        }
+    }
+
+    /// A connected agent addressed the way the CLI allows: full id, unique id prefix, or exact name
+    /// (case-insensitively). Nil when nothing matches or a prefix is ambiguous — the caller reports it.
+    func agent(matching reference: String) -> AgentDefinition? {
+        let agents = settingsModel.settings.resolvedAgents
+        if let uuid = UUID(uuidString: reference), let hit = agents.first(where: { $0.id == uuid }) { return hit }
+        if let hit = agents.first(where: { $0.name.caseInsensitiveCompare(reference) == .orderedSame }) { return hit }
+        let prefixed = agents.filter { $0.id.uuidString.lowercased().hasPrefix(reference.lowercased()) }
+        return prefixed.count == 1 ? prefixed.first : nil
+    }
+
+    /// The wire form of a workspace's defaults: the directory as stored, and the pinned agent resolved to
+    /// its current name and launch line (both nil when the agent was deleted, which is also how the seed
+    /// itself degrades — to a plain shell).
+    func controlDefaults(_ defaults: WorkspaceDefaults) -> ControlWorkspaceDefaults {
+        let agent = settingsModel.settings.agent(withID: defaults.agentID)
+        return ControlWorkspaceDefaults(cwd: defaults.cwd, agent: agent?.name,
+                                        agentID: defaults.agentID?.uuidString, command: agent?.launchCommand,
+                                        background: defaults.background?.imagePath,
+                                        backgroundOpacity: defaults.background?.opacity,
+                                        backgroundFit: defaults.background?.fit?.rawValue)
+    }
 }

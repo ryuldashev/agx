@@ -169,8 +169,10 @@ final class SplitUITests: XCTestCase {
         XCTAssertEqual(rightTTYAfter, rightTTY, "hiding then showing the split keeps the same right shell alive")
     }
 
-    // pane nav is gated on hasSplit, not isSplit: while the split is hidden, ⌃1/⌃2 (and ⌘⌥←/→) swap
-    // WHICH pane is shown maximized.
+    // two rules at once: the button's hide always leaves the PRIMARY pane on screen (it is "Hide split",
+    // not "zoom whatever has focus" — a fresh split focuses right, so the old follow-the-focus rule hid the
+    // pane being worked in), and pane nav is gated on hasSplit, not isSplit, so ⌃1/⌃2 (and ⌘⌥←/→) still swap
+    // WHICH pane is shown maximized while the split is hidden.
     func testHiddenSplitPaneNavigationSwapsShownPane() throws {
         let row = app.staticTexts["session-row"]
         XCTAssertTrue(row.waitForExistence(timeout: 20), "seeded session should exist")
@@ -190,22 +192,23 @@ final class SplitUITests: XCTestCase {
 
         splitButton.click()
         usleep(800_000)
-        XCTAssertEqual(ttyAfterCommand(named: "hidden-right"), rightTTY, "the hidden split shows the focused (right) pane")
-
-        app.typeKey("1", modifierFlags: .control)
-        usleep(800_000)
-        XCTAssertEqual(ttyAfterCommand(named: "hidden-ctrl1"), primaryTTY,
-                       "Ctrl-1 swaps the hidden split to the primary pane")
+        XCTAssertEqual(ttyAfterCommand(named: "hidden-main"), primaryTTY,
+                       "hiding through the button keeps the PRIMARY pane on screen, whatever held focus")
 
         app.typeKey("2", modifierFlags: .control)
         usleep(800_000)
         XCTAssertEqual(ttyAfterCommand(named: "hidden-ctrl2"), rightTTY,
-                       "Ctrl-2 swaps the hidden split back to the right pane")
+                       "Ctrl-2 swaps the hidden split to the right pane")
+
+        app.typeKey("1", modifierFlags: .control)
+        usleep(800_000)
+        XCTAssertEqual(ttyAfterCommand(named: "hidden-ctrl1"), primaryTTY,
+                       "Ctrl-1 swaps the hidden split back to the primary pane")
     }
 
     // the glyph's symbol name is not observable, so the state rides its accessibilityValue
-    // (none/both/left/right). Ctrl-1's effect is proven by the later "left" assertion: had it not
-    // registered, focus would still be on the right pane and the hide would collapse to "right".
+    // (none/both/left/right). The hide always collapses to "left" now, so the ⌃2 assertion after it is what
+    // proves pane nav still swaps the shown pane.
     func testSplitButtonGlyphReflectsState() throws {
         let row = app.staticTexts["session-row"]
         XCTAssertTrue(row.waitForExistence(timeout: 20), "seeded session should exist")
@@ -225,7 +228,7 @@ final class SplitUITests: XCTestCase {
         XCTAssertTrue(waitSplitValue(splitButton, "both"), "a shown split ignores which pane is focused")
 
         splitButton.click()
-        XCTAssertTrue(waitSplitValue(splitButton, "left"), "collapsed to the primary pane fills the left half")
+        XCTAssertTrue(waitSplitValue(splitButton, "left"), "hiding collapses to the primary pane, filling the left half")
 
         app.typeKey("2", modifierFlags: .control)
         XCTAssertTrue(waitSplitValue(splitButton, "right"), "collapsed to the split pane fills the right half")

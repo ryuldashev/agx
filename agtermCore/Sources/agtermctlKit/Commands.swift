@@ -28,13 +28,17 @@ struct BasicOptions: ParsableArguments, ConnectionOptions {
     @Flag(name: .long, help: "Print the raw JSON response.")
     var json = false
 
-    /// Resolve the socket path, in precedence order: `--socket` → `<AGTERM_STATE_DIR>/agterm.sock` →
-    /// `<$HOME>/Library/Application Support/agterm/agterm.sock` → `/tmp/agterm/agterm.sock`. `env` is
-    /// injectable so the precedence is unit-testable; production passes the process environment.
+    /// Resolve the socket path, in precedence order: `--socket` → `AGTERM_SOCKET` (exported into every
+    /// session, so a command run inside a pane addresses the app that spawned it even when PATH picks a
+    /// DIFFERENT build's `agtermctl`) → `<AGTERM_STATE_DIR>/<socket>` → `<$HOME>/Library/Application
+    /// Support/<state dir>/<socket>` → `/tmp/<state dir>/<socket>`. `env` is injectable so the precedence
+    /// is unit-testable; production passes the process environment.
     func socketPath(env: [String: String] = ProcessInfo.processInfo.environment) -> String {
         if let socket { return socket }
-        let appSupport = (env["HOME"].map { ($0 as NSString).appendingPathComponent("Library/Application Support/agterm") })
-            ?? "/tmp/agterm"
+        if let exported = env["AGTERM_SOCKET"], !exported.isEmpty { return exported }
+        let support = "Library/Application Support/" + Brand.stateDirectoryName
+        let appSupport = (env["HOME"].map { ($0 as NSString).appendingPathComponent(support) })
+            ?? "/tmp/" + Brand.stateDirectoryName
         return ControlResolve.socketPath(stateDir: env["AGTERM_STATE_DIR"], appSupport: appSupport)
     }
 }

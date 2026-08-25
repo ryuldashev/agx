@@ -2,7 +2,7 @@
 # Run `make` (or `make help`) to list targets.
 
 INSTALL_DIR := $(HOME)/Applications
-RELEASE_APP := build/DerivedData/Build/Products/Release/agterm.app
+RELEASE_APP := build/DerivedData/Build/Products/Release/agx.app
 
 .DEFAULT_GOAL := help
 .PHONY: help prep generate build run release deploy test test-app lint dist clean
@@ -28,9 +28,9 @@ release: ## release build, no launch (scripts/build.sh)
 	./scripts/build.sh
 
 deploy: release ## release build + copy to ~/Applications
-	rm -rf "$(INSTALL_DIR)/agterm.app"
-	cp -R "$(RELEASE_APP)" "$(INSTALL_DIR)/agterm.app"
-	@echo "installed $(INSTALL_DIR)/agterm.app"
+	rm -rf "$(INSTALL_DIR)/agx.app"
+	cp -R "$(RELEASE_APP)" "$(INSTALL_DIR)/agx.app"
+	@echo "installed $(INSTALL_DIR)/agx.app"
 
 test: ## host-free agtermCore unit tests (scripts/test.sh)
 	./scripts/test.sh

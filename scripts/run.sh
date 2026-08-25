@@ -7,4 +7,4 @@ cd "$(dirname "$0")/.."
 xcodegen generate
 xcodebuild -project agterm.xcodeproj -scheme agterm -configuration Debug \
   -derivedDataPath build/DerivedData build
-open build/DerivedData/Build/Products/Debug/agterm.app
+open build/DerivedData/Build/Products/Debug/agx.app

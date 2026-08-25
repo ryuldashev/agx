@@ -17,22 +17,22 @@ Each item is a relative age, an eight-word title, a one-sentence detail, and a s
 
 ## Setup
 
-Put the script somewhere on disk, make it executable, and bind it. The example uses `~/.config/agterm/scripts`; anywhere works as long as the keymap line points at it.
+Put the script somewhere on disk, make it executable, and bind it. The example uses `~/.config/agx/scripts`; anywhere works as long as the keymap line points at it.
 
 ```bash
-mkdir -p ~/.config/agterm/scripts
-cp claude-recap.zsh ~/.config/agterm/scripts/
-chmod +x ~/.config/agterm/scripts/claude-recap.zsh
+mkdir -p ~/.config/agx/scripts
+cp claude-recap.zsh ~/.config/agx/scripts/
+chmod +x ~/.config/agx/scripts/claude-recap.zsh
 ```
 
-Add the line to `~/.config/agterm/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
+Add the line to `~/.config/agx/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
 
 ```
 # ctrl+a>c: recap the claude code session running in this agterm session.
 # {AGT_SESSION_ID} is passed twice: --target opens the overlay on THIS session, and the script
 # argument lets it resolve the session's cwd, because a fresh overlay pty cannot read $AGT_*.
 # zsh -c so the login shell puts jq and claude on PATH.
-command "Claude Recap" ctrl+a>c agtermctl session overlay open 'zsh -c "$HOME/.config/agterm/scripts/claude-recap.zsh {AGT_SESSION_ID} {AGT_PANE}"' --size-percent 60 --background-color "#2e3a2e" --target {AGT_SESSION_ID}
+command "Claude Recap" ctrl+a>c agtermctl session overlay open 'zsh -c "$HOME/.config/agx/scripts/claude-recap.zsh {AGT_SESSION_ID} {AGT_PANE}"' --size-percent 60 --background-color "#2e3a2e" --target {AGT_SESSION_ID}
 ```
 
 ### The pane map

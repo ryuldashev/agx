@@ -26,7 +26,7 @@ cp agt-only.sh ~/bin/
 chmod +x ~/bin/agt-only.sh
 ```
 
-Add one entry per project to `~/.config/agterm/keymap.conf`:
+Add one entry per project to `~/.config/agx/keymap.conf`:
 
 ```
 command "only A"  ~/bin/agt-only.sh "A"

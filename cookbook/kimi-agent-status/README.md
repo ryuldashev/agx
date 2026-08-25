@@ -8,7 +8,7 @@ Wires Kimi Code's own lifecycle hooks to agterm's per-session status glyph, the 
 
 ## Requirements
 
-- agterm 0.3.1 or later, with the hooks package installed via Help ▸ Install Agent Status Hooks… (that provides `~/.config/agterm/agent-status/agterm-agent-status.sh`, which this recipe points kimi at). The status script, `--blink`, and `--auto-reset` all predate the repository's earliest tagged release, so 0.3.1 is the first version that can be named, not the version they arrived in.
+- agterm 0.3.1 or later, with the hooks package installed via Help ▸ Install Agent Status Hooks… (that provides `~/.config/agx/agent-status/agterm-agent-status.sh`, which this recipe points kimi at). The status script, `--blink`, and `--auto-reset` all predate the repository's earliest tagged release, so 0.3.1 is the first version that can be named, not the version they arrived in.
 - Kimi Code with `[[hooks]]` support in `~/.kimi-code/config.toml` (tested on kimi-code 0.31.0).
 
 ## Setup
@@ -20,19 +20,19 @@ Add to `~/.kimi-code/config.toml`:
 ```toml
 [[hooks]]
 event = "UserPromptSubmit"
-command = "$HOME/.config/agterm/agent-status/agterm-agent-status.sh active --blink"
+command = "$HOME/.config/agx/agent-status/agterm-agent-status.sh active --blink"
 
 [[hooks]]
 event = "PostToolUse"
-command = "$HOME/.config/agterm/agent-status/agterm-agent-status.sh active --blink"
+command = "$HOME/.config/agx/agent-status/agterm-agent-status.sh active --blink"
 
 [[hooks]]
 event = "PermissionRequest"
-command = "$HOME/.config/agterm/agent-status/agterm-agent-status.sh blocked"
+command = "$HOME/.config/agx/agent-status/agterm-agent-status.sh blocked"
 
 [[hooks]]
 event = "Stop"
-command = "$HOME/.config/agterm/agent-status/agterm-agent-status.sh completed --auto-reset"
+command = "$HOME/.config/agx/agent-status/agterm-agent-status.sh completed --auto-reset"
 ```
 
 `kimi doctor` validates the file. Hooks load at kimi startup, so restart any running kimi sessions.

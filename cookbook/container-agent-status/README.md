@@ -29,7 +29,7 @@ chmod +x ~/bin/agterm-remote-receiver.sh
 ~/bin/agterm-remote-receiver.sh --port PORT --log-file ~/Library/Logs/agterm-remote.log &
 ```
 
-`--socket` defaults to `$HOME/Library/Application Support/agterm/agterm.sock`; pass it explicitly if agterm's socket lives somewhere else. This process has to be running whenever you want statuses to show — it is a plain background job here, not a launchd service, so it does not survive a reboot or logout on its own; wrap it in a LaunchAgent if you want that.
+`--socket` defaults to `$HOME/Library/Application Support/agx/agx.sock`; pass it explicitly if agterm's socket lives somewhere else. This process has to be running whenever you want statuses to show — it is a plain background job here, not a launchd service, so it does not survive a reboot or logout on its own; wrap it in a LaunchAgent if you want that.
 
 ### Passing identity into the container
 
@@ -60,9 +60,9 @@ This was built and tested against Apple's own `container` CLI, not Docker — an
 ### Inside the container
 
 ```sh
-mkdir -p ~/.config/agterm/agent-status
-cp container-status-notify.sh ~/.config/agterm/agent-status/
-chmod +x ~/.config/agterm/agent-status/container-status-notify.sh
+mkdir -p ~/.config/agx/agent-status
+cp container-status-notify.sh ~/.config/agx/agent-status/
+chmod +x ~/.config/agx/agent-status/container-status-notify.sh
 ```
 
 Merge these four hooks into `~/.claude/settings.json` inside the container (the same event/state pairing the installer uses natively, pointed at this recipe's script instead):
@@ -71,16 +71,16 @@ Merge these four hooks into `~/.claude/settings.json` inside the container (the 
 {
   "hooks": {
     "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "~/.config/agterm/agent-status/container-status-notify.sh active --blink" }] }
+      { "hooks": [{ "type": "command", "command": "~/.config/agx/agent-status/container-status-notify.sh active --blink" }] }
     ],
     "PostToolUse": [
-      { "hooks": [{ "type": "command", "command": "~/.config/agterm/agent-status/container-status-notify.sh active --blink" }] }
+      { "hooks": [{ "type": "command", "command": "~/.config/agx/agent-status/container-status-notify.sh active --blink" }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "~/.config/agterm/agent-status/container-status-notify.sh completed --auto-reset" }] }
+      { "hooks": [{ "type": "command", "command": "~/.config/agx/agent-status/container-status-notify.sh completed --auto-reset" }] }
     ],
     "Notification": [
-      { "matcher": "permission_prompt", "hooks": [{ "type": "command", "command": "~/.config/agterm/agent-status/container-status-notify.sh blocked" }] }
+      { "matcher": "permission_prompt", "hooks": [{ "type": "command", "command": "~/.config/agx/agent-status/container-status-notify.sh blocked" }] }
     ]
   }
 }

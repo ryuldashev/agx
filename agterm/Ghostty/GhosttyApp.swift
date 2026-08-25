@@ -6,7 +6,7 @@ import Foundation
 import GhosttyKit
 import os
 
-private let logger = Logger(subsystem: "com.umputun.agterm", category: "GhosttyApp")
+private let logger = Logger(subsystem: Brand.bundleID, category: "GhosttyApp")
 
 /// Manages the libghostty application lifecycle: init, config, tick loop.
 @MainActor

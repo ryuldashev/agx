@@ -1,5 +1,30 @@
 # Changelog
 
+## agx fork - 2026-08-18
+
+Forked from umputun/agterm at `c793b46` (v0.23.0 line). See `FORK.md`. Upstream's history continues below.
+
+### New Features
+
+- **Connected agents** (Settings ▸ Agents): a named list of local agent CLIs, each a display name and a
+  shell line, plus a "Found on This Mac" probe that offers one-click Connect for the CLIs it knows. The
+  probe adds `~/.local/bin`, `~/.bun/bin` and the Homebrew prefixes itself, since the GUI inherits
+  launchd's `PATH` and agents do not install there.
+- **Workspace defaults**: a workspace pins the directory new sessions open in and the agent they run, so
+  a new tab lands in the right repo with the agent already going. Set from the sidebar's right-click ▸
+  Workspace Defaults… or `agtermctl workspace defaults [--dir PATH] [--agent NAME|ID]`, read back from
+  the tree workspace node's `defaults`. An explicit `--cwd`/`--command` still wins, and an agent removed
+  from Settings degrades to a plain shell rather than failing the create.
+
+### Improved
+
+- `agtermctl` resolves `AGTERM_SOCKET` before `AGTERM_STATE_DIR` and the default path, so a command run
+  inside a pane addresses the app that spawned it however `PATH` resolves the binary — and an instance
+  refused the socket lock fails loudly instead of driving the owner's terminal.
+- Identity is path-based throughout (`Brand.swift`): bundle id, state dir, config dir, socket and log
+  subsystem are the fork's, so agx and upstream agterm run side by side. On first run the fork seeds its
+  config from `~/.config/agterm/*.conf`, and never into a chosen or test-isolated config directory.
+
 ## v0.23.0 - 2026-08-13
 
 ### New Features

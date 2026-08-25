@@ -18,7 +18,7 @@ Three more entries run a TUI in a 95% floating overlay over the current session:
 
 ## Setup
 
-Add the lines to `~/.config/agterm/keymap.conf` and apply the file with File ▸ Reload Keymap or `agtermctl keymap reload`.
+Add the lines to `~/.config/agx/keymap.conf` and apply the file with File ▸ Reload Keymap or `agtermctl keymap reload`.
 
 ```
 # ctrl+a>a: smart split. Nothing shown -> open the split and focus the right pane.

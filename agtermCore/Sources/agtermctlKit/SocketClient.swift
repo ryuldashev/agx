@@ -193,6 +193,9 @@ struct SocketClient {
         if let keymap = response.result?.keymap {
             return formatKeymap(keymap)
         }
+        if let defaults = response.result?.defaults {
+            return formatWorkspaceDefaults(defaults)
+        }
         if let text = response.result?.text {
             return text
         }
@@ -238,6 +241,26 @@ struct SocketClient {
     ///
     /// The menu section is the point of the command: comparing it against the actions above is what shows
     /// a chord the keymap resolved but the menu is not carrying. Menu items print in menu-bar order.
+    /// Render a workspace's new-session seed as two aligned lines. An unset field prints `(unset)` rather
+    /// than being dropped, so a read always answers both questions; a pinned agent that no longer exists
+    /// prints its id with `(deleted)`, which is exactly how the seed behaves — back to a plain shell.
+    static func formatWorkspaceDefaults(_ defaults: ControlWorkspaceDefaults) -> String {
+        let agent: String
+        if let name = defaults.agent {
+            agent = defaults.command.map { "\(name) (\($0))" } ?? name
+        } else if let id = defaults.agentID {
+            agent = "\(id) (deleted)"
+        } else {
+            agent = "(unset)"
+        }
+        var background = defaults.background ?? "(unset)"
+        if defaults.background != nil {
+            let details = [defaults.backgroundFit, defaults.backgroundOpacity.map { "opacity \($0)" }].compactMap { $0 }
+            if !details.isEmpty { background += " (\(details.joined(separator: ", ")))" }
+        }
+        return "dir:   \(defaults.cwd ?? "(unset)")\nagent: \(agent)\nbg:    \(background)"
+    }
+
     static func formatKeymap(_ keymap: ControlKeymap) -> String {
         var lines = ["keymap: \(keymap.path)", "", "actions:"]
         let width = keymap.actions.map(\.action.count).max() ?? 0

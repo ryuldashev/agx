@@ -2,7 +2,7 @@ import agtermCore
 import AppKit
 import os
 
-private let logger = Logger(subsystem: "com.umputun.agterm", category: "CustomCommandRunner")
+private let logger = Logger(subsystem: Brand.bundleID, category: "CustomCommandRunner")
 
 /// Drives user-defined custom commands: an app-wide `NSEvent` local key monitor turns key presses into
 /// chords, a `CustomCommandEngine` resolves them (simple chords and leader sequences like `ctrl+a > g`), and

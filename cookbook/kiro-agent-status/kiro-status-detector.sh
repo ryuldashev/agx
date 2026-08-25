@@ -44,7 +44,7 @@ set -u
 # installed by Help ▸ Install Agent Status Hooks…. Delegating to it instead of calling agtermctl
 # directly gets its baked-in agtermctl path for free, the same way the installer's own adapters do.
 : "${AGTERM_PANE:=left}"
-: "${AGTERM_STATUS_WRAPPER:=$HOME/.config/agterm/agent-status/agterm-agent-status.sh}"
+: "${AGTERM_STATUS_WRAPPER:=$HOME/.config/agx/agent-status/agterm-agent-status.sh}"
 
 # No --pane here: the stock wrapper already forwards both AGTERM_PANE and AGTERM_PANE_ID from the
 # environment, and AGTERM_PANE_ID is what overrides a stale baked role after a pane is promoted

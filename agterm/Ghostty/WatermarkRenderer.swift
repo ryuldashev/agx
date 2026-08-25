@@ -2,7 +2,7 @@ import AppKit
 import agtermCore
 import os
 
-private let logger = Logger(subsystem: "com.umputun.agterm", category: "WatermarkRenderer")
+private let logger = Logger(subsystem: Brand.bundleID, category: "WatermarkRenderer")
 
 /// Turns a `BackgroundWatermark` into a PNG file path for libghostty's `background-image`: `.image`
 /// validates and returns the user's file, `.text` rasterizes the string (Core Text on a transparent canvas)

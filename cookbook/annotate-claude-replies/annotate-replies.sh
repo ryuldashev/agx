@@ -1,7 +1,7 @@
 #!/bin/sh
 # Open my last Claude response in revdiff, annotate it, hand the notes back to the same prompt.
 #
-# Bound to a chord in ~/.config/agterm/keymap.conf. agterm runs a custom command detached, in a
+# Bound to a chord in ~/.config/agx/keymap.conf. agterm runs a custom command detached, in a
 # non-interactive /bin/sh with a small PATH and stdio on /dev/null, so the PATH is widened here and
 # progress goes to the log instead of a terminal.
 #
@@ -18,7 +18,7 @@ export PATH
 # Everything below can be set in a config file instead of edited here, so one machine's quirks never
 # become a change to the script. A setting takes effect on the next press; a keymap line would need a
 # reload first, which is a trap when the chord keeps working with the old value and says nothing.
-CONFIG=${AGTERM_ANNOTATE_CONFIG:-$HOME/.config/agterm-annotate/config}
+CONFIG=${AGTERM_ANNOTATE_CONFIG:-$HOME/.config/agx-annotate/config}
 if [ -r "$CONFIG" ]; then
     # shellcheck source=/dev/null
     . "$CONFIG"

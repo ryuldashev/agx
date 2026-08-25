@@ -328,10 +328,12 @@ extension AppStore {
     func rebuiltWorkspaceShell(id: UUID, name: String) -> Workspace {
         for closeID in pendingCloseOrder.reversed() {
             guard case .workspace(let close)? = pendingCloseRecords[closeID], close.workspace.id == id else { continue }
-            return Workspace(id: id, name: close.workspace.name, isExpanded: close.workspace.isExpanded)
+            return Workspace(id: id, name: close.workspace.name, isExpanded: close.workspace.isExpanded,
+                             defaults: close.workspace.defaults)
         }
         if let snapshot = recentClosedStore?.load().compactMap(\.workspace).first(where: { $0.snapshot.id == id })?.snapshot {
-            return Workspace(id: id, name: snapshot.name, isExpanded: !(snapshot.collapsed ?? false))
+            return Workspace(id: id, name: snapshot.name, isExpanded: !(snapshot.collapsed ?? false),
+                             defaults: snapshot.defaults ?? WorkspaceDefaults())
         }
         return Workspace(id: id, name: name)
     }

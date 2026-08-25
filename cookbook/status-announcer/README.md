@@ -40,7 +40,7 @@ cp agt-announce.sh ~/bin/
 chmod +x ~/bin/agt-announce.sh
 ```
 
-Add one entry to `~/.config/agterm/keymap.conf`:
+Add one entry to `~/.config/agx/keymap.conf`:
 
 ```
 command "Toggle Status Announcer"  /bin/zsh -lc '~/bin/agt-announce.sh'

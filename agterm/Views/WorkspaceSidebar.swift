@@ -3,10 +3,10 @@ import AppKit
 import SwiftUI
 
 /// Local-only (within-outline) pasteboard type carrying a dragged session's UUID.
-let sessionPasteboardType = NSPasteboard.PasteboardType("com.umputun.agterm.session")
+let sessionPasteboardType = NSPasteboard.PasteboardType(Brand.bundleID + ".session")
 
 /// Local-only pasteboard type carrying a dragged workspace's UUID.
-let workspacePasteboardType = NSPasteboard.PasteboardType("com.umputun.agterm.workspace")
+let workspacePasteboardType = NSPasteboard.PasteboardType(Brand.bundleID + ".workspace")
 
 /// AppKit `NSOutlineView` sidebar hosted in SwiftUI via `NSViewRepresentable`, chosen over a SwiftUI
 /// `List` so cross-workspace drag-and-drop works natively: a session row dragged onto another workspace

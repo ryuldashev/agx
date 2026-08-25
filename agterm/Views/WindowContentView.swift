@@ -124,6 +124,15 @@ struct WindowContentView: View {
                         .zIndex(2)
                 }
             }
+            // the ⌥ cheat sheet, hung under the title bar at the trailing edge — near the cluster it names,
+            // clear of the sidebar, and non-hittable so the chrome underneath stays clickable while it shows.
+            if optionHints, !titleBarHints.isEmpty || !sidebarHints.isEmpty {
+                OptionHintsPanel(titleBar: titleBarHints, sidebar: sidebarHints)
+                    .padding(.top, titlebarHeight + 8)
+                    .padding(.trailing, 14)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .zIndex(3)
+            }
             // the picker is the window's topmost modal: it stays visible and interactive even when terminal
             // zoom or the dashboard was already active when the request arrived.
             pickPaletteOverlay
@@ -519,6 +528,45 @@ struct WindowContentView: View {
         return "\(base) (\(glyph))"
     }
 
+    /// Whether ⌥ is held right now, which labels every chrome button with its token (see `OptionHints`).
+    /// Read in the body so the badges appear and vanish with the key.
+    var optionHints: Bool { OptionHintTracker.shared.down }
+
+    /// The shortcut an ⌥-hold row prints beside its token; nil when the action is unbound.
+    func hintGlyph(_ action: BuiltinAction) -> String? { actions.shortcutGlyph(for: action) }
+
+    /// The ⌥ panel's title-bar rows, gated by the same Interface toggles as the buttons themselves, so it
+    /// never names a control that is not on screen. Hidden toolbar mode draws no row at all.
+    var titleBarHints: [OptionHintItem] {
+        guard toolbarMode != .hidden else { return [] }
+        var items: [OptionHintItem] = []
+        if shows(.sidebarToggle) { items.append(OptionHintItem("sidebar", "sidebar.left", hintGlyph(.toggleSidebar))) }
+        if shows(.recentSessions) { items.append(OptionHintItem("recent", "clock.arrow.circlepath", "⌃⇥")) }
+        if attentionButtonEnabled { items.append(OptionHintItem("bell", "bell", hintGlyph(.showAttention))) }
+        if shows(.zoom) {
+            items.append(OptionHintItem("zoom", "arrow.up.left.and.arrow.down.right", hintGlyph(.toggleTerminalZoom)))
+        }
+        if shows(.split) { items.append(OptionHintItem("split", "rectangle.split.2x1", hintGlyph(.toggleSplit))) }
+        if shows(.dashboard) { items.append(OptionHintItem("dash", "rectangle.split.2x2", hintGlyph(.dashboard))) }
+        if shows(.quickTerminal) { items.append(OptionHintItem("quick", "terminal", hintGlyph(.quickTerminal))) }
+        return items
+    }
+
+    /// The ⌥ panel's sidebar-footer rows; empty while the sidebar is hidden, since none of them are reachable.
+    var sidebarHints: [OptionHintItem] {
+        guard store.sidebarVisible else { return [] }
+        var items: [OptionHintItem] = []
+        if shows(.newWorkspace) {
+            items.append(OptionHintItem("workspace+", "rectangle.stack.badge.plus", hintGlyph(.newWorkspace)))
+        }
+        if shows(.newSession) { items.append(OptionHintItem("session+", "plus.rectangle", hintGlyph(.newSession))) }
+        if shows(.focusFilter) {
+            items.append(OptionHintItem("filter", "square.grid.2x2", hintGlyph(.toggleWorkspaceFilter)))
+        }
+        if shows(.flaggedView) { items.append(OptionHintItem("flagged", "flag", hintGlyph(.toggleFlaggedView))) }
+        return items
+    }
+
     /// The window-level overlays (palettes, Ctrl-Tab switcher) as one ZStack sibling INSIDE
     /// the body's root ZStack, not body-level `.overlay`s, so it can be inset below the titlebar and ordered
     /// BELOW `customTitlebar`. Every child is conditional, so an empty layer is not hit-testable and the
@@ -619,6 +667,7 @@ struct WindowContentView: View {
                 .buttonStyle(.borderless)
                 .help(helpHint("New Workspace", .newWorkspace))
                 .accessibilityLabel("New Workspace")
+                .accessibilityIdentifier("new-workspace")
             }
 
             if shows(.newSession) {

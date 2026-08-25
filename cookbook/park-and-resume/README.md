@@ -33,7 +33,7 @@ chmod +x ~/bin/agt-park.sh ~/bin/agt-resume.sh
 
 Snapshots go to `~/.agterm-projects` by default. Set `AGT_PARK_DIR` to put them elsewhere; both scripts read the same variable, so they must agree. That variable reaches the scripts only when you run them from a shell: agterm never read your shell config, so an export in `.zshrc` or `.zprofile` does not carry into a run started from a key chord or the palette. Change the fallback in both scripts if you want a different directory there.
 
-Add one pair of entries per project to `~/.config/agterm/keymap.conf`:
+Add one pair of entries per project to `~/.config/agx/keymap.conf`:
 
 ```
 command "park A"    ctrl+alt+1  ~/bin/agt-park.sh "A"

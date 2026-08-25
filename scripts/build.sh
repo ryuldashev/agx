@@ -17,4 +17,4 @@ VERSION="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's
 xcodebuild -project agterm.xcodeproj -scheme agterm -configuration Release \
   -derivedDataPath build/DerivedData \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$VERSION" GIT_COMMIT="$GIT_COMMIT" build
-echo "built: build/DerivedData/Build/Products/Release/agterm.app"
+echo "built: build/DerivedData/Build/Products/Release/agx.app"

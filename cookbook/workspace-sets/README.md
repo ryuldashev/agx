@@ -39,7 +39,7 @@ work)
 
 Names holding spaces need no quoting, because each line is one name. Add as many arms as you want; nothing below the block counts them.
 
-Then add one entry per group to `~/.config/agterm/keymap.conf`:
+Then add one entry per group to `~/.config/agx/keymap.conf`:
 
 ```
 command "focus work"     ctrl+a>1  ~/bin/agt-sets.sh work

@@ -10,7 +10,7 @@ PORT=9998
 BIND=""
 LOG_FILE=""
 VERBOSE=false
-TARGET_SOCKET="$HOME/Library/Application Support/agterm/agterm.sock"
+TARGET_SOCKET="$HOME/Library/Application Support/agx/agx.sock"
 
 usage() {
   echo "Usage: $0 [--port PORT] [--bind ADDR] [--log-file FILE] [--socket PATH] [--verbose]"
@@ -19,7 +19,7 @@ usage() {
   echo "  --bind ADDR       Address to bind (default: every interface)"
   echo "  --log-file FILE   Append logs here instead of stdout"
   echo "  --socket PATH     agterm control socket to forward status to"
-  echo "                    (default: \$HOME/Library/Application Support/agterm/agterm.sock)"
+  echo "                    (default: \$HOME/Library/Application Support/agx/agx.sock)"
   echo "  --verbose         Also log the raw JSON received"
 }
 

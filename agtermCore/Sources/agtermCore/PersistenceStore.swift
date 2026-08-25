@@ -18,10 +18,10 @@ public struct PersistenceStore {
         self.fileName = fileName
     }
 
-    /// `~/Library/Application Support/agterm`.
+    /// `~/Library/Application Support/<Brand.stateDirectoryName>`.
     public static var defaultDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("agterm", isDirectory: true)
+        return base.appendingPathComponent(Brand.stateDirectoryName, isDirectory: true)
     }
 
     /// Loads the snapshot, recovering a default empty one on any failure (missing file, unreadable data,

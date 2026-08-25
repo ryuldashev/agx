@@ -30,14 +30,14 @@ You are inside agterm (`AGTERM_ENABLED=1`). Use:
   `macos-option-as-alt`. Most keys apply to open panes on reload, but layout keys (`window-padding-*`)
   and spawn-time keys (`term`, `shell-integration-features`) only take effect in a new session/window
   or after a relaunch. Full reference: https://ghostty.org/docs/config
-- **Logs** (unified logging, subsystem `com.umputun.agterm`):
+- **Logs** (unified logging, subsystem `uz.marshub.agx`):
   ```bash
-  log show --predicate 'subsystem == "com.umputun.agterm"' --info --last 30m
+  log show --predicate 'subsystem == "uz.marshub.agx"' --info --last 30m
   ```
   Categories: `GhosttyApp`, `GhosttySurfaceView`, `WatermarkRenderer`, `NotificationManager`,
   `SettingsView`, `SettingsModel`, `CustomCommandRunner`, `ControlServer`.
-- **Files** — keymap `~/.config/agterm/keymap.conf`; agterm-scoped ghostty config
-  `~/.config/agterm/ghostty.conf`; settings `~/Library/Application Support/agterm/settings.json`;
+- **Files** — keymap `~/.config/agx/keymap.conf`; agterm-scoped ghostty config
+  `~/.config/agx/ghostty.conf`; settings `~/Library/Application Support/agx/settings.json`;
   socket path in `$AGTERM_SOCKET`.
 
 ### "Keymap editor won't open"
@@ -94,7 +94,7 @@ keep working on a non-Latin layout. (ghostty's own
 in particular exists because without it ⌘A would silently do nothing on a Cyrillic layout.)
 
 To remap a shortcut ghostty still owns: a physical key name (`key_c`, `key_v`, …) matches by position on
-any layout; a bare letter (`c`, `v`) matches the produced character. Edit `~/.config/agterm/ghostty.conf`,
+any layout; a bare letter (`c`, `v`) matches the produced character. Edit `~/.config/agx/ghostty.conf`,
 then `agtermctl config reload`.
 
 ### "My session restore override didn't fire"
@@ -193,7 +193,7 @@ and only inside that program. Ghostty.app behaves the same. It is per-program, n
 `tmux` with `mouse on` and stock `vim` (`defaults.vim` sets `mouse=a`) suppress it, while an agent CLI
 that never enables mouse reporting keeps links working. Workaround: hold shift too (⌘⇧-hover, ⌘⇧-click).
 A program can claim shift via `XTSHIFTESCAPE`, so `mouse-shift-capture = never` in
-`~/.config/agterm/ghostty.conf` makes shift always win; `mouse-reporting = false` there turns reporting
+`~/.config/agx/ghostty.conf` makes shift always win; `mouse-reporting = false` there turns reporting
 off for every program, trading in-program mouse support for always-on selection and links.
 
 ## Reporting: decide bug vs unsupported FIRST
@@ -231,7 +231,7 @@ Steps to reproduce:
 1. …
 2. …
 Environment: agterm <version>, macOS <version>
-Logs: <scrubbed `log show --predicate 'subsystem == "com.umputun.agterm"'` excerpt>
+Logs: <scrubbed `log show --predicate 'subsystem == "uz.marshub.agx"'` excerpt>
 Config: <scrubbed keymap.conf lines, if keymap-related>
 ```
 

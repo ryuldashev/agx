@@ -31,6 +31,11 @@ public protocol ControlActions {
     /// it takes no workspace target — the host resolves the store from `window` (frontmost when nil).
     func setWorkspaceFilter(window: String?, mode: ControlToggleMode) -> ControlResponse
     func setWorkspaceExpansion(_ target: String?, window: String?, expanded: Bool) -> ControlResponse
+    /// Read or write a workspace's new-session seed. `update` nil READS (no mutation); non-nil applies
+    /// only the fields it carries, each `.clear` erasing one. The host resolves the workspace and the
+    /// agent reference (by id, id prefix, or exact name), and echoes the STORED state either way.
+    func workspaceDefaults(_ target: String?, window: String?,
+                           update: ControlWorkspaceDefaultsUpdate?) -> ControlResponse
     func setSessionFlag(_ target: String?, window: String?, mode: String?) -> ControlResponse
     func markSessionSeen(_ target: String?, window: String?) -> ControlResponse
     func setSessionStatus(_ target: String?, window: String?, update: ControlSessionStatusUpdate) -> ControlResponse
@@ -221,7 +226,8 @@ public struct ControlDispatcher {
                 .sessionText:
             return await dispatchSessionSurfaceCommand(request)
         case .workspaceNew, .workspaceSelect, .workspaceGo, .workspaceRename, .workspaceDelete,
-                .workspaceMove, .workspaceFocus, .workspaceFilter, .workspaceCollapse, .workspaceExpand:
+                .workspaceMove, .workspaceFocus, .workspaceFilter, .workspaceCollapse, .workspaceExpand,
+                .workspaceDefaults:
             return dispatchWorkspaceCommand(request)
         case .quick, .fontInc, .fontDec, .fontReset, .keymapReload, .keymapList,
                 .configReload, .notify, .themeSet, .themeList, .sidebar, .sidebarMode, .sidebarExpand,
@@ -546,6 +552,24 @@ public struct ControlDispatcher {
             return actions.setWorkspaceExpansion(request.target, window: request.args?.window, expanded: false)
         case .workspaceExpand:
             return actions.setWorkspaceExpansion(request.target, window: request.args?.window, expanded: true)
+        case .workspaceDefaults:
+            // parsed here so a bad agent/dir shape never reaches the host; an args-free call is the READ.
+            var fit: BackgroundWatermark.Fit?
+            if let raw = request.args?.fit {
+                guard let parsed = BackgroundWatermark.Fit(rawValue: raw) else {
+                    return ControlResponse(ok: false, error: "invalid background fit: \(raw) (contain|cover|stretch|none)")
+                }
+                fit = parsed
+            }
+            if let opacity = request.args?.opacity, !(0...1).contains(opacity) {
+                return ControlResponse(ok: false, error: "background opacity must be between 0 and 1")
+            }
+            let update = ControlWorkspaceDefaultsUpdate(cwd: request.args?.cwd, agent: request.args?.agent,
+                                                        backgroundPath: request.args?.path,
+                                                        backgroundOpacity: request.args?.opacity,
+                                                        backgroundFit: fit)
+            return actions.workspaceDefaults(request.target, window: request.args?.window,
+                                             update: update.isRead ? nil : update)
         default:
             preconditionFailure("unexpected workspace command: \(request.cmd.rawValue)")
         }

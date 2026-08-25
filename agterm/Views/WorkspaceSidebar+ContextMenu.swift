@@ -147,6 +147,11 @@ extension WorkspaceSidebar.Coordinator {
             openSession.target = self
             openSession.representedObject = node
             menu.addItem(openSession)
+            let defaults = NSMenuItem(title: "Workspace Defaults…", action: #selector(menuWorkspaceDefaults(_:)),
+                                      keyEquivalent: "")
+            defaults.target = self
+            defaults.representedObject = node
+            menu.addItem(defaults)
             // the focus items are their own group: they filter what the tree shows, unlike the create items
             // above and the destructive one below.
             menu.addItem(.separator())
@@ -244,9 +249,9 @@ extension WorkspaceSidebar.Coordinator {
 
     @objc private func menuNewSession(_ sender: NSMenuItem) {
         guard let node = sender.representedObject as? SidebarNode else { return }
-        // resolve the cwd via the same new-session-directory setting as AppActions.newSession(), so the
-        // workspace-row New Session honors it too (home / current session's cwd / a fixed custom dir).
-        addSession(toWorkspace: node.id, cwd: actions.resolvedNewSessionCwd())
+        // no explicit cwd: the row's own workspace defaults seed it, falling back to the new-session-directory
+        // setting — the same resolution ⌘N uses, so both New Session paths open identically.
+        addSession(toWorkspace: node.id)
     }
 
     /// Inline "+" button on a workspace row, the right-click "New Session" action. The button carries no
@@ -258,7 +263,7 @@ extension WorkspaceSidebar.Coordinator {
         guard let outline = outlineView else { return }
         let row = outline.row(for: sender)
         guard row >= 0, let node = outline.item(atRow: row) as? SidebarNode, node.kind == .workspace else { return }
-        addSession(toWorkspace: node.id, cwd: actions.resolvedNewSessionCwd())
+        addSession(toWorkspace: node.id)
     }
 
     @objc private func menuDeleteWorkspace(_ sender: NSMenuItem) {
@@ -282,15 +287,30 @@ extension WorkspaceSidebar.Coordinator {
         actions.setFocusMembership(node.id, member: !store.focusedWorkspaceIDs.contains(node.id), in: store)
     }
 
+    /// "Workspace Defaults…": pin the directory and agent new sessions in this workspace start with.
+    @objc private func menuWorkspaceDefaults(_ sender: NSMenuItem) {
+        guard let node = sender.representedObject as? SidebarNode else { return }
+        let workspaceID = node.id
+        let name = store.workspaces.first { $0.id == workspaceID }?.name ?? "Workspace"
+        WorkspaceDefaultsSheet.present(over: outlineView?.window, workspaceName: name,
+                                       defaults: store.workspaceDefaults(workspaceID),
+                                       agents: actions.settingsModel?.settings.resolvedAgents ?? []) { [weak store] updated in
+            store?.setWorkspaceDefaults(updated, forWorkspace: workspaceID)
+        }
+    }
+
     /// "Open Directory…": pick a folder and add a session rooted there.
     @objc private func menuOpenSession(_ sender: NSMenuItem) {
         guard let node = sender.representedObject as? SidebarNode else { return }
         openDirectoryAndAddSession(toWorkspace: node.id)
     }
 
-    /// Adds a session to `workspaceID` at `cwd` and selects it.
-    private func addSession(toWorkspace workspaceID: UUID, cwd: String) {
-        if let session = store.addSession(toWorkspace: workspaceID, cwd: cwd) {
+    /// Adds a session to `workspaceID` and selects it. `requestedCwd` is an explicitly chosen directory (a
+    /// picked folder); without one the workspace's default directory seeds it. The workspace's default agent
+    /// applies either way — choosing a folder inside an agent workspace still opens the agent there.
+    private func addSession(toWorkspace workspaceID: UUID, requestedCwd: String? = nil) {
+        let seed = actions.newSessionSeed(in: store, workspaceID: workspaceID, requestedCwd: requestedCwd)
+        if let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd, command: seed.command) {
             // creating + selecting from the sidebar context menu is a user-initiated selection on THIS
             // window's store: note activity so it buys the full idle grace before auto-follow pulls away.
             store.noteUserActivity()
@@ -308,6 +328,6 @@ extension WorkspaceSidebar.Coordinator {
         panel.prompt = "Open"
         panel.message = "Choose a directory for the new session"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        addSession(toWorkspace: workspaceID, cwd: url.path)
+        addSession(toWorkspace: workspaceID, requestedCwd: url.path)
     }
 }

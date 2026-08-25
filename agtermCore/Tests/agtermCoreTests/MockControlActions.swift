@@ -30,6 +30,7 @@ final class MockControlActions: ControlActions {
         case workspaceFocus(target: String?, window: String?, ControlWorkspaceFocusMode)
         case workspaceFilter(window: String?, ControlToggleMode)
         case workspaceExpansion(target: String?, window: String?, expanded: Bool)
+        case workspaceDefaults(target: String?, window: String?, update: ControlWorkspaceDefaultsUpdate?)
         case sessionFlag(target: String?, window: String?, String?)
         case markSessionSeen(target: String?, window: String?)
         case sessionStatus(target: String?, window: String?, ControlSessionStatusUpdate)
@@ -94,6 +95,8 @@ final class MockControlActions: ControlActions {
     var nextSessionNewResponse = ControlResponse(ok: true)
     var nextSessionDuplicateResponse = ControlResponse(ok: true)
     var nextWorkspaceFilterResponse = ControlResponse(ok: true)
+    /// The seed `workspace.defaults` echoes back; nil reads as a workspace pinning nothing.
+    var nextWorkspaceDefaults: ControlWorkspaceDefaults?
     /// The store the `workspace.filter` / `workspace.focus` arms drive when set (nil = record-only), so a
     /// test can run the real command path against a live `AppStore` instead of asserting on routing alone.
     /// Only the id-spelling half of target resolution is supplied — `active`/prefix sugar and the `window`
@@ -265,6 +268,12 @@ final class MockControlActions: ControlActions {
     func setWorkspaceExpansion(_ target: String?, window: String?, expanded: Bool) -> ControlResponse {
         calls.append(.workspaceExpansion(target: target, window: window, expanded: expanded))
         return ControlResponse(ok: true)
+    }
+
+    func workspaceDefaults(_ target: String?, window: String?,
+                           update: ControlWorkspaceDefaultsUpdate?) -> ControlResponse {
+        calls.append(.workspaceDefaults(target: target, window: window, update: update))
+        return ControlResponse(ok: true, result: ControlResult(defaults: nextWorkspaceDefaults))
     }
 
     func setSessionFlag(_ target: String?, window: String?, mode: String?) -> ControlResponse {

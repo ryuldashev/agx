@@ -109,27 +109,34 @@ public struct WorkspaceSnapshot: Codable, Equatable, Sendable {
     /// The INVERSE of `isExpanded`, so missing → expanded (the default) and only a collapsed workspace
     /// writes it — an all-expanded tree serializes byte-identically to a legacy snapshot.
     public var collapsed: Bool?
+    /// The workspace's seeded directory/agent, nil when it pins neither — so a workspace that never
+    /// set a default serializes exactly as it did before the field existed.
+    public var defaults: WorkspaceDefaults?
 
-    public init(id: UUID, name: String, sessions: [SessionSnapshot], collapsed: Bool? = nil) {
+    public init(id: UUID, name: String, sessions: [SessionSnapshot], collapsed: Bool? = nil,
+                defaults: WorkspaceDefaults? = nil) {
         self.id = id
         self.name = name
         self.sessions = sessions
         self.collapsed = collapsed
+        self.defaults = defaults
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, sessions, collapsed
+        case id, name, sessions, collapsed, defaults
     }
 
     /// Custom decode so `collapsed` is LOSSY, matching the other two snapshot types: the synthesized
     /// decode would throw on a hand-edited `"collapsed": "yes"`, failing the whole workspace and making
-    /// `PersistenceStore.load` wipe the tree over one row's expansion arrow.
+    /// `PersistenceStore.load` wipe the tree over one row's expansion arrow. `defaults` is lossy for the
+    /// same reason — a malformed default must cost that workspace its seed, not its sessions.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
         name = try c.decode(String.self, forKey: .name)
         sessions = try c.decode([SessionSnapshot].self, forKey: .sessions)
         collapsed = (try? c.decodeIfPresent(Bool.self, forKey: .collapsed)) ?? nil
+        defaults = ((try? c.decodeIfPresent(WorkspaceDefaults.self, forKey: .defaults)) ?? nil)?.persisted
     }
 }
 

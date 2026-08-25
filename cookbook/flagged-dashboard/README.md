@@ -27,7 +27,7 @@ cp agt-flagged-dashboard.sh ~/bin/
 chmod +x ~/bin/agt-flagged-dashboard.sh
 ```
 
-Then add an entry to `~/.config/agterm/keymap.conf`:
+Then add an entry to `~/.config/agx/keymap.conf`:
 
 ```
 command "Flagged dashboard" ctrl+shift+g ~/bin/agt-flagged-dashboard.sh

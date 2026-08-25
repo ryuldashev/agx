@@ -115,8 +115,10 @@ final class AppActions {
 
     func newSession() {
         guard uiActionsEnabled else { return }
-        guard let store, let workspaceID = store.currentWorkspaceID,
-              let session = store.addSession(toWorkspace: workspaceID, cwd: resolvedNewSessionCwd())
+        guard let store, let workspaceID = store.currentWorkspaceID else { return }
+        // the workspace's own directory/agent seed the tab; only its fallback comes from the global setting.
+        let seed = newSessionSeed(in: store, workspaceID: workspaceID)
+        guard let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd, command: seed.command)
         else { return }
         // note activity so the new session buys the full idle grace before auto-follow moves the selection.
         store.noteUserActivity()
@@ -133,6 +135,19 @@ final class AppActions {
             currentSessionCwd: store?.activeSession?.focusedCwd, home: home) ?? home
     }
 
+    /// What a new session in `workspaceID` starts with: the workspace's pinned directory and agent, with an
+    /// explicit request (a dropped folder, `session new --cwd/--command`) winning and the global
+    /// new-session-directory setting as the last resort. The one place the GUI and the control channel share,
+    /// so ⌘N and `agtermctl session new` cannot seed differently.
+    func newSessionSeed(in store: AppStore, workspaceID: UUID, requestedCwd: String? = nil,
+                        requestedCommand: String? = nil,
+                        fallbackCwd: String? = nil) -> (cwd: String, command: String?) {
+        store.newSessionSeed(workspaceID: workspaceID, requestedCwd: requestedCwd,
+                             requestedCommand: requestedCommand,
+                             fallbackCwd: fallbackCwd ?? resolvedNewSessionCwd(),
+                             agents: settingsModel?.settings.resolvedAgents ?? [])
+    }
+
     func openDirectory() {
         guard uiActionsEnabled else { return }
         guard let store, let workspaceID = store.currentWorkspaceID else { return }
@@ -143,8 +158,10 @@ final class AppActions {
         panel.directoryURL = DirectoryPanelDefaults.url(paths: store.activeSession?.focusedCwd)
         panel.prompt = "Open"
         panel.message = "Choose a directory for the new session"
-        guard panel.runModal() == .OK, let url = panel.url,
-              let session = store.addSession(toWorkspace: workspaceID, cwd: url.path)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        // the chosen folder is explicit, so it wins over the workspace's directory — its agent still runs.
+        let seed = newSessionSeed(in: store, workspaceID: workspaceID, requestedCwd: url.path)
+        guard let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd, command: seed.command)
         else { return }
         store.noteUserActivity()
         store.selectSession(session.id)
@@ -156,8 +173,9 @@ final class AppActions {
     /// NOT `uiActionsEnabled` gated: an external OS command, like a socket command, must land through a modal
     /// zoom/dashboard. Returns whether one was created, so the delegate's drain retries until a store resolves.
     func openSession(atDirectory directory: String) -> Bool {
-        guard let store, let workspaceID = store.currentWorkspaceID,
-              let session = store.addSession(toWorkspace: workspaceID, cwd: directory)
+        guard let store, let workspaceID = store.currentWorkspaceID else { return false }
+        let seed = newSessionSeed(in: store, workspaceID: workspaceID, requestedCwd: directory)
+        guard let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd, command: seed.command)
         else { return false }
         store.noteUserActivity()
         store.selectSession(session.id)
@@ -735,6 +753,11 @@ final class AppActions {
         // the deck's `scratchActive` onChange reclaims first responder for the pane, as it does for ⌘J.
         if session.scratchActive { store.toggleScratch(session.id); return }
         store.toggleSplit(session.id, axis: axis)
+        // hiding through the BUTTON/⌘D always leaves the PRIMARY pane on screen, matching "Hide split". The
+        // store keeps the focused pane maximized instead (tmux-style zoom, still reachable through
+        // `session.split --hide` and ⌃1/⌃2 on a hidden split), but a fresh split moves focus right, so the flag
+        // hid the pane being worked in — the agent — and kept the shell that had just opened beside it.
+        if session.hasSplit, !session.isSplit { session.splitFocused = false }
         focusSplitPane(session, wantSplit: session.splitFocused)
     }
 

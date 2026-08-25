@@ -45,7 +45,7 @@ mkdir -p ~/.claude/skills/backlog && cp SKILL.md ~/.claude/skills/backlog/SKILL.
 
 It is an ordinary Claude Code skill, so a project copy under `.claude/skills/backlog/` works the same way if you want it in one repo only. Read it before you install it: it tells the agent when to write items, when to leave them alone, and to never commit one on its own.
 
-Add an entry to `~/.config/agterm/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
+Add an entry to `~/.config/agx/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
 
 ```
 command "Backlog ›" ctrl+a>b ~/bin/backlog-picker.py

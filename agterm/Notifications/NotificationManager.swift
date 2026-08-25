@@ -3,7 +3,7 @@ import AppKit
 import UserNotifications
 import os
 
-private let logger = Logger(subsystem: "com.umputun.agterm", category: "NotificationManager")
+private let logger = Logger(subsystem: Brand.bundleID, category: "NotificationManager")
 
 /// Owns the macOS notification surface for terminal desktop notifications (OSC 9 / 777). `@preconcurrency`
 /// on the `UNUserNotificationCenterDelegate` conformance keeps the delegate methods main-actor isolated

@@ -12,7 +12,7 @@ So this recipe drives the glyph from the shell instead. It defines `kiro-cli` (a
 
 ## Requirements
 
-- agterm 0.7.1 or later, with the hooks package installed via Help ▸ Install Agent Status Hooks… (that provides `~/.config/agterm/agent-status/agterm-agent-status.sh`, which this recipe calls). 0.7.1 is where `AGTERM_PANE` starts being injected into the session environment (#130); the poller forwards it verbatim, so on anything earlier it falls back to `left` and cannot read a kiro running in a right split. `--pane scratch` is part of that too — a kiro started in a scratch terminal sends it, and it needs 0.7.0 (#117).
+- agterm 0.7.1 or later, with the hooks package installed via Help ▸ Install Agent Status Hooks… (that provides `~/.config/agx/agent-status/agterm-agent-status.sh`, which this recipe calls). 0.7.1 is where `AGTERM_PANE` starts being injected into the session environment (#130); the poller forwards it verbatim, so on anything earlier it falls back to `left` and cannot read a kiro running in a right split. `--pane scratch` is part of that too — a kiro started in a scratch terminal sends it, and it needs 0.7.0 (#117).
 - `agtermctl` reachable for the *read* side. The hooks package covers the status writes on its own — the installer bakes an absolute CLI path into the script it writes — but it does not export that path, and this recipe also reads the pane. So either run Help ▸ Install Command Line Tool…, or `export AGTERMCTL=/path/to/agterm.app/Contents/MacOS/agtermctl`. Failing both, the recipe looks for agterm.app in `~/Applications` and `/Applications` before giving up.
 - Kiro CLI (tested on kiro-cli 2.16.1). No kiro-side setup: nothing is written to any kiro config.
 - zsh, bash, or fish.
@@ -24,29 +24,29 @@ Run Help ▸ Install Agent Status Hooks… once if you have not already (it is i
 ### zsh or bash
 
 ```sh
-mkdir -p ~/.config/agterm/kiro-agent-status
-cp kiro-agent-status.zsh kiro-status-detector.sh ~/.config/agterm/kiro-agent-status/
-chmod +x ~/.config/agterm/kiro-agent-status/kiro-status-detector.sh
+mkdir -p ~/.config/agx/kiro-agent-status
+cp kiro-agent-status.zsh kiro-status-detector.sh ~/.config/agx/kiro-agent-status/
+chmod +x ~/.config/agx/kiro-agent-status/kiro-status-detector.sh
 ```
 
 then add to `~/.zshrc` or `~/.bashrc`:
 
 ```sh
-source ~/.config/agterm/kiro-agent-status/kiro-agent-status.zsh
+source ~/.config/agx/kiro-agent-status/kiro-agent-status.zsh
 ```
 
 ### fish
 
 ```sh
-mkdir -p ~/.config/agterm/kiro-agent-status
-cp kiro-agent-status.fish kiro-status-detector.sh ~/.config/agterm/kiro-agent-status/
-chmod +x ~/.config/agterm/kiro-agent-status/kiro-status-detector.sh
+mkdir -p ~/.config/agx/kiro-agent-status
+cp kiro-agent-status.fish kiro-status-detector.sh ~/.config/agx/kiro-agent-status/
+chmod +x ~/.config/agx/kiro-agent-status/kiro-status-detector.sh
 ```
 
 then add to `~/.config/fish/config.fish`:
 
 ```fish
-source ~/.config/agterm/kiro-agent-status/kiro-agent-status.fish
+source ~/.config/agx/kiro-agent-status/kiro-agent-status.fish
 ```
 
 Either way, open a new shell for it to take effect. To remove it, delete the `source` line (or the copied files) — kiro-cli and kiro go back to being the real binaries the moment the function is gone.

@@ -4,14 +4,14 @@ A guide to checking what agterm is doing, the most common problems, and how to r
 
 ## Where things live
 
-Paths assume the defaults. When `AGTERM_STATE_DIR` is set, the state files move under that directory instead of `~/Library/Application Support/agterm`.
+Paths assume the defaults. When `AGTERM_STATE_DIR` is set, the state files move under that directory instead of `~/Library/Application Support/agx`.
 
-- **Keymap**: `~/.config/agterm/keymap.conf` (or `$AGTERM_STATE_DIR/config/keymap.conf`, or a custom directory set in Settings ▸ Key Mapping).
-- **Ghostty config**: `~/.config/agterm/ghostty.conf` (same directory as the keymap), an agterm-scoped ghostty config that overrides the bundled defaults and your global `~/.config/ghostty/config`.
-- **Settings**: `~/Library/Application Support/agterm/settings.json`.
-- **Window and session state**: `~/Library/Application Support/agterm/windows.json` plus one `windows/<id>.json` per window.
-- **Control socket**: `~/Library/Application Support/agterm/agterm.sock` (or `$AGTERM_CONTROL_SOCKET` when set). A spawned shell sees the bound path in `$AGTERM_SOCKET`.
-- **Logs**: the macOS unified logging system, under the subsystem `com.umputun.agterm`.
+- **Keymap**: `~/.config/agx/keymap.conf` (or `$AGTERM_STATE_DIR/config/keymap.conf`, or a custom directory set in Settings ▸ Key Mapping).
+- **Ghostty config**: `~/.config/agx/ghostty.conf` (same directory as the keymap), an agterm-scoped ghostty config that overrides the bundled defaults and your global `~/.config/ghostty/config`.
+- **Settings**: `~/Library/Application Support/agx/settings.json`.
+- **Window and session state**: `~/Library/Application Support/agx/windows.json` plus one `windows/<id>.json` per window.
+- **Control socket**: `~/Library/Application Support/agx/agx.sock` (or `$AGTERM_CONTROL_SOCKET` when set). A spawned shell sees the bound path in `$AGTERM_SOCKET`.
+- **Logs**: the macOS unified logging system, under the subsystem `uz.marshub.agx`.
 
 ## Reading the logs
 
@@ -19,13 +19,13 @@ agterm logs to the unified logging system, so use `log` or Console:
 
 ```bash
 # the last 30 minutes, all categories
-log show --predicate 'subsystem == "com.umputun.agterm"' --info --last 30m
+log show --predicate 'subsystem == "uz.marshub.agx"' --info --last 30m
 
 # follow live while you reproduce the problem
-log stream --predicate 'subsystem == "com.umputun.agterm"' --info
+log stream --predicate 'subsystem == "uz.marshub.agx"' --info
 
 # narrow to one area
-log show --predicate 'subsystem == "com.umputun.agterm" && category == "CustomCommandRunner"' --info --last 30m
+log show --predicate 'subsystem == "uz.marshub.agx" && category == "CustomCommandRunner"' --info --last 30m
 ```
 
 The categories are `GhosttyApp`, `GhosttySurfaceView`, `WatermarkRenderer`, `NotificationManager`, `SettingsView`, `SettingsModel`, `CustomCommandRunner`, and `ControlServer`. In Console.app, filter on the same subsystem.
@@ -88,7 +88,7 @@ ghostty's bundled defaults  →  ~/.config/ghostty/config  →  <config dir>/gho
        (lowest)                    (your global config)         (agterm-scoped)             (UI wins)
 ```
 
-- `<config dir>/ghostty.conf` (default `~/.config/agterm/ghostty.conf`, next to `keymap.conf`) is scoped to agterm only; the standalone Ghostty.app never reads it. Use it for keys you want in agterm but not everywhere.
+- `<config dir>/ghostty.conf` (default `~/.config/agx/ghostty.conf`, next to `keymap.conf`) is scoped to agterm only; the standalone Ghostty.app never reads it. Use it for keys you want in agterm but not everywhere.
 - `~/.config/ghostty/config` is your global ghostty config, shared with Ghostty.app, and already in the chain.
 - The keys agterm sets from its Settings window load last, so the Settings picker wins for what it manages. Put everything else in `ghostty.conf`.
 
@@ -114,7 +114,7 @@ The same distinction lets you remap any shortcut for your layout:
 - A physical key name (`key_c`, `key_v`, `key_a`, and so on) matches the key's position, whatever character it prints.
 - A bare letter (`c`, `v`) matches the character the active layout produces at that key.
 
-If you use a Latin alternative layout (Dvorak, Colemak, AZERTY) and want ⌘C/⌘V at your layout's own C and V letters instead of the QWERTY physical positions, override them in `~/.config/agterm/ghostty.conf` with character-based binds, and unbind the physical defaults so the QWERTY positions are freed:
+If you use a Latin alternative layout (Dvorak, Colemak, AZERTY) and want ⌘C/⌘V at your layout's own C and V letters instead of the QWERTY physical positions, override them in `~/.config/agx/ghostty.conf` with character-based binds, and unbind the physical defaults so the QWERTY positions are freed:
 
 ```
 keybind = super+key_c=unbind
@@ -149,7 +149,7 @@ leaves links working normally.
 
 Hold shift as well — ⌘⇧-hover and ⌘⇧-click — to bypass the capture without changing any setting. A program
 can claim shift for itself with `XTSHIFTESCAPE`, in which case add `mouse-shift-capture = never` to
-`~/.config/agterm/ghostty.conf` so shift always wins.
+`~/.config/agx/ghostty.conf` so shift always wins.
 
 To turn mouse reporting off for every program instead, set `mouse-reporting = false` in the same file.
 Selection and links then always work, at the cost of mouse support inside programs that wanted it — mouse

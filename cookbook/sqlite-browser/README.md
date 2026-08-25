@@ -36,7 +36,7 @@ Copy the script somewhere on your machine, say `~/bin/`, and make it executable:
 mkdir -p ~/bin && cp sqlite-browser.py ~/bin/ && chmod +x ~/bin/sqlite-browser.py
 ```
 
-Add an entry to `~/.config/agterm/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
+Add an entry to `~/.config/agx/keymap.conf` and apply it with File ▸ Reload Keymap or `agtermctl keymap reload`:
 
 ```
 command "SQLite ›" ctrl+a>d ~/bin/sqlite-browser.py

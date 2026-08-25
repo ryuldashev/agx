@@ -34,7 +34,7 @@ Put that export in `.zshenv` or `.zprofile`, not in `.zshrc`. The keymap entry b
 
 `AGT_FZF_ROOTS` defaults to `$HOME/src`, and the script prints a message and exits if none of the listed directories exist. You will not see that message with the keymap entries below: they open the overlay without `--wait`, so it closes the moment the script exits and takes the text with it. Add `--wait` to the entry to hold the overlay on a "press any key to close" prompt while you are getting the roots right, or run the script in a shell. Keep the list to the trees you actually work in. Searching all of `$HOME` is slow, and it walks Documents, Desktop and Downloads, which makes macOS raise a privacy prompt per directory.
 
-Add two entries to `~/.config/agterm/keymap.conf`:
+Add two entries to `~/.config/agx/keymap.conf`:
 
 ```
 command "FZF Files" ctrl+a>f agtermctl session overlay open 'zsh -lc "$HOME/bin/fzf-insert.zsh files {AGT_SESSION_ID}"' --size-percent 80 --target {AGT_SESSION_ID}

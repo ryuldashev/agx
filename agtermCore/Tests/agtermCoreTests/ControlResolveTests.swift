@@ -110,11 +110,11 @@ struct ControlResolveTests {
 
     @Test func socketPathWithStateDir() {
         let path = ControlResolve.socketPath(stateDir: "/tmp/agterm-state", appSupport: "/Users/x/Library/Application Support/agterm")
-        #expect(path == "/tmp/agterm-state/agterm.sock")
+        #expect(path == "/tmp/agterm-state/\(Brand.socketFileName)")
     }
 
     @Test func socketPathWithoutStateDirUsesAppSupport() {
         let path = ControlResolve.socketPath(stateDir: nil, appSupport: "/Users/x/Library/Application Support/agterm")
-        #expect(path == "/Users/x/Library/Application Support/agterm/agterm.sock")
+        #expect(path == "/Users/x/Library/Application Support/agterm/\(Brand.socketFileName)")
     }
 }

@@ -2,7 +2,7 @@ import AppKit
 import agtermCore
 
 /// Installs the bundled agent-status hooks package into the user's home: the scripts into
-/// `~/.config/agterm/agent-status/`, the bundled `agtermctl`'s absolute path baked into the wrapper, a
+/// `~/.config/<brand>/agent-status/`, the bundled `agtermctl`'s absolute path baked into the wrapper, a
 /// marker-guarded `source` line in `~/.zshrc`/`~/.bashrc`/`~/.config/fish/config.fish`, the four Claude Code
 /// hooks merged into `~/.claude/settings.json`, the six Codex lifecycle hooks into `~/.codex/config.toml`,
 /// and — when each is configured — Pi's lifecycle extension into `~/.pi/agent/extensions/` and OpenCode's
@@ -26,7 +26,7 @@ enum AgentHooksInstaller {
 
     private static var destinationFolder: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/agterm/agent-status")
+            .appendingPathComponent(".config/\(Brand.configDirectoryName)/agent-status")
     }
 
     // the outcome of the Codex config.toml merge, decided by parsing the existing file.

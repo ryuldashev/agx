@@ -31,7 +31,7 @@ else
   _kas_dir="$(cd "$(dirname "$_kas_self")" >/dev/null 2>&1 && pwd)"
 fi
 : "${KIRO_STATUS_DETECTOR:=$_kas_dir/kiro-status-detector.sh}"
-: "${AGTERM_STATUS_WRAPPER:=$HOME/.config/agterm/agent-status/agterm-agent-status.sh}"
+: "${AGTERM_STATUS_WRAPPER:=$HOME/.config/agx/agent-status/agterm-agent-status.sh}"
 
 # Is that pid still our detector? The poller has stop conditions of its own — a hard-killed app
 # takes about five seconds of failed reads — so it can be long gone while kiro-cli runs on for hours,

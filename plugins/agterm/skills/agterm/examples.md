@@ -925,14 +925,14 @@ covers parked windows too. The minimized state is live-only — re-run `show` af
 ## Reload the keymap after editing it
 
 ```bash
-$EDITOR ~/.config/agterm/keymap.conf
+$EDITOR ~/.config/agx/keymap.conf
 agtermctl keymap reload          # prints the parse-diagnostic count (0 = clean)
 ```
 
 ## Change a ghostty setting agterm does not expose
 
 ```bash
-$EDITOR ~/.config/agterm/ghostty.conf   # e.g. add: macos-option-as-alt = true
+$EDITOR ~/.config/agx/ghostty.conf   # e.g. add: macos-option-as-alt = true
 agtermctl config reload                 # apply it; prints the diagnostic count (0 = clean)
 ```
 

@@ -61,10 +61,10 @@ public enum ControlResolve {
     }
 
     /// Derive the control socket path. With `stateDir` (the `AGTERM_STATE_DIR` value, if set) it is
-    /// `<stateDir>/agterm.sock`; otherwise `<appSupport>/agterm.sock`. The app and the CLI both call this
-    /// with the same inputs, so they always rendezvous on the same path.
+    /// `<stateDir>/<Brand.socketFileName>`; otherwise `<appSupport>/<Brand.socketFileName>`. The app and
+    /// the CLI both call this with the same inputs, so they always rendezvous on the same path.
     public static func socketPath(stateDir: String?, appSupport: String) -> String {
         let base = stateDir ?? appSupport
-        return (base as NSString).appendingPathComponent("agterm.sock")
+        return (base as NSString).appendingPathComponent(Brand.socketFileName)
     }
 }

@@ -7,13 +7,48 @@ public enum ConfigPaths {
     /// Resolve the config directory holding `keymap.conf`. Precedence:
     /// - explicit `setting` (the `AppSettings.configDirectory` value, when non-nil/non-empty) wins.
     /// - else `<stateDir>/config` when `stateDir` (the `AGTERM_STATE_DIR` value) is set — test isolation.
-    /// - else `<home>/.config/agterm`.
+    /// - else `<home>/.config/<Brand.configDirectoryName>`.
     public static func configDirectory(setting: String?, stateDir: String?, home: URL) -> URL {
         if let setting, !setting.isEmpty { return URL(fileURLWithPath: setting) }
         if let stateDir, !stateDir.isEmpty {
             return URL(fileURLWithPath: stateDir).appendingPathComponent("config")
         }
-        return home.appendingPathComponent(".config").appendingPathComponent("agterm")
+        return home.appendingPathComponent(".config").appendingPathComponent(Brand.configDirectoryName)
+    }
+
+    /// One-time seed of a FRESH config directory from upstream agterm's (`~/.config/agterm`): this is a
+    /// fork of a terminal its user already runs, so the first launch should carry the keymap and ghostty
+    /// tweaks they already wrote rather than starting blank. Copies the loose config FILES only — never
+    /// `agent-status/`, whose installed hooks bake in the absolute path of the OTHER app's `agtermctl`.
+    ///
+    /// Runs only when the destination does not exist yet, so it can never overwrite an edit, and it is a
+    /// no-op forever after. Returns whether anything was copied. Failures are swallowed: a missing seed
+    /// costs a starter keymap, and refusing to launch over it would be worse.
+    ///
+    /// ONLY the default directory is seeded. An explicit `configDirectory` setting or an
+    /// `AGTERM_STATE_DIR` (test isolation) means the caller chose that directory deliberately, and
+    /// copying a real user's `keymap.conf` into it would break exactly the isolation it was asked for.
+    @discardableResult
+    public static func seedFromLegacyIfNeeded(destination: URL, home: URL, setting: String? = nil,
+                                              stateDir: String? = nil,
+                                              manager: FileManager = .default) -> Bool {
+        guard setting?.isEmpty ?? true, stateDir?.isEmpty ?? true else { return false }
+        guard !manager.fileExists(atPath: destination.path) else { return false }
+        let legacy = home.appendingPathComponent(".config").appendingPathComponent(Brand.legacyConfigDirectoryName)
+        var isDirectory: ObjCBool = false
+        guard manager.fileExists(atPath: legacy.path, isDirectory: &isDirectory), isDirectory.boolValue,
+              let entries = try? manager.contentsOfDirectory(at: legacy, includingPropertiesForKeys: [.isDirectoryKey])
+        else { return false }
+        guard (try? manager.createDirectory(at: destination, withIntermediateDirectories: true)) != nil else {
+            return false
+        }
+        var copied = false
+        for entry in entries where entry.pathExtension == "conf" {
+            guard (try? manager.copyItem(at: entry, to: destination.appendingPathComponent(entry.lastPathComponent)))
+                != nil else { continue }
+            copied = true
+        }
+        return copied
     }
 
     /// The keymap file path within a resolved config directory: `<dir>/keymap.conf`.

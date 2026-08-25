@@ -1,4 +1,11 @@
-# agterm - a simply good terminal with a full control API
+# agx - a simply good terminal with a full control API
+
+> **This is `agx`, a fork of [umputun/agterm](https://github.com/umputun/agterm)** (MIT, branched at
+> the v0.23.0 line). It adds connected local agents in Settings and per-workspace default directory
+> and agent, and installs beside upstream rather than replacing it. What diverges, and how to rebase
+> on a newer upstream, is in [FORK.md](FORK.md). Everything below is upstream's product synopsis and
+> still describes this build.
+
 
 [![Build Status](https://github.com/umputun/agterm/workflows/build/badge.svg)](https://github.com/umputun/agterm/actions) [![Coverage Status](https://coveralls.io/repos/github/umputun/agterm/badge.svg?branch=master)](https://coveralls.io/github/umputun/agterm?branch=master)
 

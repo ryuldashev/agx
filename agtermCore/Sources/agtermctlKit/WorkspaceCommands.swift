@@ -1,3 +1,4 @@
+import Foundation
 import ArgumentParser
 import agtermCore
 
@@ -7,7 +8,7 @@ struct Workspace: ParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Workspace commands.",
         subcommands: [New.self, Rename.self, Delete.self, Select.self, Go.self, Move.self, Focus.self, Filter.self,
-                      Collapse.self, Expand.self]
+                      Collapse.self, Expand.self, Defaults.self]
     )
 
     struct New: RequestCommand {
@@ -133,6 +134,37 @@ struct Workspace: ParsableCommand {
 
         func makeRequest() throws -> ControlRequest {
             ControlRequest(cmd: .workspaceCollapse, target: target.target, args: options.withWindow())
+        }
+    }
+
+    /// `agtermctl workspace defaults [--dir PATH] [--agent NAME] [--background IMG] [--target W]` — shows the workspace's
+    /// new-session seed, or sets it. Each option is independent and an EMPTY value clears just that one, so
+    /// `--dir ""` unpins the directory without touching the agent. With neither option it only reads.
+    struct Defaults: RequestCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Show or set a workspace's default directory and agent for new sessions."
+        )
+        @Option(name: .long, help: "Directory new sessions open in; pass an empty string to clear it.")
+        var dir: String?
+        @Option(name: .long, help: "Connected agent to run, by name or id; pass an empty string to clear it.")
+        var agent: String?
+        @Option(name: .long, help: "Background image (PNG/JPEG) for new sessions here; empty string clears it.")
+        var background: String?
+        @Option(name: .long, help: "Background image opacity 0...1 (applies to the pinned image).")
+        var backgroundOpacity: Double?
+        @Option(name: .long, help: "Background image fit: contain|cover|stretch|none.")
+        var backgroundFit: String?
+        @OptionGroup var target: TargetOptions
+        @OptionGroup var options: ClientOptions
+
+        func makeRequest() throws -> ControlRequest {
+            // ~ is expanded HERE: the path is handed to ghostty verbatim, and a literal "~/x" file does not
+            // exist, so an unexpanded one would fail validation with a confusing "no such image file".
+            let image = background.map { $0.isEmpty ? $0 : NSString(string: $0).expandingTildeInPath }
+            return ControlRequest(cmd: .workspaceDefaults, target: target.target,
+                                  args: options.withWindow(ControlArgs(cwd: dir, path: image,
+                                                                       opacity: backgroundOpacity,
+                                                                       fit: backgroundFit, agent: agent)))
         }
     }
 

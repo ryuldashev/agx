@@ -26,7 +26,7 @@ cp agt-win.sh ~/bin/
 chmod +x ~/bin/agt-win.sh
 ```
 
-Add one entry per project to `~/.config/agterm/keymap.conf`:
+Add one entry per project to `~/.config/agx/keymap.conf`:
 
 ```
 command "go A"  ctrl+alt+1  ~/bin/agt-win.sh "Project A"

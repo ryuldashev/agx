@@ -31,7 +31,7 @@ cp agt-new-session.sh ~/bin/
 chmod +x ~/bin/agt-new-session.sh
 ```
 
-Add one entry to `~/.config/agterm/keymap.conf`:
+Add one entry to `~/.config/agx/keymap.conf`:
 
 ```
 command "New Session in Workspace…" cmd+t ~/bin/agt-new-session.sh

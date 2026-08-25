@@ -6,7 +6,7 @@ import GhosttyKit
 import os
 import QuartzCore
 
-private let logger = Logger(subsystem: "com.umputun.agterm", category: "GhosttySurfaceView")
+private let logger = Logger(subsystem: Brand.bundleID, category: "GhosttySurfaceView")
 
 /// A Metal-backed NSView hosting one libghostty surface (one shell). Conforms to `TerminalSurface` so the
 /// host-free `Session` can own it without importing GhosttyKit/AppKit.
