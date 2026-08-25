@@ -32,3 +32,8 @@ __pycache__/
 !.claude/
 .claude/*
 !.claude/rules/
+
+# vendored abduco build artifacts
+vendor/abduco/*.o
+vendor/abduco/abduco
+vendor/abduco/config.h
