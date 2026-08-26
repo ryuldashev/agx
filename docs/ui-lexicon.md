@@ -7,7 +7,7 @@
 со всеми видимыми контролами (иконка · токен · горячая клавиша). Отпустил — исчезла. Панель
 показывает ровно то, что сейчас на экране: скрытые через Settings ▸ Interface кнопки в неё не
 попадают. Для скриншота панели (руками её не снять — шорткат снимка занимает ту же клавиатуру):
-`open --env AGX_HINTS_ALWAYS=1 ~/Applications/agx.app` — панель залипает на весь запуск.
+`open --env AGX_HINTS_ALWAYS=1 /Applications/agx.app` — панель залипает на весь запуск.
 
 ## Формат фидбэка
 
@@ -90,7 +90,7 @@ Close Split из палитры (⌃P).
 ## Как я смотрю состояние сам
 
 ```bash
-AGX=~/Applications/agx.app/Contents/MacOS/agtermctl
+AGX=/Applications/agx.app/Contents/MacOS/agtermctl
 export AGTERM_SOCKET="$HOME/Library/Application Support/agx/agx.sock"
 $AGX tree --json     # воркспейсы, сессии, панели, cwd, что запущено
 $AGX keymap list     # актуальные горячие клавиши

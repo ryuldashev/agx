@@ -95,7 +95,9 @@ C-boundary concurrency before changing the bridge.
   logging uses `os.Logger`.
 - `scripts/run.sh` activates an existing instance instead of loading a rebuild. Use a distinct isolated
   launch for current code.
-- `make deploy` copies Release to `~/Applications`, whose app, PATH CLI, and installed hooks shadow Debug.
+- `make deploy` swaps Release into `/Applications`, whose app, PATH CLI, and installed hooks shadow Debug.
+  It never deletes the bundle in place: the running instance resolves resources by path, so the outgoing app
+  is renamed to `agx.app.old` and kept until the next deploy.
   Test fresh CLI/hooks with the Debug binary or redeploy and reinstall them. Debug uses
   `uz.marshub.agx.debug`, distinct from Release, but state/socket paths still require isolation.
 - Launching a second instance without `AGTERM_STATE_DIR` still shares state, but no longer takes the
@@ -119,7 +121,7 @@ C-boundary concurrency before changing the bridge.
 - Every delegated agent that might touch the app or CLI must receive verbatim:
   “never execute `agterm`/`agtermctl` against the default socket, never launch or quit the app, static
   reading only.”
-- Never kill or relaunch `~/Applications/agterm.app`, and never `pkill agterm` or `osascript … to quit`
+- Never kill or relaunch `/Applications/agx.app`, and never `pkill agx` or `osascript … to quit`
   (both also reach dev instances). Deployment replaces files but the user decides when to restart.
 - Manual Debug UI work uses a separate `open -n` instance with isolated state and short socket. Address
   its CLI with `--socket` after the subcommand. Stop only its known PID with SIGTERM; clean quit triggers

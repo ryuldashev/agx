@@ -1,7 +1,7 @@
 # agterm tasks — a thin front door over scripts/*.sh (the scripts stay the source of truth).
 # Run `make` (or `make help`) to list targets.
 
-INSTALL_DIR := $(HOME)/Applications
+INSTALL_DIR := /Applications
 RELEASE_APP := build/DerivedData/Build/Products/Release/agx.app
 
 .DEFAULT_GOAL := help
@@ -27,10 +27,12 @@ run: ## debug build + launch (scripts/run.sh)
 release: ## release build, no launch (scripts/build.sh)
 	./scripts/build.sh
 
-deploy: release ## release build + copy to ~/Applications
-	rm -rf "$(INSTALL_DIR)/agx.app"
-	cp -R "$(RELEASE_APP)" "$(INSTALL_DIR)/agx.app"
-	@echo "installed $(INSTALL_DIR)/agx.app"
+deploy: release ## release build + swap into /Applications
+	rm -rf "$(INSTALL_DIR)/agx.app.new" "$(INSTALL_DIR)/agx.app.old"
+	cp -R "$(RELEASE_APP)" "$(INSTALL_DIR)/agx.app.new"
+	[ -d "$(INSTALL_DIR)/agx.app" ] && mv "$(INSTALL_DIR)/agx.app" "$(INSTALL_DIR)/agx.app.old" || true
+	mv "$(INSTALL_DIR)/agx.app.new" "$(INSTALL_DIR)/agx.app"
+	@echo "installed $(INSTALL_DIR)/agx.app (running instance keeps agx.app.old until the next deploy)"
 
 test: ## host-free agtermCore unit tests (scripts/test.sh)
 	./scripts/test.sh
