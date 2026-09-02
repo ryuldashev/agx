@@ -43,6 +43,36 @@ enum WatermarkRenderer {
         }
     }
 
+    /// The horizontally flipped copy of `path`, rendered once into the watermark dir and reused while the
+    /// source is unchanged (`WatermarkStorage.mirroredImageURL` keys on path + mtime). libghostty has no
+    /// mirror key, so the flip has to exist as pixels. Returns nil when the source can't be read or the copy
+    /// can't be written — callers fall back to the unflipped path rather than dropping the background.
+    static func mirroredCopy(of path: String) -> String? {
+        let modified = (try? FileManager.default.attributesOfItem(atPath: path)[.modificationDate]) as? Date
+        let url = WatermarkStorage.mirroredImageURL(sourcePath: path, modified: modified)
+        if FileManager.default.fileExists(atPath: url.path) { return url.path }
+        guard let source = NSImage(contentsOfFile: path),
+              let cgImage = source.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            logger.warning("watermark mirror: source unreadable")
+            return nil
+        }
+        let width = cgImage.width, height = cgImage.height
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+                                      bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.translateBy(x: CGFloat(width), y: 0)
+        context.scaleBy(x: -1, y: 1)
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
+        guard let flipped = context.makeImage() else { return nil }
+        WatermarkStorage.ensureDirectory()
+        let rep = NSBitmapImageRep(cgImage: flipped)
+        guard let data = rep.representation(using: .png, properties: [:]), (try? data.write(to: url)) != nil else {
+            logger.warning("watermark mirror: PNG write failed")
+            return nil
+        }
+        return url.path
+    }
+
     /// Rasterize `text` in `color` onto a transparent PNG sized to the glyphs plus padding, at a large fixed
     /// resolution so `background-image-fit = contain` scales it up crisply to fill the terminal. Transparent,
     /// so only the glyphs composite over it; translucency comes from `background-image-opacity`, not pixels.

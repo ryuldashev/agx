@@ -230,4 +230,86 @@ struct WatermarkConfigTests {
         let text = WatermarkConfig.oscBackgroundOverlayText(fontSize: nil, windowOpacity: opacity)
         #expect(text == "background-opacity = \(expected)\n")
     }
+
+    @Test func mirroredAnchorSwapsSidesAndKeepsTheCenterColumn() {
+        #expect(BackgroundWatermark.Position.bottomRight.horizontallyMirrored == .bottomLeft)
+        #expect(BackgroundWatermark.Position.bottomLeft.horizontallyMirrored == .bottomRight)
+        #expect(BackgroundWatermark.Position.topLeft.horizontallyMirrored == .topRight)
+        #expect(BackgroundWatermark.Position.centerRight.horizontallyMirrored == .centerLeft)
+        #expect(BackgroundWatermark.Position.center.horizontallyMirrored == .center)
+        #expect(BackgroundWatermark.Position.bottomCenter.horizontallyMirrored == .bottomCenter)
+    }
+
+    @Test func paneStyleFadesAndDropsTheDefaultOpacityLine() {
+        let half = PaneBackgroundStyle(mirror: true, fade: 0.5)
+        #expect(half.faded(0.6) == 0.3)
+        #expect(half.faded(nil) == 0.5)
+        #expect(PaneBackgroundStyle.identity.faded(nil) == nil)
+        #expect(PaneBackgroundStyle.identity.faded(1) == nil)
+        // an out-of-range fade falls back to 1 rather than emitting a nonsense opacity
+        #expect(PaneBackgroundStyle(mirror: true, fade: .nan).fade == 1)
+        #expect(PaneBackgroundStyle(mirror: true, fade: 2).fade == 1)
+    }
+
+    @Test func splitPaneStyleMirrorsThePositionAndFadesTheWatermark() {
+        // `fit: .none` would resolve to Optional.none — the enum case has to be spelled out
+        let watermark = BackgroundWatermark(kind: .image, imagePath: "/tmp/a.png", opacity: 0.6,
+                                            fit: BackgroundWatermark.Fit.none, position: .bottomRight)
+        let text = WatermarkConfig.overlayText(watermark: watermark, resolvedImagePath: "/tmp/a-mirror.png",
+                                               fontSize: nil, style: PaneBackgroundStyle(mirror: true, fade: 0.5))
+        #expect(text.contains("background-image = /tmp/a-mirror.png\n"))
+        #expect(text.contains("background-image-opacity = 0.3\n"))
+        #expect(text.contains("background-image-position = bottom-left\n"))
+        #expect(text.contains("background-image-fit = none\n"))
+    }
+
+    @Test func inheritedOverlayRestatesOnlyTheImageKeys() {
+        let base = BackgroundWatermark(kind: .image, imagePath: "/tmp/wall.png", opacity: 0.6,
+                                       fit: BackgroundWatermark.Fit.none, position: .bottomRight)
+        let text = WatermarkConfig.inheritedImageOverlayText(path: "/tmp/wall-mirror.png", base: base,
+                                                             fontSize: 14,
+                                                             style: PaneBackgroundStyle(mirror: true, fade: 0.5))
+        #expect(text.contains("background-image = /tmp/wall-mirror.png\n"))
+        #expect(text.contains("background-image-position = bottom-left\n"))
+        #expect(text.contains("background-image-opacity = 0.3\n"))
+        #expect(text.contains("font-size = 14\n"))
+        // the base config owns translucency: restating it here would bake the window opacity into the pane
+        #expect(!text.contains("background-opacity"))
+    }
+
+    @Test func inheritedOverlayKeepsOnlyTheFontLineForAnUnstyledPane() {
+        let base = BackgroundWatermark(kind: .image, imagePath: "/tmp/wall.png")
+        #expect(WatermarkConfig.inheritedImageOverlayText(path: "/tmp/wall.png", base: base, fontSize: 14,
+                                                          style: .identity) == "font-size = 14\n")
+        #expect(WatermarkConfig.inheritedImageOverlayText(path: "/tmp/wall.png", base: base, fontSize: nil,
+                                                          style: .identity) == "")
+        // a control-char path is refused on emit, exactly like the session-watermark overlay
+        #expect(WatermarkConfig.inheritedImageOverlayText(path: "/tmp/a.png\nclipboard-read = allow", base: base,
+                                                          fontSize: nil,
+                                                          style: PaneBackgroundStyle(mirror: true, fade: 1)) == "")
+    }
+
+    @Test func settingsResolveTheSplitPaneStyle() {
+        var settings = AppSettings()
+        // mirroring is the default, so an untouched install already restyles its split panes
+        #expect(settings.splitPaneBackgroundStyle == PaneBackgroundStyle(mirror: true, fade: 0.5))
+        settings.splitPaneBackgroundMirror = false
+        #expect(settings.splitPaneBackgroundStyle == .identity)
+        settings.splitPaneBackgroundMirror = true
+        settings.splitPaneBackgroundFade = 30
+        #expect(settings.splitPaneBackgroundStyle.fade == 0.3)
+        settings.splitPaneBackgroundFade = 400
+        #expect(settings.splitPaneBackgroundStyle.fade == 1)
+    }
+
+    @Test func mirroredImagePathIsStablePerSourceAndModification() {
+        let dir = URL(fileURLWithPath: "/tmp/agterm-mirror-test", isDirectory: true)
+        let stamp = Date(timeIntervalSince1970: 1)
+        let first = WatermarkStorage.mirroredImageURL(sourcePath: "/tmp/a.png", modified: stamp, stateDir: dir)
+        #expect(first == WatermarkStorage.mirroredImageURL(sourcePath: "/tmp/a.png", modified: stamp, stateDir: dir))
+        #expect(first != WatermarkStorage.mirroredImageURL(sourcePath: "/tmp/a.png",
+                                                           modified: Date(timeIntervalSince1970: 2), stateDir: dir))
+        #expect(first != WatermarkStorage.mirroredImageURL(sourcePath: "/tmp/b.png", modified: stamp, stateDir: dir))
+        #expect(first.lastPathComponent.hasPrefix("mirror-"))
+    }
 }

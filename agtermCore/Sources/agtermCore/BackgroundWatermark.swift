@@ -29,6 +29,21 @@ public struct BackgroundWatermark: Codable, Sendable, Equatable {
         case topLeft = "top-left", topCenter = "top-center", topRight = "top-right"
         case centerLeft = "center-left", center, centerRight = "center-right"
         case bottomLeft = "bottom-left", bottomCenter = "bottom-center", bottomRight = "bottom-right"
+
+        /// The anchor a horizontally flipped image belongs at: the left/right halves swap, the centered
+        /// column stays put. Pairs with `WatermarkConfig.mirrored` so a mirrored pane's art meets the
+        /// original across the split divider instead of drifting to the same corner.
+        public var horizontallyMirrored: Position {
+            switch self {
+            case .topLeft: .topRight
+            case .topRight: .topLeft
+            case .centerLeft: .centerRight
+            case .centerRight: .centerLeft
+            case .bottomLeft: .bottomRight
+            case .bottomRight: .bottomLeft
+            case .topCenter, .center, .bottomCenter: self
+            }
+        }
     }
 
     public var kind: Kind

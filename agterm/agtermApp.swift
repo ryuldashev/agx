@@ -282,6 +282,10 @@ struct agtermApp: App {
             guard let view else { return }
             Self.handlePaneExit(view, store: store, sessionID: sessionID, library: library)
         }
+        view.onOpenFileReference = { path, line in
+            store.openOverlay(sessionID, command: ConfigPaths.editorCommand(forPath: path, line: line),
+                              sizePercent: 95)
+        }
         view.onFocusChange = { focused in
             guard focused else { return }
             store.session(withID: sessionID)?.splitFocused = false
@@ -432,6 +436,10 @@ struct agtermApp: App {
         view.onExit = { [weak view] in
             guard let view else { return }
             Self.handlePaneExit(view, store: store, sessionID: sessionID, library: library)
+        }
+        view.onOpenFileReference = { path, line in
+            store.openOverlay(sessionID, command: ConfigPaths.editorCommand(forPath: path, line: line),
+                              sizePercent: 95)
         }
         view.onFocusChange = { [weak view] focused in
             guard focused else { return }

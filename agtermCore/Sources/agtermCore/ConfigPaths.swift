@@ -181,10 +181,14 @@ public enum ConfigPaths {
     /// sh/bash/zsh/fish, NOT csh/tcsh, which reject `-ilc`; and `$EDITOR`/`$VISUAL` resolve only when
     /// EXPORTED (their universal convention — `export EDITOR=…` / fish `set -gx EDITOR …`), since a
     /// non-exported, shell-local value does not survive the `exec`.
-    public static func editorCommand(forPath path: String) -> String {
+    ///
+    /// `line`, when given, is passed as the `+N` argument vi, vim, nvim, emacs, nano and micro all accept.
+    /// An editor that does not (helix wants `file:N`) opens the file at the top instead of failing.
+    public static func editorCommand(forPath path: String, line: Int? = nil) -> String {
         // POSIX single-quote: wrap in '…' and escape any embedded ' as '\'' (works in fish + POSIX shells).
         func singleQuoted(_ s: String) -> String { "'\(s.replacingOccurrences(of: "'", with: "'\\''"))'" }
-        let inner = "${VISUAL:-${EDITOR:-vi}} \"$1\""
+        let position = line.map { "+\($0) " } ?? ""
+        let inner = "${VISUAL:-${EDITOR:-vi}} \(position)\"$1\""
         let viaPosix = "exec /bin/sh -c \(singleQuoted(inner)) agterm-config-edit \(singleQuoted(path))"
         return "${SHELL:-/bin/zsh} -ilc \(singleQuoted(viaPosix))"
     }

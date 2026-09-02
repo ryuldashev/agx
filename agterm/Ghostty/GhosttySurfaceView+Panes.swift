@@ -6,6 +6,9 @@ extension GhosttySurfaceView {
     /// `applyPwd`/`applyTitle` reports to the main `session.currentCwd`/`oscTitle`, not `splitCwd`/`splitTitle`.
     func promoteToPrimaryPane() {
         isSplitPane = false
+        // the promoted pane is no longer the passenger: drop the mirrored/faded background it carried as a
+        // split. A no-op when nothing restyled it.
+        if !GhosttyApp.shared.splitPaneBackgroundStyle.isIdentity { applyWatermarkFromSession() }
     }
 
     /// `TerminalSurface.paneToken`: this surface's stable spawn identity, read straight back from the baked

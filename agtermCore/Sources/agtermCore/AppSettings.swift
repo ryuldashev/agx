@@ -136,6 +136,22 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// The pane/backdrop mute strength (0...10, 0 = no mute) used when `inactivePaneMuteStrength` is nil.
     public static let defaultInactivePaneMuteStrength = 5
 
+    /// Whether a copy is cleaned (`CopyCleanup`) when `copyCleanup` is nil. On: the common case is copying
+    /// code out of an agent's framed pane, where the gutter is never wanted.
+    public static let defaultCopyCleanup = true
+
+    /// Whether a copy flashes its pane when `copyFlash` is nil.
+    public static let defaultCopyFlash = true
+
+    /// Whether the split pane mirrors the background art when `splitPaneBackgroundMirror` is nil. On: a
+    /// corner mark anchored bottom-right shows a near-empty slice in a narrow pane, so the pane reads flat
+    /// until the drawing is flipped to meet the divider.
+    public static let defaultSplitPaneBackgroundMirror = true
+
+    /// How faded the split pane's background art is when `splitPaneBackgroundFade` is nil, in percent of
+    /// the primary pane's: the passenger pane shows the same drawing at half strength.
+    public static let defaultSplitPaneBackgroundFade = 50
+
     /// The sidebar background shift used when `sidebarBackgroundShift` is nil; 5 is the neutral center,
     /// where the sidebar matches the terminal background.
     public static let defaultSidebarBackgroundShift = 5
@@ -209,6 +225,18 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// How much darker or lighter the sidebar background is than the terminal background, 0...10 with 5
     /// neutral; nil means `defaultSidebarBackgroundShift`. A SwiftUI wash (`sidebarShiftAmount`).
     public var sidebarBackgroundShift: Int?
+    /// Whether copied text is cleaned of a TUI's frame gutter, trailing padding and the shared indent;
+    /// nil means `defaultCopyCleanup`.
+    public var copyCleanup: Bool?
+    /// Whether a copy flashes a "Copied" pill on the pane it came from; nil means `defaultCopyFlash`.
+    public var copyFlash: Bool?
+    /// Whether the split (right) pane mirrors the background image horizontally, so the two panes read as
+    /// one drawing cut by the divider instead of the same corner mark twice; nil means
+    /// `defaultSplitPaneBackgroundMirror`.
+    public var splitPaneBackgroundMirror: Bool?
+    /// How faded the split pane's background art is, 0...100 percent of the primary pane's; nil means
+    /// `defaultSplitPaneBackgroundFade`. Applies only while `splitPaneBackgroundMirror` is on.
+    public var splitPaneBackgroundFade: Int?
     /// Whether, on restart, each pane re-runs what it ran at the last clean quit (nil = off) — a captured
     /// `SessionSnapshot.foregroundCommand` plus a `session.new --command` session's `initialCommand`.
     public var restoreRunningCommand: Bool?
@@ -434,6 +462,14 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// Bounds a raw palette/switcher point size to `interfaceFontSizeRange`.
     public static func clampInterfaceFontSize(_ size: Double) -> Double {
         min(interfaceFontSizeRange.upperBound, max(interfaceFontSizeRange.lowerBound, size))
+    }
+
+    /// The resolved split-pane background style: `.identity` unless mirroring is on, so a pane never pays
+    /// for a per-surface config it does not need. The single read point.
+    public var splitPaneBackgroundStyle: PaneBackgroundStyle {
+        guard splitPaneBackgroundMirror ?? Self.defaultSplitPaneBackgroundMirror else { return .identity }
+        let fade = splitPaneBackgroundFade ?? Self.defaultSplitPaneBackgroundFade
+        return PaneBackgroundStyle(mirror: true, fade: Double(min(max(fade, 0), 100)) / 100)
     }
 
     /// The resolved sidebar row-text size, clamped. The single read point.
