@@ -21,6 +21,29 @@ public enum LinkPolicy {
         case ignore
     }
 
+    /// A clicked schemeless file reference — `src/main.swift:120`, `./a.txt`, `/tmp/x.log:9:4` — split into
+    /// its path and 1-based line, or nil when the text is not one: a URL (any `scheme:`), an empty path, or
+    /// a bare `:line`. Purely lexical; whether the path EXISTS (and what it is relative to) is the caller's,
+    /// since that is filesystem I/O. A trailing column is parsed and dropped — editors take `+line`.
+    public static func fileReference(in raw: String) -> (path: String, line: Int?)? {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !text.hasPrefix(":") else { return nil }
+        var path = Substring(text)
+        var line: Int?
+        // walk at most two trailing `:<digits>` groups off the end (line, then column), newest first
+        for _ in 0 ..< 2 {
+            guard let colon = path.lastIndex(of: ":") else { break }
+            let tail = path[path.index(after: colon)...]
+            guard !tail.isEmpty, tail.allSatisfy(\.isASCIIDigit), let value = Int(tail) else { break }
+            path = path[..<colon]
+            line = value
+        }
+        guard !path.isEmpty else { return nil }
+        // a scheme means this was a URL the scheme rules already refused, not a path
+        if let colon = path.firstIndex(of: ":"), !path[..<colon].contains("/") { return nil }
+        return (String(path), line)
+    }
+
     /// Lowercased host names counting as "this machine" for a `file://` link: `localhost` and the
     /// `gethostname()` name (what GNU `ls --hyperlink` emits, e.g. `file://<host>/…`; `eza` uses an empty
     /// host, covered by the empty-host rule). Deliberately NOT `Host.current()`/`ProcessInfo.hostName`:
@@ -114,4 +137,9 @@ public enum LinkPolicy {
         guard !isAutomountPath(normalizedPath) else { return .ignore }
         return .reveal(URL(fileURLWithPath: normalizedPath, isDirectory: false))
     }
+}
+
+private extension Character {
+    /// ASCII-only digit test: `isNumber` accepts fullwidth and other Unicode digits `Int(_:)` then rejects.
+    var isASCIIDigit: Bool { isASCII && isNumber }
 }

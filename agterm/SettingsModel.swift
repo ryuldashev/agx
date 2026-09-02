@@ -60,6 +60,8 @@ final class SettingsModel {
         applyToolbarMode()
         applyNotificationBadgeEnabled()
         applyInactivePaneMute()
+        applyCopyFeedback()
+        applySplitPaneBackground()
         applySidebarBackgroundShift()
         applySidebarFontSize()
         applyInterfaceFontSize()
@@ -207,6 +209,10 @@ final class SettingsModel {
     // sidebar behavior, not a ghostty key; the Coordinator reads the mirror on the next click.
     func setWorkspaceRowClickExpands(_ value: Bool?) { settings.workspaceRowClickExpands = value; persistAndApply() }
     func setInactivePaneMuteStrength(_ value: Int?) { settings.inactivePaneMuteStrength = value; persistAndApply() }
+    func setCopyCleanup(_ value: Bool) { settings.copyCleanup = value; persistAndApply() }
+    func setCopyFlash(_ value: Bool) { settings.copyFlash = value; persistAndApply() }
+    func setSplitPaneBackgroundMirror(_ value: Bool) { settings.splitPaneBackgroundMirror = value; persistAndApply() }
+    func setSplitPaneBackgroundFade(_ value: Int?) { settings.splitPaneBackgroundFade = value; persistAndApply() }
     func setSidebarBackgroundShift(_ value: Int?) { settings.sidebarBackgroundShift = value; persistAndApply() }
     func setSidebarFontSize(_ value: Double?) { settings.sidebarFontSize = value; persistAndApply() }
     func setInterfaceFontSize(_ value: Double?) { settings.interfaceFontSize = value; persistAndApply() }
@@ -638,6 +644,14 @@ final class SettingsModel {
         applyToolbarMode()
         applyNotificationBadgeEnabled()
         applyInactivePaneMute()
+        // a changed split-pane style must reach the LIVE right panes: their per-surface config is the only
+        // place it exists, and turning mirroring off has to hand the pane back to the plain base config.
+        applyCopyFeedback()
+        let splitStyleBefore = GhosttyApp.shared.splitPaneBackgroundStyle
+        applySplitPaneBackground()
+        if GhosttyApp.shared.splitPaneBackgroundStyle != splitStyleBefore {
+            for surface in liveSurfaces() where surface.isSplitPane { surface.applyWatermarkFromSession() }
+        }
         applySidebarBackgroundShift()
         applySidebarFontSize()
         applyInterfaceFontSize()
@@ -722,6 +736,15 @@ final class SettingsModel {
     private func applyInactivePaneMute() {
         GhosttyApp.shared.setInactivePaneMuteStrength(
             settings.inactivePaneMuteStrength ?? AppSettings.defaultInactivePaneMuteStrength)
+    }
+
+    private func applyCopyFeedback() {
+        GhosttyApp.shared.setCopyFeedback(cleanup: settings.copyCleanup ?? AppSettings.defaultCopyCleanup,
+                                          flash: settings.copyFlash ?? AppSettings.defaultCopyFlash)
+    }
+
+    private func applySplitPaneBackground() {
+        GhosttyApp.shared.setSplitPaneBackgroundStyle(settings.splitPaneBackgroundStyle)
     }
 
     private func applySidebarBackgroundShift() {

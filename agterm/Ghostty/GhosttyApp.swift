@@ -44,6 +44,21 @@ final class GhosttyApp {
     private(set) var terminalSelectionForegroundColor: NSColor?
     /// Window translucency the chrome composites at the AppKit level — background opacity (0...1) + CGS blur
     /// radius, opaque by default. NOT ghostty-resolved: `WindowAppearance.sync` reads, `SettingsModel` writes.
+    /// How the split (right) pane restyles the background art it shares with the primary pane — mirrored and
+    /// faded, from Settings ▸ Appearance. `.identity` leaves the pane on the plain shared config.
+    private(set) var splitPaneBackgroundStyle: PaneBackgroundStyle = .identity
+
+    /// The `background-image` the BASE config resolves to (the user's own, when the global ghostty config is
+    /// inherited), so a split pane can restyle art no session watermark set. Re-read on every config load.
+    private(set) var baseBackgroundImage: BackgroundWatermark?
+
+    /// Whether a copy runs through `CopyCleanup` (Settings ▸ General) — strips a TUI's frame gutter and the
+    /// shared indent before the text reaches the pasteboard.
+    private(set) var copyCleanupEnabled: Bool = AppSettings.defaultCopyCleanup
+
+    /// Whether a copy flashes a "Copied" pill on the pane it came from.
+    private(set) var copyFlashEnabled: Bool = AppSettings.defaultCopyFlash
+
     private(set) var windowOpacity: Double = 1
     private(set) var windowBlurRadius: Int = 0
     /// Title-bar row state: normal stacks the cwd subtitle, compact is one short row, hidden drops the row and
@@ -223,6 +238,15 @@ final class GhosttyApp {
         inactivePaneMuteStrength = strength
     }
 
+    func setCopyFeedback(cleanup: Bool, flash: Bool) {
+        copyCleanupEnabled = cleanup
+        copyFlashEnabled = flash
+    }
+
+    func setSplitPaneBackgroundStyle(_ style: PaneBackgroundStyle) {
+        splitPaneBackgroundStyle = style
+    }
+
     func setSidebarBackgroundShift(_ strength: Int) {
         sidebarBackgroundShift = strength
     }
@@ -379,6 +403,7 @@ final class GhosttyApp {
         lastConfigInputs = inputs
         terminalBackgroundColor = Self.color(from: config, key: "background")
         terminalForegroundColor = Self.color(from: config, key: "foreground")
+        baseBackgroundImage = Self.backgroundImage(from: config)
         refreshSelectionColors(isDark: isDark)
     }
 
@@ -625,6 +650,37 @@ final class GhosttyApp {
                        green: CGFloat(color.g) / 255.0,
                        blue: CGFloat(color.b) / 255.0,
                        alpha: 1)
+    }
+
+    /// The resolved `background-image*` keys as a `.image` spec, or nil when no image is configured. Read
+    /// through the C API rather than re-parsing the config files, so an image from any source (scoped config,
+    /// inherited global, a `config-file` include) is seen the same way.
+    private static func backgroundImage(from config: ghostty_config_t) -> BackgroundWatermark? {
+        var path = ghostty_config_path_s()
+        guard get(config, key: "background-image", into: &path), let cPath = path.path else { return nil }
+        var opacity: Float = 1
+        _ = get(config, key: "background-image-opacity", into: &opacity)
+        var repeats = false
+        _ = get(config, key: "background-image-repeat", into: &repeats)
+        return BackgroundWatermark(kind: .image, imagePath: String(cString: cPath), opacity: Double(opacity),
+                                   fit: enumValue(config, key: "background-image-fit").flatMap(BackgroundWatermark.Fit.init),
+                                   position: enumValue(config, key: "background-image-position")
+                                       .flatMap(BackgroundWatermark.Position.init),
+                                   repeats: repeats)
+    }
+
+    /// A config value into `storage`, false when the key is unset or the C API cannot express its type.
+    private static func get<T>(_ config: ghostty_config_t, key: String, into storage: inout T) -> Bool {
+        key.withCString { ghostty_config_get(config, &storage, $0, UInt(key.utf8.count)) }
+    }
+
+    /// An enum-valued config key as its ghostty tag name (`bottom-right`), nil when unset. Ghostty spells
+    /// some anchors two ways (`center-center` for `center`), so an unmapped tag leaves the field nil and the
+    /// emitter falls back to its own default.
+    private static func enumValue(_ config: ghostty_config_t, key: String) -> String? {
+        var value: UnsafePointer<CChar>?
+        guard get(config, key: key, into: &value), let value else { return nil }
+        return String(cString: value)
     }
 
     // MARK: - Resources

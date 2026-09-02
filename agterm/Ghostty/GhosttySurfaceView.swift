@@ -63,6 +63,10 @@ final class GhosttySurfaceView: NSView, TerminalSurface {
     /// Called on the main actor when the shell process exits, so the app can close the owning session.
     var onExit: (() -> Void)?
 
+    /// Opens a clicked file reference (`src/main.swift:120`) in the user's editor; set by the pane factories,
+    /// nil for a surface with nowhere to open one (the quick terminal).
+    var onOpenFileReference: ((String, Int?) -> Void)?
+
     /// For a capturing overlay surface: the temp file the command wrapper writes its exit status to
     /// (`echo $? > file`), nil otherwise — libghostty's child-exited status reflects the login-shell wrapper
     /// (always 0). `destroySurface` reads then deletes it on every teardown path — no registry or sweep.
@@ -306,6 +310,9 @@ final class GhosttySurfaceView: NSView, TerminalSurface {
     /// report. `scrollWheel` syncs only when the current point differs: re-pushing the same cell per packet
     /// makes an any-motion + sgr-pixel mouse-reporting TUI emit a synthetic motion report per packet.
     var lastReportedMousePoint: NSPoint?
+
+    /// The live "Copied" pill, so a second copy replaces it instead of stacking pills.
+    var copyFlashView: NSView?
 
     init(workingDirectory: String, fontSize: Float? = nil, command: String? = nil, initialInput: String? = nil,
          waitAfterCommand: Bool = false, autoFocus: Bool = false, env: [String: String] = [:]) {
@@ -616,12 +623,11 @@ final class GhosttySurfaceView: NSView, TerminalSurface {
 
         // a session carrying a background watermark (never shown, or restored from a snapshot) applies it now
         // the surface exists — deferred-size creation, the eager deck, relaunch; the scratch inherits via
-        // `watermarkSession`, sessionless overlay/quick skip it. ALSO re-applies a standalone
+        // `watermarkSession`, sessionless overlay/quick skip it. A split pane restyling the INHERITED
+        // background needs it here too, with no watermark of its own. ALSO re-applies a standalone
         // `dashboardFontOverride` for a member realizing AFTER the dashboard set the transient font, since
         // `applyWatermarkFromSession` honors `dashboardFontOverride ?? session.fontSize`.
-        if (session ?? watermarkSession)?.backgroundWatermark != nil || dashboardFontOverride != nil {
-            applyWatermarkFromSession()
-        }
+        if needsOwnConfig { applyWatermarkFromSession() }
         // an overlay surface with its own background color applies it here too — the overlay is sessionless,
         // so the watermark path above skips it.
         if overlayBackgroundColorHex != nil { applyOverlayBackgroundColor() }

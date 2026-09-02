@@ -602,7 +602,10 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   Image requires existing PNG/JPEG path without controls. Text is capped at 256 characters and may set
   color. Image/text accept opacity 0...1, typed fit, position, and repeats. Color requires `#rrggbb` and
   uses window opacity, not a per-call value.
-- Apply to main, split, and scratch through retained per-surface config overlays. Image/text force
+- Apply to main, split, and scratch through retained per-surface config overlays. The split pane restyles
+  what it inherits when Settings ▸ Appearance mirrors it: flipped PNG (cached under `watermarks/mirror-*`),
+  mirrored anchor, faded opacity — over a session watermark AND over the base config's own
+  `background-image`, which is the only case a pane with no watermark still carries an overlay. Image/text force
   background opacity 1; solid color emits background plus current window opacity; include font size so
   session zoom survives. Free configs only when surfaces die.
 - Text rasterizes under `<stateDir>/watermarks/<sessionID>.png` with live foreground default. Regenerate on

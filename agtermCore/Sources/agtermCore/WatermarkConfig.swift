@@ -60,7 +60,8 @@ public enum WatermarkConfig {
     /// Values are emitted RAW: ghostty takes the whole line remainder as the value, so a path with spaces
     /// works unquoted, matching `AppSettings.ghosttyConfigLines()`.
     public static func overlayText(watermark: BackgroundWatermark?, resolvedImagePath: String?,
-                                   fontSize: Double?, windowOpacity: Double = 1) -> String {
+                                   fontSize: Double?, windowOpacity: Double = 1,
+                                   style: PaneBackgroundStyle = .identity) -> String {
         var lines: [String] = []
         // re-validate free text on EMIT: `AppStore.restore` assigns a persisted spec raw, so a hand-edited
         // `workspaces.json` could carry a control-char path or a malformed color. a poisoned value drops the
@@ -72,9 +73,10 @@ public enum WatermarkConfig {
         } else if let watermark, watermark.kind != .color, let path = resolvedImagePath, isValidImagePath(path) {
             lines.append("background-opacity = 1")
             lines.append("background-image = \(path)")
-            if let opacity = watermark.opacity { lines.append("background-image-opacity = \(formatted(opacity))") }
+            let opacity = style.faded(watermark.opacity)
+            if let opacity { lines.append("background-image-opacity = \(formatted(opacity))") }
             lines.append("background-image-fit = \((watermark.fit ?? .contain).rawValue)")
-            lines.append("background-image-position = \((watermark.position ?? .center).rawValue)")
+            lines.append("background-image-position = \(style.anchor(watermark.position ?? .center).rawValue)")
             lines.append("background-image-repeat = \(watermark.repeats == true)")
         }
         if let fontSize { lines.append("font-size = \(formatted(fontSize))") }
@@ -93,6 +95,25 @@ public enum WatermarkConfig {
     public static func oscBackgroundOverlayText(fontSize: Double?, windowOpacity: Double) -> String {
         let opacity = windowOpacity.isFinite ? min(max(windowOpacity, 0), 1) : 1
         var lines = ["background-opacity = \(formatted(opacity))"]
+        if let fontSize { lines.append("font-size = \(formatted(fontSize))") }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// The overlay a split pane needs to restyle the background image it INHERITS from the base config —
+    /// the user's own `background-image`, with no session watermark in play. Only the image keys are
+    /// restated, so window translucency, theme and every other base value stay untouched; `path` is what the
+    /// app resolved — the pre-flipped copy when the style mirrors, since libghostty cannot flip an image.
+    /// Returns "" when the style would change nothing, so an unstyled pane keeps the plain base config.
+    public static func inheritedImageOverlayText(path: String, base: BackgroundWatermark,
+                                                 fontSize: Double?, style: PaneBackgroundStyle) -> String {
+        guard !style.isIdentity, isValidImagePath(path) else {
+            return fontSize.map { "font-size = \(formatted($0))\n" } ?? ""
+        }
+        var lines = ["background-image = \(path)"]
+        if let opacity = style.faded(base.opacity) { lines.append("background-image-opacity = \(formatted(opacity))") }
+        lines.append("background-image-fit = \((base.fit ?? .contain).rawValue)")
+        lines.append("background-image-position = \(style.anchor(base.position ?? .center).rawValue)")
+        lines.append("background-image-repeat = \(base.repeats == true)")
         if let fontSize { lines.append("font-size = \(formatted(fontSize))") }
         return lines.joined(separator: "\n") + "\n"
     }

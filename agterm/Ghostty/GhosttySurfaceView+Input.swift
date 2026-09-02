@@ -76,6 +76,12 @@ extension GhosttySurfaceView {
             return
         }
 
+        // ⌘C is answered HERE, before the key reaches libghostty's own `copy_to_clipboard`, so the cleaned
+        // text and the flash apply on every layout: the fallback keycode binds in `ghostty-defaults.conf`
+        // never pass through Swift. Matched by physical key, like those binds. Falls through with no
+        // selection, leaving the no-op to ghostty.
+        if flags == [.command], event.keyCode == Self.copyKeyCode, copySelectionCleaned() { return }
+
         if flags.contains(.command) {
             var ke = buildKeyEvent(from: event, action: action)
             ke.text = nil
@@ -162,6 +168,9 @@ extension GhosttySurfaceView {
         guard let surface else { return }
         reportMousePos(from: event)
         _ = ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_RELEASE, GHOSTTY_MOUSE_LEFT, mods(event))
+        // the release COMMITTED the selection: ghostty's copy-on-select has already written the raw text,
+        // so the follow-up replaces it with the cleaned form and flashes. No selection = no-op.
+        copyOnSelectFollowUp()
     }
 
     // forward right-/middle-button press/release so libghostty's mouse bindings fire (right-click-action),
@@ -529,12 +538,28 @@ extension GhosttySurfaceView: @preconcurrency NSTextInputClient {
 
     /// Acts on a clicked terminal link (`GHOSTTY_ACTION_OPEN_URL`); the scheme/host decision lives in the
     /// host-free `LinkPolicy`. A `file://` link is REVEALED in Finder, never opened — reveal executes nothing.
+    /// What the policy ignores gets one more reading: ghostty's default link regex also matches a bare
+    /// `src/main.swift:120`, and an EXISTING file there opens in the editor at that line.
     func openLink(_ raw: String) {
         switch LinkPolicy.disposition(for: raw) {
         case let .open(url): NSWorkspace.shared.open(url)
         case let .reveal(url): NSWorkspace.shared.activateFileViewerSelecting([url])
-        case .ignore: return
+        case .ignore: openFileReference(raw)
         }
+    }
+
+    /// Open a clicked `path[:line]` in the editor, resolved against the session's cwd (the split pane keeps
+    /// its own, `effectiveCwd` follows whichever reported last). Silent unless it names
+    /// a real FILE: a click on ordinary text that happens to look like a path must do nothing, and a
+    /// directory belongs in Finder, not an editor buffer.
+    private func openFileReference(_ raw: String) {
+        guard let onOpenFileReference, let (path, line) = LinkPolicy.fileReference(in: raw) else { return }
+        let base = session?.effectiveCwd ?? FileManager.default.currentDirectoryPath
+        let resolved = path.hasPrefix("/") ? path : (base as NSString).appendingPathComponent(path)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: resolved, isDirectory: &isDirectory), !isDirectory.boolValue
+        else { return }
+        onOpenFileReference(resolved, line)
     }
 }
 
@@ -548,7 +573,10 @@ extension GhosttySurfaceView: @preconcurrency NSTextInputClient {
 /// terminal yet works in text fields; it cannot be dropped on its own, sharing SwiftUI's `.pasteboard`
 /// group. Undo/Redo are removed entirely (`CommandGroup(replacing: .undoRedo)` in `agtermApp+Menus`).
 extension GhosttySurfaceView: NSMenuItemValidation {
-    @objc func copy(_ sender: Any?) { performBindingAction("copy_to_clipboard") }
+    @objc func copy(_ sender: Any?) {
+        guard !copySelectionCleaned() else { return }
+        performBindingAction("copy_to_clipboard")
+    }
 
     @objc func paste(_ sender: Any?) { performBindingAction("paste_from_clipboard") }
 

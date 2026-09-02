@@ -27,10 +27,11 @@ extension GhosttySurfaceView {
         // dedupe key, and a stale value would swallow an identical follow-up OSC 11. the reload / opacity
         // / dashboard re-assert paths guard on the latch BEFORE calling this, so no live OSC is dropped.
         oscBackgroundColorHex = nil
-        let resolvedImagePath = WatermarkRenderer.materialize(session.backgroundWatermark, sessionID: session.id)
-        let overlay = WatermarkConfig.overlayText(watermark: session.backgroundWatermark,
-                                                  resolvedImagePath: resolvedImagePath, fontSize: currentEffectiveFontSize(),
-                                                  windowOpacity: GhosttyApp.shared.windowOpacity)
+        let style = paneBackgroundStyle
+        let resolvedImagePath = styled(WatermarkRenderer.materialize(session.backgroundWatermark, sessionID: session.id),
+                                       style: style)
+        let overlay = overlayText(watermark: session.backgroundWatermark, resolvedImagePath: resolvedImagePath,
+                                  style: style)
         guard let config = GhosttyApp.shared.configWithOverlay(overlay) else {
             NSLog("watermark: per-surface config build failed for session %@", session.id.uuidString)
             return
@@ -43,6 +44,50 @@ extension GhosttySurfaceView {
         ownedConfigs = [config]
     }
 
+    /// How this pane restyles the background art: the split (right) pane mirrors and fades it per Settings,
+    /// every other surface leaves it alone.
+    var paneBackgroundStyle: PaneBackgroundStyle {
+        isSplitPane ? GhosttyApp.shared.splitPaneBackgroundStyle : .identity
+    }
+
+    /// Whether this surface needs a per-surface config at all — a watermark, a font zoom, or a restyled
+    /// split-pane background. The creation and reload paths gate on it, so an ordinary pane keeps the
+    /// shared config and pays for no overlay.
+    var needsOwnConfig: Bool {
+        let configSession = session ?? watermarkSession
+        return configSession?.backgroundWatermark != nil || configSession?.fontSize != nil
+            || dashboardFontOverride != nil || restylesInheritedBackground
+    }
+
+    /// Whether this pane restyles a background image it did NOT set itself — the user's own
+    /// `background-image` from the base config. False without an image to restyle, so the pane is not
+    /// handed an overlay that would only restate defaults.
+    private var restylesInheritedBackground: Bool {
+        !paneBackgroundStyle.isIdentity && GhosttyApp.shared.baseBackgroundImage != nil
+    }
+
+    /// The overlay text for this surface: the session's own watermark when it has one, otherwise the
+    /// restyled copy of the background image inherited from the base config.
+    private func overlayText(watermark: BackgroundWatermark?, resolvedImagePath: String?,
+                             style: PaneBackgroundStyle) -> String {
+        if watermark == nil, !style.isIdentity, let base = GhosttyApp.shared.baseBackgroundImage,
+           let basePath = base.imagePath {
+            return WatermarkConfig.inheritedImageOverlayText(path: styled(basePath, style: style) ?? basePath,
+                                                             base: base, fontSize: currentEffectiveFontSize(),
+                                                             style: style)
+        }
+        return WatermarkConfig.overlayText(watermark: watermark, resolvedImagePath: resolvedImagePath,
+                                           fontSize: currentEffectiveFontSize(),
+                                           windowOpacity: GhosttyApp.shared.windowOpacity, style: style)
+    }
+
+    /// The image path this style should draw: the cached flipped copy when it mirrors, the original
+    /// otherwise (and when the flip fails — a missing mirror must not drop the background).
+    private func styled(_ path: String?, style: PaneBackgroundStyle) -> String? {
+        guard let path, style.mirror else { return path }
+        return WatermarkRenderer.mirroredCopy(of: path) ?? path
+    }
+
     /// Re-assert the session's per-surface config (watermark and/or font zoom) after a global reload
     /// broadcast the shared config here, wiping both; a no-op when the session carries neither. The
     /// zoom-CLEARING reload paths nil `session.fontSize` first, so only a watermark re-applies there, while
@@ -52,10 +97,7 @@ extension GhosttySurfaceView {
         // a transient OSC-11 background wins over the persisted watermark and must survive the reload
         // broadcast that wiped it.
         if let hex = oscBackgroundColorHex { applyOSCBackground(hex); return }
-        let configSession = session ?? watermarkSession
-        guard configSession?.backgroundWatermark != nil || configSession?.fontSize != nil || dashboardFontOverride != nil else {
-            return
-        }
+        guard needsOwnConfig else { return }
         applyWatermarkFromSession()
     }
 

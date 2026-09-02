@@ -100,6 +100,16 @@ private struct GeneralSettingsView: View {
                     .accessibilityIdentifier("settings-workspace-row-click-expands")
             }
 
+            Section("Copy") {
+                Toggle("Clean up copied text", isOn: copyCleanup)
+                    .accessibilityIdentifier("settings-copy-cleanup")
+                Text("Drops a TUI's frame gutter, trailing padding and the shared indent.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Toggle("Flash the pane on copy", isOn: copyFlash)
+                    .accessibilityIdentifier("settings-copy-flash")
+            }
+
             Section("Sessions") {
                 Picker("New sessions open in", selection: newSessionDirectory) {
                     Text("Home directory").tag(AppSettings.NewSessionDirectory.home)
@@ -168,6 +178,15 @@ private struct GeneralSettingsView: View {
     }
 
     /// Default ON. Drives the ghostty `right-click-action` key (paste when on, ignore when off).
+    private var copyCleanup: Binding<Bool> {
+        Binding(get: { model.settings.copyCleanup ?? AppSettings.defaultCopyCleanup },
+                set: { model.setCopyCleanup($0) })
+    }
+
+    private var copyFlash: Binding<Bool> {
+        Binding(get: { model.settings.copyFlash ?? AppSettings.defaultCopyFlash }, set: { model.setCopyFlash($0) })
+    }
+
     private var rightClickPaste: Binding<Bool> {
         Binding(get: { model.settings.rightClickPaste ?? true },
                 set: { model.setRightClickPaste($0 ? nil : false) })
@@ -317,6 +336,19 @@ private struct AppearanceSettingsView: View {
                         .monospacedDigit()
                         .frame(width: 42, alignment: .trailing)
                 }
+
+                Toggle("Mirror background art in the split pane", isOn: splitPaneBackgroundMirror)
+                    .accessibilityIdentifier("settings-split-pane-background-mirror")
+                if model.settings.splitPaneBackgroundMirror ?? AppSettings.defaultSplitPaneBackgroundMirror {
+                    HStack {
+                        Text("Split pane art strength")
+                        Slider(value: splitPaneBackgroundFade, in: 0 ... 100, step: 5)
+                            .accessibilityIdentifier("settings-split-pane-background-fade")
+                        Text("\(model.settings.splitPaneBackgroundFade ?? AppSettings.defaultSplitPaneBackgroundFade)%")
+                            .monospacedDigit()
+                            .frame(width: 42, alignment: .trailing)
+                    }
+                }
             }
         }
         .formStyle(.grouped)
@@ -397,6 +429,17 @@ private struct AppearanceSettingsView: View {
     private var toolbarMode: Binding<ToolbarMode> {
         Binding(get: { model.settings.effectiveToolbarMode },
                 set: { model.setToolbarMode($0 == .compact ? nil : $0) })
+    }
+
+    private var splitPaneBackgroundMirror: Binding<Bool> {
+        Binding(get: { model.settings.splitPaneBackgroundMirror ?? AppSettings.defaultSplitPaneBackgroundMirror },
+                set: { model.setSplitPaneBackgroundMirror($0) })
+    }
+
+    /// nil (the default) reads as `defaultSplitPaneBackgroundFade`.
+    private var splitPaneBackgroundFade: Binding<Double> {
+        Binding(get: { Double(model.settings.splitPaneBackgroundFade ?? AppSettings.defaultSplitPaneBackgroundFade) },
+                set: { let v = Int($0.rounded()); model.setSplitPaneBackgroundFade(v == AppSettings.defaultSplitPaneBackgroundFade ? nil : v) })
     }
 
     /// nil (the default) reads as `defaultInactivePaneMuteStrength`.

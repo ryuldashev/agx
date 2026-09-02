@@ -257,7 +257,9 @@ final class GhosttyCallbacks: @unchecked Sendable {
         }
     }
 
-    private static func setClipboard(_ text: String) {
+    /// The single pasteboard write: the OSC 52 / copy-on-select callback above and the cleaned ⌘C path
+    /// (`GhosttySurfaceView.copySelectionCleaned`) share it.
+    static func setClipboard(_ text: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
     }
