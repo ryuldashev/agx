@@ -123,7 +123,11 @@ session id. App quit detaches; session close kills.** Plain login-shell sessions
   SIGWINCH that reports its old size: the spawn forces a real resize (`DurableSpawn.nudgeRedraw`, one
   column narrower then back, 0.8 s and 2.5 s after spawn). The OSC title is in the same position — held
   by the program, re-emitted only on its next change — so the snapshot carries `title` and a
-  reattached pane adopts it (`Session.consumePendingTitle`); every other spawn drops it.
+  session whose abduco server is still alive adopts it at RESTORE (`WindowLibrary.adoptDurableTitles`
+  → `Session.adoptPendingTitle`), before the pane realizes, so a durable session in an unopened
+  workspace shows its title and not its cwd. Every other restored session drops the saved title.
+  `SessionSnapshot` has a custom `init(from:)`; the `title` key must be decoded there, not only added
+  to `CodingKeys` (the in-memory round-trip test misses that path — `WindowLibraryTests` covers disk).
 - Launch sweeps `<stateDir>/abduco/` against every indexed window's persisted sessions and kills the
   rest (`DurableSpawn.reapOrphans`), so a window file removed by hand or a crash between discard and
   pid-file removal cannot leak a server.

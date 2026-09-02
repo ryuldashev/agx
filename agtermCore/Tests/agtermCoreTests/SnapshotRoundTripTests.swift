@@ -87,19 +87,18 @@ struct SnapshotRoundTripTests {
         let restored = fresh.workspaces[0].sessions[0]
         #expect(restored.pendingTitle == "✳ Светлана")
         #expect(restored.oscTitle == nil)
-        restored.durable = true
-        restored.consumePendingTitle()
+        restored.dropPendingTitle()
         #expect(restored.oscTitle == nil)
         #expect(restored.pendingTitle == nil)
+        #expect(restored.displayName != "✳ Светлана")
 
         let again = makeStore()
         again.restore(from: snap)
-        let attached = again.workspaces[0].sessions[0]
-        attached.durable = true
-        attached.durableAttached = true
-        attached.consumePendingTitle()
-        #expect(attached.oscTitle == "✳ Светлана")
-        #expect(attached.displayName == "✳ Светлана")
+        let reattaching = again.workspaces[0].sessions[0]
+        reattaching.adoptPendingTitle()
+        #expect(reattaching.oscTitle == "✳ Светлана")
+        #expect(reattaching.pendingTitle == nil)
+        #expect(reattaching.displayName == "✳ Светлана")
     }
 
     @Test func commandWaitRoundTripsThroughSnapshot() {

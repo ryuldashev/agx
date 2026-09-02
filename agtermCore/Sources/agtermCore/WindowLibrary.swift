@@ -351,6 +351,7 @@ public final class WindowLibrary {
         let store = makeStore(for: id, persistence: persistence)
         let snapshot = persistence.load()
         store.restore(from: snapshot, launchRestore: launchRestore)
+        adoptDurableTitles(in: store)
         stores[id] = store
         let carriedCaptures = snapshot.workspaces.contains { workspace in
             workspace.sessions.contains { $0.foregroundCommand != nil || $0.splitForegroundCommand != nil }
@@ -667,6 +668,24 @@ public final class WindowLibrary {
                 ?? persistenceStore(for: window.id).load().workspaces.map { $0.sessions.map(\.id) }
             return workspaces.flatMap { $0 }
         })
+    }
+
+    /// A restored session whose abduco server is still running (ADR 0001) will reattach, so its saved title
+    /// is still live: adopt it now, before the pane realizes, so the sidebar shows the title and not the cwd
+    /// for a session in an unopened workspace. Every other restored session drops the saved title.
+    private func adoptDurableTitles(in store: AppStore) {
+        for session in store.workspaces.flatMap(\.sessions) {
+            let socket = DurablePane.socketPath(stateDirectory: directory.path, sessionID: session.id)
+            if FileManager.default.fileExists(atPath: socket) {
+                session.durable = true
+                // optimistic: a live server means reattach, so the tree is truthful before the pane realizes;
+                // the spawn's own liveness check flips this to false if the server's program had already exited.
+                session.durableAttached = true
+                session.adoptPendingTitle()
+            } else {
+                session.dropPendingTitle()
+            }
+        }
     }
 
     private func persistenceStore(for id: UUID) -> PersistenceStore {

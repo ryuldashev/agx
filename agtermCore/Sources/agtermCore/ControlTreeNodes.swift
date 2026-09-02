@@ -120,8 +120,9 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
     public let commandWait: Bool?
     /// The main pane's program runs under a detached abduco server a restart reattaches (ADR 0001); nil otherwise.
     public let durable: Bool?
-    /// With `durable`: true when this launch attached to the server already running the program, false when
-    /// it created one — the restore fallback ran; nil/omitted when not durable.
+    /// With `durable`: true when the program survived the restart and this launch reattached, false when the
+    /// server's program had exited so the restore fallback ran; nil/omitted when not durable. Set at restore
+    /// from the server's presence so it is truthful before the pane realizes, corrected at spawn.
     public let attached: Bool?
     /// The LIVE foreground process command (full argv) in the main pane; nil/omitted at the shell prompt —
     /// the same capture restore-running-command uses.

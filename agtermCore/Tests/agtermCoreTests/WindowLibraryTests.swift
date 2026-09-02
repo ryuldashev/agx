@@ -56,6 +56,31 @@ final class WindowLibraryTests {
         #expect(library.windowName(for: UUID()) == "")
     }
 
+    @Test func restoreAdoptsSavedTitleOnlyForASessionWithALiveDurableServer() throws {
+        let library = WindowLibrary(directory: directory)
+        let store = try #require(library.store(for: library.windows[0].id))
+        let ws = store.workspaces[0]
+        let durable = store.addSession(toWorkspace: ws.id, cwd: "/a", command: "claude")!
+        durable.oscTitle = "✳ Agent"
+        let plain = store.addSession(toWorkspace: ws.id, cwd: "/b")!
+        plain.oscTitle = "old shell title"
+        store.save()
+
+        let abduco = directory.appendingPathComponent("abduco", isDirectory: true)
+        try FileManager.default.createDirectory(at: abduco, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: DurablePane.socketPath(stateDirectory: directory.path,
+                                                                      sessionID: durable.id), contents: nil)
+
+        let reopened = WindowLibrary(directory: directory)
+        let restored = try #require(reopened.store(for: reopened.windows[0].id))
+        let byID = Dictionary(uniqueKeysWithValues: restored.workspaces[0].sessions.map { ($0.id, $0) })
+        #expect(byID[durable.id]?.oscTitle == "✳ Agent")
+        #expect(byID[durable.id]?.durable == true)
+        #expect(byID[durable.id]?.displayName == "✳ Agent")
+        #expect(byID[plain.id]?.oscTitle == nil)
+        #expect(byID[plain.id]?.pendingTitle == nil)
+    }
+
     @Test func persistedSessionIDsCoverLoadedAndUnloadedWindows() throws {
         let library = WindowLibrary(directory: directory)
         let first = try #require(library.store(for: library.windows[0].id))

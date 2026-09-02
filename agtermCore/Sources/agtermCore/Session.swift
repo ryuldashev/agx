@@ -198,13 +198,19 @@ public final class Session: Identifiable {
     /// The saved OSC title, held from restore until the spawn decides (`consumePendingTitle`). Never persisted.
     @ObservationIgnored public var pendingTitle: String?
 
-    /// A saved title is truthful only while the program that set it still runs: a reattached durable pane
-    /// adopts it, every other spawn drops it and waits for the program's own report.
-    public func consumePendingTitle() {
+    /// Take the saved title as the live one, dropping it either way. The caller gates: a saved title is
+    /// truthful only while the program that set it still runs, so only a session whose abduco server is
+    /// alive (a durable pane that will reattach) adopts it; every other restored session drops it and shows
+    /// its cwd until the program reports its own. Runs at restore, before the pane realizes, so the sidebar
+    /// is right without opening the workspace.
+    public func adoptPendingTitle() {
         defer { pendingTitle = nil }
-        guard durable, durableAttached, oscTitle == nil, let pendingTitle else { return }
+        guard oscTitle == nil, let pendingTitle else { return }
         oscTitle = pendingTitle
     }
+
+    /// Drop a saved title without adopting it — a restored session whose server is gone.
+    public func dropPendingTitle() { pendingTitle = nil }
 
     /// True when the session was rebuilt by `AppStore.restore(from:)` rather than freshly created; gates the
     /// `initialCommand` re-run on `restoreRunningCommand` (a fresh session always runs it, a restored one gets

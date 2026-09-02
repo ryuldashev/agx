@@ -243,5 +243,6 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
         backgroundWatermark = (try? c.decodeIfPresent(BackgroundWatermark.self, forKey: .backgroundWatermark)) ?? nil
         restoreCommand = (try? c.decodeIfPresent(String.self, forKey: .restoreCommand)) ?? nil
         splitRestoreCommand = (try? c.decodeIfPresent(String.self, forKey: .splitRestoreCommand)) ?? nil
+        title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? nil
     }
 }

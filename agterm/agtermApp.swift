@@ -253,7 +253,6 @@ struct agtermApp: App {
         // precedence, one more wrapper, and the restore override becomes the server's fallback.
         let plan = DurableSpawn.plan(CommandRestore.restorePlan(inputs), session: session,
                                      stateDirectory: library.directory.path)
-        session.consumePendingTitle()
         if session.durable {
             store.emitSessionDurable(session)
             if session.durableAttached {
