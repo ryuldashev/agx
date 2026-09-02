@@ -492,6 +492,15 @@ static bool create_session(const char *name, char * const argv[]) {
 	return true;
 }
 
+/* agx: after a terminated session hands its exit status to the client, the server
+ * exits and unlinks the socket a moment LATER; a create that runs in between fails
+ * bind() with EADDRINUSE. Wait, bounded, for the server to go: once it has, connect
+ * fails with ECONNREFUSED and session_connect() removes the stale file itself. */
+static void session_wait_gone(const char *name) {
+	for (int i = 0; i < 100 && session_exists(name); i++)
+		usleep(20000);
+}
+
 static bool attach_session(const char *name, const bool terminate) {
 	if (server.socket > 0)
 		close(server.socket);
@@ -651,8 +660,10 @@ int main(int argc, char *argv[]) {
 				info("session exists and has not yet terminated");
 				return 1;
 			}
-			if (session_exists(server.session_name))
+			if (session_exists(server.session_name)) {
 				attach_session(server.session_name, false);
+				session_wait_gone(server.session_name);
+			}
 		}
 		if (!create_session(server.session_name, cmd))
 			die("create-session");
@@ -667,6 +678,7 @@ int main(int argc, char *argv[]) {
 			if (!attach_session(server.session_name, true))
 				die("attach-session");
 		} else if (!attach_session(server.session_name, !force)) {
+			session_wait_gone(server.session_name);
 			force = false;
 			action = 'c';
 			goto redo;

@@ -308,6 +308,9 @@ public struct ControlDispatcher {
             if args?.wait == true, args?.command == nil {
                 return ControlResponse(ok: false, error: "--wait requires --command")
             }
+            if args?.durable == true, args?.command == nil {
+                return ControlResponse(ok: false, error: "--durable requires --command")
+            }
             return actions.createSession(ControlSessionCreateOptions(
                 window: args?.window,
                 cwd: args?.cwd,
@@ -316,6 +319,7 @@ public struct ControlDispatcher {
                 createWorkspace: args?.createWorkspace,
                 command: args?.command,
                 wait: args?.wait,
+                durable: args?.durable,
                 name: args?.name,
                 after: args?.after,
                 before: args?.before,

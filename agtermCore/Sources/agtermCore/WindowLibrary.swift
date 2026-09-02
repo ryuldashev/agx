@@ -82,7 +82,9 @@ public final class WindowLibrary {
     @ObservationIgnored private var stores: [UUID: AppStore]
 
     /// The state directory (AGTERM_STATE_DIR-aware): the index here, per-window files in `windows/`.
-    @ObservationIgnored private let directory: URL
+    @ObservationIgnored public let directory: URL
+    /// Forwarded from every store's `sessionDiscardSink`; the app sets it once at library creation.
+    @ObservationIgnored public var sessionDiscardSink: ((Session) -> Void)?
     @ObservationIgnored private let recentClosedStore: RecentClosedStore
     /// One bounded run-identified ring shared by every window store for this library/app lifetime.
     @ObservationIgnored private let controlEventRing: ControlEventRing
@@ -680,7 +682,8 @@ public final class WindowLibrary {
                     session: draft.session,
                     payload: draft.payload
                 ))
-            }
+            },
+            sessionDiscardSink: { [weak self] session in self?.sessionDiscardSink?(session) }
         )
     }
 

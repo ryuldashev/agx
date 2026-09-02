@@ -53,6 +53,7 @@ targets:
           - "Resources/terminfo"
           - "Resources/agent-status"
           - "Resources/hud"
+          - "Resources/abduco"
           # committed SOURCE for agterm's own bundled theme(s); setup.sh stages it
           # into Resources/ghostty/themes (above), so the source dir itself must not
           # be pulled into the project tree or the app bundle.
@@ -86,6 +87,12 @@ targets:
       # exec bit. Lands at Contents/Resources/hud — ControlServer.helperCommand() resolves it there and
       # shell-escapes it into the overlay command.
       - path: agterm/Resources/hud
+        type: folder
+        buildPhase: resources
+      # The abduco client/server behind durable panes (ADR 0001), built from vendor/abduco by setup.sh.
+      # Folder reference so the binary keeps its exec bit. Lands at Contents/Resources/abduco/abduco —
+      # DurableSpawn.abducoPath resolves it there.
+      - path: agterm/Resources/abduco
         type: folder
         buildPhase: resources
       # Agent skill package (SKILL.md + reference.md + examples.md + troubleshooting.md + scripts).

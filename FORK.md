@@ -38,6 +38,14 @@ palette and `session.scratch` still reach it.
 variant read as worse, not different, and the windows are told apart by the icon and the background
 image instead. Keeping the separate FILE means retuning it never touches upstream's.
 
+**Durable agent panes** — a command session's program runs as a client of a detached abduco session
+server named by the session id (`vendor/abduco`, ISC, bundled at `Resources/abduco/abduco`), so quitting,
+relaunching or crashing agx reattaches the SAME process: an agent keeps its context, prompt cache and
+unfinished turn instead of coming back as a `claude --resume … --fork-session` re-run. On by default
+(Settings ▸ General ▸ Durable agent panes; `session new --durable` forces one session). Closing a session
+kills its server; a program that exited while agx was away is replaced on the next launch by the restore
+command. Design, lifecycle and the one vendored patch: `docs/decisions/0001-abduco-durable-panes.md`.
+
 **Workspace defaults** — a workspace pins the directory new sessions open in and the connected agent
 they run, so opening a tab in `mmee` lands in `~/mmee` with Claude Code already running. Set from the
 sidebar's right-click ▸ Workspace Defaults… or over the control API:

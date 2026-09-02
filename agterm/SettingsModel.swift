@@ -67,6 +67,7 @@ final class SettingsModel {
         applyAgentStatusColors()
         applyAgentStatusShapes()
         applyRestoreRunningCommand()
+        applyDurablePanes()
         applyWorkspaceRowClickExpands()
         applyAttentionButtonEnabled()
         applyInterfaceElements()
@@ -211,6 +212,7 @@ final class SettingsModel {
     func setInterfaceFontSize(_ value: Double?) { settings.interfaceFontSize = value; persistAndApply() }
     // not a ghostty key, so persistAndApply()'s writeGhosttyConfig() no-ops and no surface reload fires.
     func setRestoreRunningCommand(_ value: Bool?) { settings.restoreRunningCommand = value; persistAndApply() }
+    func setDurablePanes(_ value: Bool?) { settings.durablePanes = value; persistAndApply() }
     // chrome flag, not a ghostty key: persistAndApply() no-ops the config but rides .agtermAppearanceChanged.
     func setAttentionButtonEnabled(_ value: Bool?) { settings.attentionButtonEnabled = value; persistAndApply() }
 
@@ -643,6 +645,7 @@ final class SettingsModel {
         applyAgentStatusColors()
         applyAgentStatusShapes()
         applyRestoreRunningCommand()
+        applyDurablePanes()
         applyWorkspaceRowClickExpands()
         applyAttentionButtonEnabled()
         applyInterfaceElements()
@@ -679,6 +682,10 @@ final class SettingsModel {
 
     private func applyRestoreRunningCommand() {
         GhosttyApp.shared.setRestoreRunningCommand(settings.restoreRunningCommand ?? false)
+    }
+
+    private func applyDurablePanes() {
+        GhosttyApp.shared.setDurablePanes(settings.durablePanes ?? true)
     }
 
     private func applyWorkspaceRowClickExpands() {

@@ -178,6 +178,15 @@ struct CommandsTests {
         #expect(validationMessage(["session", "new", "--wait"]) == "--wait requires --command")
     }
 
+    @Test func sessionNewWithCommandDurable() throws {
+        let expected = ControlRequest(cmd: .sessionNew, args: ControlArgs(command: "claude", durable: true))
+        #expect(try request(["session", "new", "--command", "claude", "--durable"]) == expected)
+    }
+
+    @Test func sessionNewRejectsDurableWithoutCommand() {
+        #expect(validationMessage(["session", "new", "--durable"]) == "--durable requires --command")
+    }
+
     @Test func sessionNewRejectsWorkspaceAndWorkspaceName() {
         #expect(validationMessage(["session", "new", "--workspace", "active", "--workspace-name", "servers"])
             == "use either --workspace or --workspace-name, not both")

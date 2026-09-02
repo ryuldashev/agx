@@ -123,6 +123,8 @@ private struct GeneralSettingsView: View {
                 }
                 Toggle("Restore running commands on restart", isOn: restoreRunningCommand)
                     .accessibilityIdentifier("settings-restore-running-command")
+                Toggle("Durable agent panes (a command session survives an app restart)", isOn: durablePanes)
+                    .accessibilityIdentifier("settings-durable-panes")
                 Toggle("Confirm before closing a session", isOn: confirmCloseSession)
                     .accessibilityIdentifier("settings-confirm-close-session")
                 Toggle("Allow undo after closing sessions and workspaces", isOn: closeGraceUndoEnabled)
@@ -142,6 +144,11 @@ private struct GeneralSettingsView: View {
     private var restoreRunningCommand: Binding<Bool> {
         Binding(get: { model.settings.restoreRunningCommand ?? false },
                 set: { model.setRestoreRunningCommand($0 ? true : nil) })
+    }
+
+    private var durablePanes: Binding<Bool> {
+        Binding(get: { model.settings.durablePanes ?? true },
+                set: { model.setDurablePanes($0 ? nil : false) })
     }
 
     private var confirmCloseSession: Binding<Bool> {

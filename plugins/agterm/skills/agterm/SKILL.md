@@ -171,7 +171,9 @@ spec — image/text watermark or solid color — set via `session background`, o
 `unseen` (the unseen-notification badge count — raised by `notify`/OSC 9/777, cleared by `session
 seen` — omitted when zero), `commandWait` (whether a `--command` session was created with `--wait` to
 hold open after the command exits — the read side of `session new --wait`, omitted for a plain or
-non-holding session), `overlaySizePercent` (an open overlay's floating-panel percent 1–100,
+non-holding session), `durable` (the main pane's program runs under a detached session server an app
+restart reattaches — `session new --durable` or the Durable agent panes setting; omitted otherwise),
+`overlaySizePercent` (an open overlay's floating-panel percent 1–100,
 omitted for a full-pane overlay or no overlay so gate on `overlay` first; the read side of `overlay
 resize` for a record-then-restore zoom), `paneOverlays` (the panes covered by their own overlay —
 `["left"]`, `["right"]` or `["left","right"]`, omitted when neither is; the read side of `overlay open
@@ -240,7 +242,7 @@ read the open/closed state back from the tree workspace node's `collapsed` flag,
 omitted when expanded).
 
 **session**
-- `new [--cwd DIR] [--workspace W] [--workspace-name NAME] [--create-workspace] [--command CMD] [--wait] [--name NAME] [--after SID | --before SID] [--no-select]` —
+- `new [--cwd DIR] [--workspace W] [--workspace-name NAME] [--create-workspace] [--command CMD] [--wait] [--durable] [--name NAME] [--after SID | --before SID] [--no-select]` —
   create (and focus) a session. Target the workspace by id/prefix (`--workspace`) OR by name
   (`--workspace-name`, mutually exclusive); add `--create-workspace` to reuse-or-create the named
   workspace when absent. `--command` runs that program as the session process instead of a login shell
@@ -249,6 +251,10 @@ omitted when expanded).
   `--wait` (with `--command`, else an error) HOLDS the session open after the command exits, showing the
   press-any-key prompt with the final output intact instead of closing (persists across restart, unlike an
   overlay's live-only wait; read back on `tree`'s `commandWait`);
+  `--durable` (with `--command`, else an error) runs the program under a detached session server so an
+  app restart REATTACHES the same process (context, cache, unfinished turn intact) instead of re-running
+  the command — the default for command sessions while Settings ▸ Durable agent panes is on; closing the
+  session kills the server; read back on `tree`'s `durable`, whose `foreground` is then the program's argv;
   `--name` seeds the sidebar label (default: the auto basename). `--after`/`--before` place it directly
   after/before an anchor session (id/prefix/`active`) instead of appending — the anchor carries its own
   workspace, so it's mutually exclusive with `--workspace`/`--workspace-name`. `new --after active` =

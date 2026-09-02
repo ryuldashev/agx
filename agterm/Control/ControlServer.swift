@@ -591,8 +591,12 @@ final class ControlServer {
         // dashboard read-backs: the keyboard-driven dashboard bypasses the command path, so a cache goes stale.
         let dashboard = DashboardControllerRegistry.shared.controller(for: windowID)
         return store.controlTree(
-            foreground: { session in
-                (session.surface as? GhosttySurfaceView).flatMap {
+            foreground: { [library] session in
+                if session.durable {
+                    return DurableSpawn.foreground(session: session, stateDirectory: library.directory.path,
+                                                   shellBasename: shellBasename)
+                }
+                return (session.surface as? GhosttySurfaceView).flatMap {
                     ForegroundProcess.running(for: $0, shellBasename: shellBasename)
                 }
             },
@@ -655,7 +659,8 @@ final class ControlServer {
                                           fallbackCwd: FileManager.default.homeDirectoryForCurrentUser.path)
         guard let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd,
                                              command: seed.command, name: options.name,
-                                             wait: options.wait ?? false, at: index, select: !options.noSelect) else {
+                                             wait: options.wait ?? false, durable: options.durable ?? false,
+                                             at: index, select: !options.noSelect) else {
             return ControlResponse(ok: false, error: "could not create session")
         }
         if !options.noSelect, store === library.activeStore { actions.focusActiveSession() }

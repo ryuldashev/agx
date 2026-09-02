@@ -50,7 +50,7 @@ enum ForegroundProcess {
     /// Normalize a raw argv and drop it when it is an idle shell: a shell is skipped ONLY at its prompt (no
     /// script/command argument); a shell running a script (a `#!/bin/sh` wrapper like `cld`) is a real
     /// foreground process to report.
-    private static func usable(_ argv: [String], shellBasename: String?) -> [String]? {
+    static func usable(_ argv: [String], shellBasename: String?) -> [String]? {
         guard !argv.isEmpty else { return nil }
         if CommandRestore.isIdleShell(argv: argv, extra: shellBasename) { return nil }
         return CommandRestore.stripLoginDash(argv)
@@ -58,7 +58,7 @@ enum ForegroundProcess {
 
     /// Fetch and parse a process's argv via `sysctl(KERN_PROCARGS2)`; nil on any syscall failure, which is
     /// what a process owned by another user (setuid `login`, `sudo`) returns.
-    private static func procArgs(pid: pid_t) -> [String]? {
+    static func procArgs(pid: pid_t) -> [String]? {
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
         var size = 0
         guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return nil }

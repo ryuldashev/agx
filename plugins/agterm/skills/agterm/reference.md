@@ -126,6 +126,8 @@ of `session resize`, record it to restore the exact divider position),
 to restore focus via `session focus left|right`),
 `commandWait` (whether a `--command` session was created with `--wait` to hold open after the command
 exits — the read side of `session new --wait`; omitted for a plain or non-holding session),
+`durable` (the main pane's program runs under a detached session server an app restart reattaches —
+`session new --durable` or the Durable agent panes setting; omitted otherwise),
 `overlay` (overlay shown),
 `overlaySizePercent` (an open overlay's size — the
 floating panel's percent of the pane, 1–100; omitted = a full-pane overlay or no overlay, so gate on
@@ -331,7 +333,7 @@ All twelve are read-only projections of GUI state.
 
 ## session
 
-- `session new [--cwd DIR] [--workspace W] [--workspace-name NAME] [--create-workspace] [--command CMD] [--wait] [--name NAME] [--after SID | --before SID] [--no-select] [--window W]`
+- `session new [--cwd DIR] [--workspace W] [--workspace-name NAME] [--create-workspace] [--command CMD] [--wait] [--durable] [--name NAME] [--after SID | --before SID] [--no-select] [--window W]`
   — create a session and focus it; returns the new id. `--cwd` sets the start directory (default
   `$HOME`). The destination workspace is addressed one of two mutually-exclusive ways: `--workspace`
   (id / unique prefix / `active`, the default) or `--workspace-name` (the sidebar label) — the latter
@@ -348,6 +350,15 @@ All twelve are read-only projections of GUI state.
   so you can read a build/test/deploy's final output or an early failure that would otherwise flash and
   vanish. It persists across restart (unlike an overlay's live-only `--wait`), so a restored command
   session that re-runs its command holds again; read it back on `tree`'s `commandWait`.
+  `--durable` (only with `--command`, else an error) runs the program as a client of a detached abduco
+  session server named by the session id, so quitting or relaunching agx REATTACHES the same process —
+  an agent keeps its context, prompt cache and unfinished turn — instead of re-running the command.
+  It is the default for every command session while Settings ▸ General ▸ **Durable agent panes** is on
+  (the flag forces it for one session with the setting off). Closing the session kills the server; a
+  program that exited while agx was away is replaced on the next launch by the restore command
+  (`session restore` pin, else the creation command). Read it back on `tree`'s `durable`; that pane's
+  `foreground` is then the program's own argv, not the client's. `^\` is abduco's detach key: in a
+  durable pane it closes the pane, which closes the session and kills the program.
   The command is persisted (`SessionSnapshot.initialCommand`) and re-runs on restore when **Restore
   running commands on restart** is on (default off → a restored session is a plain shell); a live
   captured foreground takes precedence over it. `--name`

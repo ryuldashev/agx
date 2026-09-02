@@ -167,6 +167,16 @@ struct ControlDispatcherTests {
         #expect(actions.calls.isEmpty)
     }
 
+    @Test func sessionNewRejectsDurableWithoutCommand() async {
+        let actions = MockControlActions()
+        let dispatcher = ControlDispatcher(actions: actions)
+
+        let response = await dispatcher.dispatch(ControlRequest(cmd: .sessionNew, args: ControlArgs(durable: true)))
+
+        #expect(response == ControlResponse(ok: false, error: "--durable requires --command"))
+        #expect(actions.calls.isEmpty)
+    }
+
     @Test func sessionNewRejectsCreateWorkspaceWithoutName() async {
         let actions = MockControlActions()
         let dispatcher = ControlDispatcher(actions: actions)

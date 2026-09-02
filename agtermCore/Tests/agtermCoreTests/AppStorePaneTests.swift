@@ -596,6 +596,34 @@ struct AppStorePaneTests {
         #expect(session.overlayActive)
     }
 
+    @Test func controlTreeReportsDurableOnlyForAWrappedPane() throws {
+        let store = makeStore()
+        let ws = store.addWorkspace(name: "work")
+        let session = store.addSession(toWorkspace: ws.id, cwd: "/a", command: "claude", durable: true)!
+        #expect(session.durableRequested)
+        // requested is not wrapped: the surface factory sets `durable` once the abduco client spawns.
+        var node = try #require(store.controlTree().workspaces[0].sessions.first)
+        #expect(node.durable == nil)
+        session.durable = true
+        node = try #require(store.controlTree().workspaces[0].sessions.first)
+        #expect(node.durable == true)
+    }
+
+    @Test func discardSinkFiresOnCloseAndWorkspaceRemovalOnly() {
+        var discarded: [UUID] = []
+        let store = AppStore(sessionDiscardSink: { discarded.append($0.id) })
+        let ws = store.addWorkspace(name: "work")
+        let closed = store.addSession(toWorkspace: ws.id, cwd: "/a")!
+        let kept = store.addSession(toWorkspace: ws.id, cwd: "/b")!
+        store.closeSession(closed.id)
+        #expect(discarded == [closed.id])
+        let other = store.addWorkspace(name: "other")
+        let removed = store.addSession(toWorkspace: other.id, cwd: "/c")!
+        store.removeWorkspace(other.id)
+        #expect(discarded == [closed.id, removed.id])
+        #expect(!discarded.contains(kept.id))
+    }
+
     @Test func controlTreeReportsCommandWait() throws {
         let store = makeStore()
         let ws = store.addWorkspace(name: "work")

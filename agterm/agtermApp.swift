@@ -208,9 +208,15 @@ struct agtermApp: App {
     /// Bootstrap migrates/recovers (legacy `workspaces.json` → one window, else seed): always valid, non-empty.
     @MainActor
     private static func restoredLibrary() -> WindowLibrary {
-        ProcessInfo.processInfo.environment["AGTERM_STATE_DIR"]
+        let library = ProcessInfo.processInfo.environment["AGTERM_STATE_DIR"]
             .map { WindowLibrary(directory: URL(fileURLWithPath: $0, isDirectory: true)) }
             ?? WindowLibrary()
+        // a session closed for good takes its abduco server with it; quit and window close never reach here.
+        library.sessionDiscardSink = { [weak library] session in
+            guard let library else { return }
+            DurableSpawn.discard(session: session, stateDirectory: library.directory.path)
+        }
+        return library
     }
 
     /// Opens the windows open at quit beyond the one SwiftUI auto-opened at launch (which claimed the launch
@@ -242,9 +248,13 @@ struct agtermApp: App {
                                                   hadForeground: hadForeground, foregroundInput: restoreInput,
                                                   initialCommand: session.initialCommand,
                                                   restoreOverride: session.takePendingRestoreOverride(pane: .left))
-        let plan = CommandRestore.restorePlan(inputs)
+        // a durable session (ADR 0001) runs that plan's program under an abduco server instead: same
+        // precedence, one more wrapper, and the restore override becomes the server's fallback.
+        let plan = DurableSpawn.plan(CommandRestore.restorePlan(inputs), session: session,
+                                     stateDirectory: library.directory.path)
+        let checked = SurfaceCommand.checked(plan.command)
         let view = GhosttySurfaceView(workingDirectory: session.initialCwd, fontSize: session.fontSize.map(Float.init),
-                                      command: plan.command, initialInput: plan.initialInput,
+                                      command: checked.command, initialInput: checked.initialInput ?? plan.initialInput,
                                       waitAfterCommand: session.commandWait, env: env)
         view.session = session
         let sessionID = session.id

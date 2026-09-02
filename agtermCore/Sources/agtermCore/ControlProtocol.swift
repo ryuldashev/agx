@@ -230,6 +230,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// closing: `session.overlay.open --wait`, and `session.new --command … --wait` (the primary session
     /// surface, held via `Session.commandWait`).
     public var wait: Bool?
+    /// `session.new --command … --durable`: run the program under a detached abduco server (ADR 0001).
+    public var durable: Bool?
     /// For `session.overlay.open`, the percent of the pane (1...100) a *floating* overlay panel occupies in
     /// both dimensions; omitted gives the default full-pane overlay. Also the new size for
     /// `session.overlay.resize` (mutually exclusive with `full`), and the caller's OVERRIDE of the HUD panel's
@@ -311,7 +313,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
                 createWorkspace: Bool? = nil, collapsed: Bool? = nil, minimized: Bool? = nil,
                 noSelect: Bool? = nil,
                 text: String? = nil, select: Bool? = nil, mode: String? = nil, axis: String? = nil,
-                command: String? = nil, wait: Bool? = nil, sizePercent: Int? = nil, full: Bool? = nil,
+                command: String? = nil, wait: Bool? = nil, durable: Bool? = nil, sizePercent: Int? = nil,
+                full: Bool? = nil,
                 follow: Bool? = nil, message: String? = nil, detail: String? = nil, spinner: String? = nil,
                 items: [ControlPickItem]? = nil, prompt: String? = nil,
                 query: String? = nil, allowCustom: Bool? = nil, window: String? = nil,
@@ -344,6 +347,7 @@ public struct ControlArgs: Codable, Sendable, Equatable {
         self.axis = axis
         self.command = command
         self.wait = wait
+        self.durable = durable
         self.sizePercent = sizePercent
         self.full = full
         self.follow = follow
@@ -533,6 +537,8 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
     /// --command … --wait`) instead of closing; nil/omitted for a plain or non-holding session. The read
     /// side of `session.new --wait`; it persists across restart, unlike an overlay's live-only wait.
     public let commandWait: Bool?
+    /// The main pane's program runs under a detached abduco server a restart reattaches (ADR 0001); nil otherwise.
+    public let durable: Bool?
     /// The LIVE foreground process command (full argv) in the main pane; nil/omitted at the shell prompt —
     /// the same capture restore-running-command uses.
     public let foreground: [String]?
@@ -600,7 +606,7 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
                 splitRatio: Double? = nil, splitFocused: Bool? = nil,
                 overlay: Bool = false, overlaySizePercent: Int? = nil, paneOverlays: [String]? = nil,
                 hud: ControlHudNode? = nil, scratch: Bool = false, flagged: Bool = false,
-                commandWait: Bool? = nil,
+                commandWait: Bool? = nil, durable: Bool? = nil,
                 foreground: [String]? = nil, splitForeground: [String]? = nil,
                 restoreCommand: String? = nil, splitRestoreCommand: String? = nil, status: String? = nil,
                 statusPane: String? = nil, statusBlink: Bool? = nil, statusColor: String? = nil,
@@ -625,6 +631,7 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
         self.scratch = scratch
         self.flagged = flagged
         self.commandWait = commandWait
+        self.durable = durable
         self.foreground = foreground
         self.splitForeground = splitForeground
         self.restoreCommand = restoreCommand

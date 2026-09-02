@@ -39,6 +39,27 @@ stage_custom_themes() {
   cp agterm/Resources/custom-themes/* "$dst/"
 }
 
+# the abduco client/server behind durable panes (ADR 0001), from the vendored source. Rebuilt when any
+# source is newer than the staged binary. The Makefile's strict POSIX defines hide SIGWINCH/VLNEXT on
+# macOS, hence the CPPFLAGS override.
+stage_abduco() {
+  local dst="agterm/Resources/abduco/abduco" src
+  if [[ -x "$dst" ]]; then
+    local fresh=true
+    for src in vendor/abduco/*.c vendor/abduco/*.h vendor/abduco/Makefile vendor/abduco/config.mk; do
+      [[ "$src" -nt "$dst" ]] && fresh=false
+    done
+    $fresh && return 0
+  fi
+  echo "building abduco..."
+  make -s -C vendor/abduco clean >/dev/null
+  make -s -C vendor/abduco CPPFLAGS=-D_DARWIN_C_SOURCE abduco
+  mkdir -p "$(dirname "$dst")"
+  cp vendor/abduco/abduco "$dst"
+}
+
+stage_abduco
+
 need_xc=true
 need_res=true
 [[ -d "$XCFRAMEWORK_DIR" ]] && need_xc=false

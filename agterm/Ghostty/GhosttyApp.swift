@@ -196,6 +196,13 @@ final class GhosttyApp {
         restoreRunningCommand = enabled
     }
 
+    /// Whether `--command` sessions spawn under an abduco server (ADR 0001); settings-mirrored, on by default.
+    private(set) var durablePanes: Bool = true
+
+    func setDurablePanes(_ enabled: Bool) {
+        durablePanes = enabled
+    }
+
     func setAttentionButtonEnabled(_ enabled: Bool) {
         attentionButtonEnabled = enabled
     }

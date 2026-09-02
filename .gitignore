@@ -3,6 +3,7 @@
 GhosttyKit.xcframework
 agterm/Resources/ghostty
 agterm/Resources/terminfo
+agterm/Resources/abduco
 .ghostty-build-stamp
 *.tar.gz
 

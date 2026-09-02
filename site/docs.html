@@ -2730,7 +2730,13 @@ command = "'/Users/you/.config/agterm/agent-status/agterm-codex-status.sh' stop"
                 <span
                   style="position: absolute; left: 0; top: 2px; color: #6d82f3; font-family: &quot;JetBrains Mono&quot;, monospace"
                   >›</span
-                ><strong style="color: #e6e1d7">Live processes are not reattached.</strong> By default a restored session
+                ><strong style="color: #e6e1d7">Command sessions are reattached; shells are not.</strong> A session created with a
+                command (a connected agent, <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">session new --command</span>)
+                runs its program under a detached session server while
+                <strong style="color: #e6e1d7">Durable agent panes</strong> (General settings, on by default) is on, so a
+                relaunch attaches the same live process — an agent keeps its context and its unfinished turn. Closing the
+                session ends the program; a program that exited while agx was away is replaced by the restore command.
+                Plain shells are different: a restored shell session
                 re-spawns a fresh login shell in its saved directory. The optional
                 <strong style="color: #e6e1d7">Restore running commands on restart</strong> toggle (General settings, off by
                 default) re-runs the command each pane had in the foreground at the last clean quit — a re-run, not a reattach.

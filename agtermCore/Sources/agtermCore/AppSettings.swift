@@ -212,6 +212,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// Whether, on restart, each pane re-runs what it ran at the last clean quit (nil = off) — a captured
     /// `SessionSnapshot.foregroundCommand` plus a `session.new --command` session's `initialCommand`.
     public var restoreRunningCommand: Bool?
+    /// Whether a `--command` session's program runs under a detached abduco server so an app restart
+    /// reattaches it instead of re-running the command (ADR 0001). nil = ON; `false` opts out.
+    public var durablePanes: Bool?
     /// Whether agterm also loads the user's GLOBAL `~/.config/ghostty/config` over its bundled defaults.
     /// nil = off, so a config written for the standalone Ghostty.app does NOT silently change agterm; opt
     /// in to share one config across both. The agterm-scoped `~/.config/agterm/ghostty.conf` is ALWAYS
@@ -285,7 +288,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
                 blockedStatusShape: String? = nil, completedStatusShape: String? = nil,
                 configDirectory: String? = nil,
                 mouseScrollMultiplier: Double? = nil, inactivePaneMuteStrength: Int? = nil,
-                sidebarBackgroundShift: Int? = nil, restoreRunningCommand: Bool? = nil,
+                sidebarBackgroundShift: Int? = nil, restoreRunningCommand: Bool? = nil, durablePanes: Bool? = nil,
                 inheritGlobalGhosttyConfig: Bool? = nil, attentionButtonEnabled: Bool? = nil,
                 dockBounce: String? = nil, notificationSoundName: String? = nil,
                 blockedStatusSoundName: String? = nil, rightClickPaste: Bool? = nil,
@@ -320,6 +323,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.inactivePaneMuteStrength = inactivePaneMuteStrength
         self.sidebarBackgroundShift = sidebarBackgroundShift
         self.restoreRunningCommand = restoreRunningCommand
+        self.durablePanes = durablePanes
         self.inheritGlobalGhosttyConfig = inheritGlobalGhosttyConfig
         self.attentionButtonEnabled = attentionButtonEnabled
         self.dockBounce = dockBounce

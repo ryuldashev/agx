@@ -165,6 +165,20 @@ agterm is behaving correctly: it emits paired focus-in and focus-out reports wit
 
 Workaround until the upstream fix: answer the prompt before switching away, or if you have already returned to a stuck prompt, press `Esc` to dismiss it and let Claude Code re-ask.
 
+## A durable pane comes back as a fresh run, or a server lingers
+
+Durable panes (agx fork, ADR 0001) keep each command session's program under an abduco server at
+`<state dir>/abduco/<session id>` with a `.pid` sidecar. A restart that re-runs the command instead of
+reattaching means the server was gone: a reboot, a `kill`, or the program exited while agx was away (the
+pane then shows `session terminated with exit status N` before the fresh run). Servers are per state
+dir, so an isolated `AGTERM_STATE_DIR` never sees the live app's. abduco's own listing does not show
+absolute-path sessions; to see or clear them by hand:
+
+```
+ls ~/Library/Application\ Support/agx/abduco/
+pkill -f 'Application Support/agx/abduco/'     # every server of the default state dir
+```
+
 ## Reporting a problem
 
 Collect this before filing:

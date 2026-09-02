@@ -29,6 +29,7 @@ struct Session: ParsableCommand {
         @Flag(name: .long, help: "With --workspace-name, create the workspace when it does not exist (reuse it otherwise).") var createWorkspace = false
         @Option(name: .long, help: "Run this command as the session's process instead of the login shell (no echoed command line; the session closes when it exits).") var command: String?
         @Flag(name: .long, help: "With --command, hold the session open after the command exits (press any key to close) instead of closing immediately.") var wait = false
+        @Flag(name: .long, help: "With --command, run the program under a detached session server an app restart reattaches (default while Settings > Durable agent panes is on).") var durable = false
         @Option(name: .long, help: "Initial session name (defaults to the auto basename).") var name: String?
         @Option(name: .long, help: "Place the new session right AFTER this anchor session (id/prefix/active); the anchor carries its own workspace, replacing --workspace.") var after: String?
         @Option(name: .long, help: "Place the new session right BEFORE this anchor session (id/prefix/active); mirror of --after.") var before: String?
@@ -53,13 +54,17 @@ struct Session: ParsableCommand {
             if wait, command == nil {
                 throw ValidationError("--wait requires --command")
             }
+            if durable, command == nil {
+                throw ValidationError("--durable requires --command")
+            }
         }
 
         func makeRequest() throws -> ControlRequest {
             ControlRequest(cmd: .sessionNew, args: options.withWindow(
                 ControlArgs(name: name, cwd: cwd, workspace: workspace, workspaceName: workspaceName,
                             createWorkspace: createWorkspace ? true : nil, noSelect: noSelect ? true : nil,
-                            command: command, wait: wait ? true : nil, after: after, before: before)))
+                            command: command, wait: wait ? true : nil, durable: durable ? true : nil,
+                            after: after, before: before)))
         }
     }
 

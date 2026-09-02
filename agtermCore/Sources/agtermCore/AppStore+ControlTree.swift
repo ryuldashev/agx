@@ -55,6 +55,7 @@ extension AppStore {
                                           hud: hudNode(session),
                                           scratch: session.scratchActive, flagged: session.flagged,
                                           commandWait: (session.initialCommand != nil && session.commandWait) ? true : nil,
+                                          durable: session.durable ? true : nil,
                                           foreground: foreground(session),
                                           splitForeground: splitForeground(session),
                                           // the PERSISTED overrides, not the transient pending payloads, so

@@ -182,6 +182,15 @@ public final class Session: Identifiable {
     /// only with `initialCommand`. Persisted, so a restored session that re-runs its command holds again.
     @ObservationIgnored public var commandWait: Bool = false
 
+    /// `session.new --durable`: wrap this session's program in an abduco server at spawn even with the
+    /// setting off. Never persisted — after a restart the server's socket is what says the session is durable.
+    @ObservationIgnored public var durableRequested = false
+
+    /// Whether the main pane was spawned as an abduco client (ADR 0001). Set by the surface factory, read by
+    /// `tree` (`durable`, and the program's argv in place of the client's) and by the discard hook that kills
+    /// the server. Never persisted.
+    @ObservationIgnored public var durable = false
+
     /// True when the session was rebuilt by `AppStore.restore(from:)` rather than freshly created; gates the
     /// `initialCommand` re-run on `restoreRunningCommand` (a fresh session always runs it, a restored one gets
     /// a plain shell when off). Never persisted.
