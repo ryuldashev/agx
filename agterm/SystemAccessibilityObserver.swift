@@ -9,7 +9,8 @@ import Foundation
 /// values and update independently.
 @MainActor
 final class SystemAccessibilityObserver {
-    private var displayOptionsObserver: NSObjectProtocol?
+    // written once on the main actor by `start()`, read again only from `deinit` — see `SystemWakeObserver`.
+    private nonisolated(unsafe) var displayOptionsObserver: NSObjectProtocol?
 
     /// Register once for the process — the scene `.task` runs for every window, so this must be idempotent
     /// like `SystemAppearanceObserver.start()`. No initial post: consumers read the current preference
@@ -30,7 +31,7 @@ final class SystemAccessibilityObserver {
         }
     }
 
-    isolated deinit {
+    deinit {
         if let displayOptionsObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(displayOptionsObserver)
         }

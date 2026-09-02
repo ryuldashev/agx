@@ -2,10 +2,22 @@ import Foundation
 
 // MARK: - Snapshot conversion
 
+/// What a snapshot rebuild may ARM in a session's transient slots — the only executable state a rebuild
+/// can produce (see `AppStore.session(from:arming:)`).
+public enum SnapshotArming: Sendable {
+    /// Nothing executable: a mid-process window reload, or a workspace shell rebuilt around a live session.
+    case none
+    /// An app-bootstrap restore: the `session.restore` pins AND the foreground commands captured at quit.
+    case launch
+    /// Reopen Closed Item: the pins only. A capture describes a quit that never happened for a session
+    /// closed mid-run, and replaying one unasked is what `launchRestore` was written to prevent.
+    case reopen
+}
+
 /// The `Snapshot` <-> model boundary: building one from the live tree and rebuilding the tree from one.
 /// Split out of the main `AppStore` body for the file-size budget, like `AppStore+Restore.swift`.
 ///
-/// `launchRestore` lives here and is the only path that arms anything executable — see `session(from:)`.
+/// `SnapshotArming` lives here and is the only path that arms anything executable — see `session(from:)`.
 extension AppStore {
 
     /// Builds a `Snapshot` of the current tree; each session captures its live `currentCwd` (or `initialCwd`
@@ -48,11 +60,11 @@ extension AppStore {
                           defaults: workspace.defaults.persisted)
     }
 
-    /// Rebuilds one session from its snapshot. `launchRestore` marks an APP-BOOTSTRAP restore, the only path
-    /// allowed to arm anything executable: the captured foreground commands (persisted only by an app-exit
-    /// capture, but a stale file could still carry one — a mid-run reopen must never replay a command
-    /// without any quit) and the persisted `restoreCommand`. It defaults to false so any other rebuild
-    /// (a mid-process window reload, Reopen Closed Item) comes back with nothing armed.
+    /// Rebuilds one session from its snapshot. `arming` decides what executable state comes back with it:
+    /// `.launch` (app bootstrap) takes both the captured foreground commands and the persisted
+    /// `restoreCommand` pins; `.reopen` (Reopen Closed Item) takes the pins ALONE, since a capture persisted
+    /// by a stale file describes a quit that never happened for a session closed mid-run; `.none`, the
+    /// default, arms nothing, which is what a mid-process window reload needs.
     ///
     /// Everything armed goes to a TRANSIENT slot the surface factory consumes, never to the persisted
     /// field: `snapshot()` serializes those, so arming one would let any save before the surface spawns
@@ -62,7 +74,7 @@ extension AppStore {
     /// describes a pane that no longer exists and is DROPPED here, the rule `closeSplit` applies when a pane
     /// goes away. Keeping it would leave a value `tree` reports but no write can clear (`session.restore
     /// --pane right` is rejected without a split), and a fresh ⌘D split at the next quit would inherit it.
-    func session(from snapshot: SessionSnapshot, launchRestore: Bool = false) -> Session {
+    func session(from snapshot: SessionSnapshot, arming: SnapshotArming = .none) -> Session {
         let session = Session(id: snapshot.id, initialCwd: snapshot.cwd, customName: snapshot.customName)
         session.isSplit = snapshot.isSplit ?? false
         session.hasSplit = session.isSplit
@@ -78,22 +90,25 @@ extension AppStore {
         session.restoreCommand = snapshot.restoreCommand
         session.splitRestoreCommand = session.isSplit ? snapshot.splitRestoreCommand : nil
         session.pendingTitle = snapshot.title
-        if launchRestore {
-            // into the TRANSIENT slots, leaving the persisted fields nil: `snapshot()` serializes those, so
-            // arming them would let any save before the surface spawns rewrite the argv the launch strip
-            // just removed from disk.
-            session.pendingForegroundCommand = snapshot.foregroundCommand
+        // into the TRANSIENT slots, leaving the persisted fields nil: `snapshot()` serializes those, so
+        // arming them would let any save before the surface spawns rewrite the argv the launch strip
+        // just removed from disk.
+        switch arming {
+        case .none:
+            break
+        case .launch, .reopen:
             session.pendingRestoreCommand = snapshot.restoreCommand
-            if session.isSplit {
-                session.pendingSplitForegroundCommand = snapshot.splitForegroundCommand
-                session.pendingSplitRestoreCommand = session.splitRestoreCommand
-            }
+            if session.isSplit { session.pendingSplitRestoreCommand = session.splitRestoreCommand }
+            guard arming == .launch else { break }
+            session.pendingForegroundCommand = snapshot.foregroundCommand
+            if session.isSplit { session.pendingSplitForegroundCommand = snapshot.splitForegroundCommand }
         }
         return session
     }
 
-    func workspace(from snapshot: WorkspaceSnapshot) -> Workspace {
-        Workspace(id: snapshot.id, name: snapshot.name, sessions: snapshot.sessions.map { session(from: $0) },
+    func workspace(from snapshot: WorkspaceSnapshot, arming: SnapshotArming = .none) -> Workspace {
+        Workspace(id: snapshot.id, name: snapshot.name,
+                  sessions: snapshot.sessions.map { session(from: $0, arming: arming) },
                   isExpanded: !(snapshot.collapsed ?? false), defaults: snapshot.defaults ?? WorkspaceDefaults())
     }
 }

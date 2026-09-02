@@ -82,6 +82,8 @@ public enum Command: String, Codable, Sendable {
     case pickResult = "pick.result"
     case pickCancel = "pick.cancel"
     case restoreClear = "restore.clear"
+    case restoreList = "restore.list"
+    case restoreOpen = "restore.open"
     case scheduleAdd = "schedule.add"
     case scheduleList = "schedule.list"
     case scheduleCancel = "schedule.cancel"
@@ -109,7 +111,9 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// the command uses this ordered list instead of the top-level single `target`.
     public var targets: [String]?
     /// Target workspace for `session.new` (the workspace to add to) and `session.move` (the destination).
-    /// Resolved by id / unique prefix / `active`, never by name — use `workspaceName` for name targeting.
+    /// Resolved by id / unique prefix / `active`; `session.new` additionally accepts an exact
+    /// case-insensitive NAME once the id matcher misses. `workspaceName` remains the name-only form, and
+    /// the one that can CREATE the workspace.
     public var workspace: String?
     /// Target workspace BY NAME for `session.new` (mutually exclusive with `workspace`). Reuses the first
     /// workspace with this exact name; an absent name is an error unless `createWorkspace` is set.
@@ -473,6 +477,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
     /// echo of the stored state).
     public var defaults: ControlWorkspaceDefaults?
     public var scheduled: [ControlScheduledNode]?
+    /// The recently-closed sessions and workspaces, for `restore.list`.
+    public var closed: [ControlRecentClosedNode]?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -481,7 +487,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 sync: Bool? = nil, light: String? = nil, dark: String? = nil,
                 events: ControlEventBatch? = nil, keymap: ControlKeymap? = nil,
                 pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil,
-                scheduled: [ControlScheduledNode]? = nil) {
+                scheduled: [ControlScheduledNode]? = nil,
+                closed: [ControlRecentClosedNode]? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -500,6 +507,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.pick = pick
         self.defaults = defaults
         self.scheduled = scheduled
+        self.closed = closed
     }
 }
 

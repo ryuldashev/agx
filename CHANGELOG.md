@@ -16,8 +16,18 @@ Forked from umputun/agterm at `c793b46` (v0.23.0 line). See `FORK.md`. Upstream'
   the tree workspace node's `defaults`. An explicit `--cwd`/`--command` still wins, and an agent removed
   from Settings degrades to a plain shell rather than failing the create.
 
+- **Reopening a closed session brings its agent back.** Reopen Closed Item (⌘⇧T, File menu) rebuilt the
+  pane but not what was in it: a closed Claude session came back as a bare shell in the right directory,
+  because only an app launch armed the `session restore` pin. It now arms on reopen too, while still
+  withholding the quit-time capture, which describes a clean quit a session closed mid-run never had.
+  The closed list is scriptable as `agtermctl restore list` / `restore open <index|id>` / `restore last`,
+  and the title-bar clock popover lists recently closed sessions under the live ones — so the button is
+  reachable even in a window down to its last session.
+
 ### Improved
 
+- `agtermctl session new --workspace` accepts an exact workspace NAME as well as an id or prefix, resolved
+  only when nothing matches as an id, so a name can never shadow one.
 - `agtermctl` resolves `AGTERM_SOCKET` before `AGTERM_STATE_DIR` and the default path, so a command run
   inside a pane addresses the app that spawned it however `PATH` resolves the binary — and an instance
   refused the socket lock fails loudly instead of driving the owner's terminal.

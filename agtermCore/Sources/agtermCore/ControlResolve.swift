@@ -40,6 +40,22 @@ public enum ControlResolve {
         }
     }
 
+    /// The ids whose name matches `target` exactly, case-insensitively, in candidate order. Backs the NAME
+    /// arm of a selector that also takes ids (`session.new --workspace`): the id matcher runs first and this
+    /// only on its clean miss, so a workspace named after another's id prefix can never shadow it.
+    public static func idsNamed(_ target: String, candidates: [(id: UUID, name: String)]) -> [UUID] {
+        let needle = target.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !needle.isEmpty else { return [] }
+        return candidates.filter { $0.name.lowercased() == needle }.map(\.id)
+    }
+
+    /// The canonical ambiguous-NAME control error — the twin of `ambiguousMessage`, which says "prefix" and
+    /// would misname a collision between two workspaces that genuinely share a name.
+    public static func ambiguousNameMessage(noun: String, target: String, hits: [UUID]) -> String {
+        let listed = hits.map { String($0.uuidString.prefix(8)) }.joined(separator: ", ")
+        return "ambiguous \(noun) name '\(target)' → \(listed) (address it by id)"
+    }
+
     /// The canonical not-found control error for a target resolution miss.
     public static func notFoundMessage(noun: String, target: String) -> String {
         "no such \(noun): \(target)"

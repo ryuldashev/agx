@@ -108,6 +108,29 @@ struct ControlResolveTests {
         #expect(result == .notFound)
     }
 
+    @Test func namesMatchExactlyAndCaseInsensitively() {
+        let candidates = [(id: w1, name: "mmee"), (id: w2, name: "Agterm"), (id: w3, name: "notes")]
+        #expect(ControlResolve.idsNamed("mmee", candidates: candidates) == [w1])
+        #expect(ControlResolve.idsNamed("AGTERM", candidates: candidates) == [w2])
+        #expect(ControlResolve.idsNamed(" notes ", candidates: candidates) == [w3])
+    }
+
+    @Test func namesDoNotPrefixMatch() {
+        #expect(ControlResolve.idsNamed("mm", candidates: [(id: w1, name: "mmee")]).isEmpty)
+        #expect(ControlResolve.idsNamed("", candidates: [(id: w1, name: "mmee")]).isEmpty)
+    }
+
+    @Test func duplicateNamesReturnEveryMatchInCandidateOrder() {
+        let candidates = [(id: w1, name: "work"), (id: w2, name: "other"), (id: w3, name: "work")]
+        #expect(ControlResolve.idsNamed("work", candidates: candidates) == [w1, w3])
+    }
+
+    /// The prefix wording would misname a genuine name collision, so the two errors are separate strings.
+    @Test func ambiguousNameMessageNamesTheCollisionAndTheWayOut() {
+        let message = ControlResolve.ambiguousNameMessage(noun: "workspace", target: "work", hits: [w1, w2])
+        #expect(message == "ambiguous workspace name 'work' → \(w1.uuidString.prefix(8)), \(w2.uuidString.prefix(8)) (address it by id)")
+    }
+
     @Test func socketPathWithStateDir() {
         let path = ControlResolve.socketPath(stateDir: "/tmp/agterm-state", appSupport: "/Users/x/Library/Application Support/agterm")
         #expect(path == "/tmp/agterm-state/\(Brand.socketFileName)")

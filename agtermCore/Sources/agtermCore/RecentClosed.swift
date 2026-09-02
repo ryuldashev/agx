@@ -63,6 +63,85 @@ public struct RecentClosedWorkspace: Codable, Equatable, Sendable {
     }
 }
 
+/// One recently-closed entry as `restore.list` reports it, and as `restore.open` addresses it.
+public struct ControlRecentClosedNode: Codable, Sendable, Equatable {
+    /// 1-based position in the newest-first list, and what `restore.open <index>` takes.
+    public let index: Int
+    /// The entry's own id — stable across listings, unlike `index`, so a script should carry this.
+    public let id: String
+    /// `session` or `workspace`.
+    public let kind: String
+    public let title: String
+    public let workspace: String?
+    public let cwd: String?
+    /// ISO 8601 with the local offset.
+    public let closedAt: String
+    /// The closed session's id (kind `session`), so a caller can address an entry by what `tree` last showed.
+    public let sessionID: String?
+    /// Member count for kind `workspace`.
+    public let sessions: Int?
+    /// The pinned launch line a reopen will run — the agent resume line a session-start hook wrote, or nil
+    /// when the pane comes back as a plain shell. Answers "does reopening this get my agent back".
+    public let restoreCommand: String?
+
+    public init(index: Int, id: String, kind: String, title: String, workspace: String?, cwd: String?,
+                closedAt: String, sessionID: String?, sessions: Int?, restoreCommand: String?) {
+        self.index = index
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.workspace = workspace
+        self.cwd = cwd
+        self.closedAt = closedAt
+        self.sessionID = sessionID
+        self.sessions = sessions
+        self.restoreCommand = restoreCommand
+    }
+
+    public static func project(_ item: RecentClosedItem, index: Int,
+                               timeZone: TimeZone = .current) -> ControlRecentClosedNode {
+        // an empty pin is `session.restore --none`: a deliberate plain shell, which reads the same as none here.
+        let pin = item.session?.snapshot.restoreCommand.flatMap { $0.isEmpty ? nil : $0 }
+        return ControlRecentClosedNode(
+            index: index, id: item.id.uuidString, kind: item.kind.rawValue, title: item.title,
+            workspace: item.kind == .session ? item.session?.workspaceName : item.title,
+            cwd: item.session?.snapshot.cwd,
+            closedAt: ControlISO8601.string(item.closedAt, timeZone: timeZone),
+            sessionID: item.session?.snapshot.id.uuidString,
+            sessions: item.workspace?.snapshot.sessions.count,
+            restoreCommand: pin)
+    }
+}
+
+/// Resolving `restore.open`'s target against the recent list.
+public enum RecentClosedResolve {
+    /// An all-digit target is the printed INDEX and NOTHING else — out of range it is `.notFound`, never an
+    /// id prefix. Falling through would let `restore open 2` reopen entry 1 whenever entry 1's id happens to
+    /// start with a 2, which is a wrong session reopened on a typo. Everything else is an exact or prefix
+    /// match on the ENTRY id, then on the id of the closed session or workspace the entry holds — a full
+    /// UUID carries dashes, so nothing addressable is lost.
+    public static func resolve(_ target: String, items: [RecentClosedItem]) -> TargetResolution {
+        let needle = target.trimmingCharacters(in: .whitespaces)
+        guard !needle.isEmpty else { return .notFound }
+        if let index = Int(needle) {
+            guard index >= 1, index <= items.count else { return .notFound }
+            return .resolved(items[index - 1].id)
+        }
+        let byEntry = ControlResolve.resolve(needle, candidates: items.map(\.id), active: nil)
+        guard case .notFound = byEntry else { return byEntry }
+        let lowered = needle.lowercased()
+        let hits = items.filter { item in
+            let ids = [item.session?.snapshot.id, item.workspace?.snapshot.id].compactMap { $0?.uuidString.lowercased() }
+            return ids.contains { $0.hasPrefix(lowered) }
+        }
+        switch hits.count {
+        case 0: return .notFound
+        case 1: return .resolved(hits[0].id)
+        default: return .ambiguous(hits.map(\.id))
+        }
+    }
+}
+
 public struct RecentClosedState: Codable, Equatable, Sendable {
     public static let currentVersion = 1
 

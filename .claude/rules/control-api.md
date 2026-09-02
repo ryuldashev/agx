@@ -132,7 +132,8 @@ renumbering. Do not reintroduce a count anywhere.
 - `font.inc`, `font.dec`, `font.reset`
 - `window.new`, `.list`, `.select`, `.close`, `.rename`, `.delete`, `.resize`, `.move`, `.zoom`,
   `.fullscreen`, `.minimize`
-- `keymap.reload`, `keymap.list`, `config.reload`, `theme.set`, `theme.list`, `restore.clear`
+- `keymap.reload`, `keymap.list`, `config.reload`, `theme.set`, `theme.list`, `restore.clear`,
+  `restore.list`, `restore.open`
 - `schedule.add`, `.list`, `.cancel`, `.run`
 
 `debug.appearance` is a private `Command` case, absent from the list above, used only by `AppearanceFlipUITests`.
@@ -196,7 +197,9 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 ## Session creation and duplication
 
 - `session.new` chooses one mutually exclusive destination:
-  - workspace ID/prefix/active;
+  - workspace ID/prefix/active, falling back to an exact case-insensitive NAME on a clean id miss, so a
+    name can never shadow a workspace whose id starts with it; a genuine name collision errors with
+    `ambiguous workspace name`, the twin of the prefix wording, rather than picking one;
   - exact-trimmed workspace name, optionally create-or-reuse;
   - `--after`/`--before` anchor, which supplies workspace and insertion index.
   Reject both anchors, placement plus workspace, name plus ID, create without name, and missing name without
@@ -591,7 +594,23 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 ## Restore commands
 
 - `restore.clear` clears captured main/split foreground commands across open windows and saves immediately.
-  It never clears durable `initialCommand`; it is app-global.
+  It never clears durable `initialCommand`; it is app-global. It does NOT touch the recent-closed list —
+  the three verbs share a noun and nothing else.
+- `restore.list` projects `RecentClosedStore`'s newest-first entries as `result.closed`
+  (`ControlRecentClosedNode`): 1-based `index`, entry `id`, `kind`, `title`, `workspace`, `cwd`,
+  ISO-8601 `closedAt`, `sessionID` or workspace `sessions` count, and the `restoreCommand` that will run.
+  A pinned plain shell (`session.restore --none`, an empty pin) reports NO command, which is what it means.
+  `--limit` must be positive. The entries are the same records File ▸ Reopen Closed Item and the title-bar
+  popover's Recently closed section show.
+- `restore.open` reopens one entry through the same `AppStore.restoreRecentClosed` the GUI uses and echoes
+  the reopened session's id, which is the CLOSED session's own id — the read-back is that id reappearing in
+  `tree`, and the entry leaving `restore.list`. `RecentClosedResolve` takes the printed index first, then
+  the entry id or prefix, then the closed session's/workspace's own id, so an id a caller last read from
+  `tree` addresses it. An absent target means the newest entry, which is all `agtermctl restore last` is.
+  `--window` places the reopened item like any other open command.
+- A reopen ARMS the session's `restoreCommand` pins (`SnapshotArming.reopen`) but withholds the quit-time
+  captures, which describe a quit that never happened for a session closed mid-run. Only app bootstrap
+  arms both (`.launch`).
 - `session.restore` pins per-session, per-pane next-launch behavior for discussion #264:
   - nil/unpin/clear uses capture;
   - empty/pinNone/none forces plain shell and suppresses capture plus initial command;

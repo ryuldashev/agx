@@ -799,7 +799,7 @@ public final class AppStore {
         workspaces = snapshot.workspaces.reduce(into: [Workspace]()) { restored, workspaceSnapshot in
             let sessions = workspaceSnapshot.sessions
                 .filter { seenSessionIDs.insert($0.id).inserted }
-                .map { session(from: $0, launchRestore: launchRestore) }
+                .map { session(from: $0, arming: launchRestore ? .launch : .none) }
             if let existing = restored.firstIndex(where: { $0.id == workspaceSnapshot.id }) {
                 restored[existing].sessions.append(contentsOf: sessions)
                 return

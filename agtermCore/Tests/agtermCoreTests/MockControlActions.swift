@@ -89,6 +89,8 @@ final class MockControlActions: ControlActions {
         case pickResult(target: String, window: String?)
         case pickCancel(target: String, window: String?)
         case restoreClear
+        case restoreList(limit: Int?)
+        case restoreOpen(target: String?, window: String?)
         case scheduleAdd(ControlScheduleAddOptions)
         case scheduleList
         case scheduleCancel(target: String)
@@ -584,6 +586,18 @@ final class MockControlActions: ControlActions {
     func clearRestoreCommands() -> ControlResponse {
         calls.append(.restoreClear)
         return nextRestoreClearResponse
+    }
+
+    var nextRecentClosedResponse = ControlResponse(ok: true)
+
+    func listRecentClosed(limit: Int?) -> ControlResponse {
+        calls.append(.restoreList(limit: limit))
+        return nextRecentClosedResponse
+    }
+
+    func openRecentClosed(_ target: String?, window: String?) -> ControlResponse {
+        calls.append(.restoreOpen(target: target, window: window))
+        return nextRecentClosedResponse
     }
 
     var nextScheduleResponse = ControlResponse(ok: true)

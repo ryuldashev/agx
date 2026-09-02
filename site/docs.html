@@ -864,7 +864,8 @@
             <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0 0 20px">
               agterm is built to run from the keyboard. Every action has a shortcut and appears in the menus. Three fuzzy palettes
               (type to filter, Enter to run, Esc to dismiss) and a Ctrl-Tab MRU switcher cover the rest; a title-bar clock button
-              opens the recent-session list with the mouse. Right-clicking agterm's Dock icon offers New Session, New Window, Quick Terminal,
+              opens the recent-session list with the mouse, with the sessions you recently <em>closed</em> listed under them, one
+                click from coming back. Right-clicking agterm's Dock icon offers New Session, New Window, Quick Terminal,
               Dashboard, recent sessions, and sessions needing attention for the last-active window; those lists and actions stay
               scoped to that window even if another window comes forward while the menu is open, apart from New Window, which
               belongs to no existing window and stays available whatever the last-active one is doing. That same recently-used history decides where you land when you close
@@ -2798,6 +2799,22 @@ command = "'/Users/you/.config/agterm/agent-status/agterm-codex-status.sh' stop"
                 loses only the directory changes made since the last structural change or quit.
               </li>
             </ul>
+            <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 20px 0 0">
+              <strong style="color: #e6e1d7">Bringing a closed session back.</strong> Closing a session is undoable twice over.
+              For the first few seconds ⌘Z takes the close back outright — the pane never died, so whatever was running in it is
+              still running. After that the session is gone and has to be rebuilt, which is what
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">⌘⇧T</span>, File ▸ Reopen Closed Item,
+              and the <em>Recently closed</em> section of the title-bar clock popover do, from the last twenty closes. A rebuilt
+              session comes back with its directory, name, split, and font size — and it runs the command its pane pinned with
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">agtermctl session restore</span>, so a
+              closed agent comes back as that agent rather than as a bare shell in the right folder. Claude Code's status hook
+              keeps that pin current, which is why reopening a Claude session resumes the conversation. It does not replay the
+              command a pane merely <em>happened</em> to be running: that capture describes a clean quit, and this session never
+              quit. The same list is scriptable as
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">agtermctl restore list</span> /
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">restore open</span> /
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">restore last</span>.
+            </p>
           </section>
 
           <!-- TROUBLESHOOTING -->

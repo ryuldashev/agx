@@ -85,16 +85,72 @@ struct App: ParsableCommand {
 
 struct Restore: ParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Restore-running-command commands.",
-        subcommands: [Clear.self]
+        abstract: "Bring back closed sessions, and manage restore-running-command state.",
+        discussion: """
+        restore list           what was closed recently, newest first
+        restore open 2         bring one of them back (index, entry id, or the closed session's id)
+        restore last           bring back the most recently closed one
+        restore clear          drop every session's CAPTURED foreground command (a different thing)
+
+        A reopened pane re-runs the restore command pinned on it — the `claude --resume …` line an \
+        agent's session-start hook writes — so it comes back as that agent rather than a bare shell. \
+        `restore list` shows the pinned line, or nothing where the pane will come back as a shell. \
+        Pins obey Settings > General > "Restore running command"; with that off, every reopen is a shell.
+        """,
+        subcommands: [List.self, Open.self, Last.self, Clear.self]
     )
+
+    struct List: RequestCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "List recently closed sessions and workspaces, newest first."
+        )
+        @Option(name: .long, help: "Show at most N entries.") var limit: Int?
+        // the recent list is app-global (one file beside the window snapshots), so no `--window` selector.
+        @OptionGroup var options: BasicOptions
+
+        func makeRequest() throws -> ControlRequest {
+            ControlRequest(cmd: .restoreList, args: limit.map { ControlArgs(limit: $0) })
+        }
+    }
+
+    struct Open: RequestCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Reopen one recently closed item; prints the reopened session's id.",
+            discussion: """
+            TARGET is the index `restore list` printed, the entry id it listed, or the id of the closed \
+            session itself. A digits-only target is read as the index.
+            """)
+        @Argument(help: "Index from `restore list`, entry id/prefix, or the closed session's id/prefix.")
+        var target: String
+        @OptionGroup var options: ClientOptions
+
+        var echoesResultID: Bool { true }
+
+        func makeRequest() throws -> ControlRequest {
+            ControlRequest(cmd: .restoreOpen, target: target, args: options.withWindow())
+        }
+    }
+
+    struct Last: RequestCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Reopen the most recently closed item; prints the reopened session's id."
+        )
+        @OptionGroup var options: ClientOptions
+
+        var echoesResultID: Bool { true }
+
+        func makeRequest() throws -> ControlRequest {
+            ControlRequest(cmd: .restoreOpen, args: options.withWindow())
+        }
+    }
 
     struct Clear: RequestCommand {
         static let configuration = CommandConfiguration(
             abstract: "Clear every session's saved foreground command so the next restart restores plain shells.",
             discussion: """
             This is app-global and CAPTURE-scoped: it drops the foreground commands agterm captured at \
-            quit, across every open window, and leaves per-session restore-command overrides alone.
+            quit, across every open window, and leaves per-session restore-command overrides alone. It \
+            does NOT touch the recent-closed list — that is `restore list`/`restore open`.
 
             Not to be confused with `agtermctl session restore --clear`, which is per-session and \
             OVERRIDE-scoped: it drops one pane's pinned command so that pane goes back to auto-capture.

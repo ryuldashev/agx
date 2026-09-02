@@ -99,10 +99,11 @@ final class RecentClosedTests {
         #expect(loaded[0].workspace?.focusMember == true)
     }
 
-    // the persisted pin comes back, but nothing is armed — a reopen cannot execute a sticky override
-    // mid-process.
+    // the persisted pin comes back AND is armed for the pane about to spawn: reopening a closed agent is a
+    // request for that agent, not for its directory. The capture half stays withheld — see
+    // `RecentClosedReopenTests`.
     @MainActor
-    @Test func reopeningAClosedSessionRestoresThePinWithoutArmingIt() throws {
+    @Test func reopeningAClosedSessionArmsThePinItRestores() throws {
         let (store, recentClosed, _) = makeStoreWithRecentClosed()
         let ws = store.addWorkspace(name: "work")
         let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/a"))
@@ -115,8 +116,8 @@ final class RecentClosedTests {
         let reopened = try #require(store.session(withID: session.id))
         #expect(reopened !== session)
         #expect(reopened.restoreCommand == "claude --resume abc")
-        #expect(reopened.pendingRestoreCommand == nil)
-        #expect(reopened.pendingSplitRestoreCommand == nil)
+        #expect(reopened.pendingRestoreCommand == "claude --resume abc")
+        #expect(reopened.pendingSplitRestoreCommand == nil, "the session has no split to address")
     }
 
     private func sessionItem(id: UUID = UUID(), snapshotID: UUID = UUID(), title: String) -> RecentClosedItem {

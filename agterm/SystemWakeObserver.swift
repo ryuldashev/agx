@@ -13,7 +13,9 @@ import Foundation
 /// LOCKED, so wake is the earliest correct moment to re-attempt and no unlock hook is needed.
 @MainActor
 final class SystemWakeObserver {
-    private var wakeObserver: NSObjectProtocol?
+    // written once on the main actor by `start()` and read again only from `deinit`, where nothing else holds
+    // this object — see the note on that deinit for why it is not an `isolated deinit`.
+    private nonisolated(unsafe) var wakeObserver: NSObjectProtocol?
 
     /// Register once for the process — the scene `.task` runs for every window, so this must be idempotent
     /// like `SystemAccessibilityObserver.start()`.
@@ -33,7 +35,12 @@ final class SystemWakeObserver {
         }
     }
 
-    isolated deinit {
+    /// NOT an `isolated deinit`: back-deployed, that lowers to
+    /// `swift_task_deinitOnExecutorMainActorBackDeploy`, which aborts the process on free
+    /// (`pointer being freed was not allocated`, in `TaskLocal::StopLookupScope::~StopLookupScope`) — it
+    /// took out every hosted test that let one of these objects go. `removeObserver` is thread-safe and
+    /// needs no hop, so this deinit never needed the executor in the first place.
+    deinit {
         if let wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
         }

@@ -16,19 +16,28 @@ extension WindowContentView {
         store.navigableRecentSessions(limit: SessionSwitcher.maxCandidates)
     }
 
+    /// The app-wide recently CLOSED sessions, newest first and capped like the MRU list. Workspaces are left
+    /// to File ▸ Open Recent: this popover is the session switcher, and a workspace row here would restore a
+    /// whole tree from a control that otherwise only moves the selection.
+    private var recentClosedSessions: [RecentClosedItem] {
+        Array(library.recentClosedItems.filter { $0.kind == .session }.prefix(SessionSwitcher.maxCandidates))
+    }
+
     /// Title-bar button opening the recent-sessions popover — the mouse equivalent of the Ctrl-Tab switcher.
-    /// Lists the window's most-recently-used OTHER sessions; disabled/dimmed when there is nothing to switch to
-    /// (only the current session). Opening a popover is interactive-only, so it is control-API keep-in-sync
-    /// exempt, like the bell opening the attention palette.
+    /// Lists the window's most-recently-used OTHER sessions, then the recently CLOSED ones; disabled/dimmed
+    /// only when BOTH are empty, so a window down to its last session still reaches what it just closed.
+    /// Opening a popover is interactive-only, so it is control-API keep-in-sync exempt, like the bell opening
+    /// the attention palette.
     var recentSessionsButton: some View {
-        let enabled = !recentSessions.isEmpty && pick.pending == nil
+        let empty = recentSessions.isEmpty && recentClosedSessions.isEmpty
+        let enabled = !empty && pick.pending == nil
         return Button {
             guard pick.pending == nil else { return }
             recentSessionsShown.toggle()
         } label: {
             Label("Recent sessions", systemImage: "clock.arrow.circlepath")
         }
-        .help("Recent sessions (⌃Tab)")
+        .help("Recent and recently closed sessions (⌃Tab)")
         // pin the tint to chromeText like the attention bell: a disabled plain button otherwise resolves the SF
         // Symbol to the system disabled color, near-invisible on the themed titlebar — the dimmed clock would
         // vanish instead of graying out like the bell.
@@ -45,18 +54,22 @@ extension WindowContentView {
             // suppression stays balanced across open/close and with the attention popover.
             if shown { store.suppressAutoFollow() } else { store.resumeAutoFollow() }
         }
-        .onChange(of: recentSessions.isEmpty) { _, empty in
+        .onChange(of: empty) { _, isEmpty in
             // the only listed session exiting on its own fires no outside-click dismiss, so close the popover
             // ourselves when the list empties — else an empty sliver lingers under a now-disabled button.
-            if empty { recentSessionsShown = false }
+            if isEmpty { recentSessionsShown = false }
         }
     }
 
     /// The recent-sessions popover body: the MRU OTHER sessions as full rows (the shared two-line
-    /// `SessionSwitcherRow`). Each row highlights on hover and, on a click anywhere in the row, commits the
-    /// switch (`noteUserActivity` + `selectSession` + focus, like the Ctrl-Tab release) then closes the popover
-    /// — the palette-row feel. Tinted to the terminal theme (`terminalColor` panel, `chromeText` text,
-    /// selection-color hover) so it matches the themed chrome rather than the system popover look.
+    /// `SessionSwitcherRow`), then the recently closed ones under a labelled divider. Each row highlights on
+    /// hover and, on a click anywhere in the row, commits (`noteUserActivity` + `selectSession` + focus, like
+    /// the Ctrl-Tab release; a closed row reopens first) then closes the popover — the palette-row feel.
+    /// Tinted to the terminal theme (`terminalColor` panel, `chromeText` text, selection-color hover) so it
+    /// matches the themed chrome rather than the system popover look.
+    ///
+    /// A labelled section rather than a segmented control: the two groups are read in one glance and clicked
+    /// in one press, and a segment would put the more urgent list — what you just closed — behind a tab.
     private var recentSessionsPopover: some View {
         // no `.accessibilityIdentifier` on this container: a SwiftUI identifier on a parent propagates to and
         // OVERRIDES its descendants', clobbering the per-row `recent-session-row` ids the tests read.
@@ -64,11 +77,43 @@ extension WindowContentView {
             ForEach(recentSessions, id: \.self) { id in
                 recentSessionRow(id)
             }
+            if !recentClosedSessions.isEmpty {
+                if !recentSessions.isEmpty { Divider().padding(.vertical, 4) }
+                sectionHeader("Recently closed")
+                ForEach(recentClosedSessions) { item in
+                    recentClosedRow(item)
+                }
+            }
         }
         .padding(6)
         .frame(width: GhosttyApp.shared.interfaceMetrics.scaled(320))
         .background(terminalColor)
         .presentationBackground(terminalColor)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .foregroundStyle(chromeText.opacity(0.6))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 2)
+            .accessibilityIdentifier("recent-closed-header")
+    }
+
+    /// One recently-closed session row. The subtitle carries the workspace it came from and the directory it
+    /// will come back in, matching the live rows' `workspace · detail` shape.
+    @ViewBuilder private func recentClosedRow(_ item: RecentClosedItem) -> some View {
+        SessionPopoverRow(
+            title: item.title,
+            subtitle: "\(item.session?.workspaceName ?? "") · \(item.session?.snapshot.cwd ?? "")",
+            status: nil,
+            statusColorHex: nil,
+            statusShape: nil,
+            foreground: chromeText.opacity(0.8),
+            hoverColor: recentSelectionColor,
+            accessibilityID: "recent-closed-row"
+        ) { reopenRecentClosed(item.id) }
     }
 
     @ViewBuilder private func recentSessionRow(_ id: UUID) -> some View {
@@ -102,6 +147,16 @@ extension WindowContentView {
         store.noteUserActivity()
         store.selectSession(id)
         actions.focusActiveSession()
+        recentSessionsShown = false
+    }
+
+    /// Commit a recently-closed row click: rebuild the session (its pinned restore command included, so an
+    /// agent pane comes back as that agent), select and focus it, then close the popover. `openRecentClosed`
+    /// owns the reopen and the focus; the selection it leaves is the restored session.
+    private func reopenRecentClosed(_ id: RecentClosedItem.ID) {
+        guard pick.pending == nil else { return }
+        store.noteUserActivity()
+        actions.openRecentClosed(id)
         recentSessionsShown = false
     }
 

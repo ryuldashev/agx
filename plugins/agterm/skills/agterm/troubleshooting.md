@@ -115,9 +115,9 @@ Check, in order:
   that no longer exists: the pin is DROPPED on that launch (`tree` stops reporting `splitRestoreCommand`)
   rather than left to fire into a later manual ⌘D split. Show the split before quitting, and re-pin after a
   launch that dropped it.
-- **You reopened a closed session or a closed window, not relaunched the app.** The override fires only on
-  an app-launch restore — Reopen Closed Item and reopening a closed window deliberately do NOT arm it. Quit
-  and relaunch agterm to see it fire.
+- **You reopened a closed WINDOW.** That path deliberately does not arm the pin. Reopening a closed SESSION
+  does (`restore open`, ⌘⇧T, File ▸ Reopen Closed Item, the title-bar popover) — what it withholds is the
+  captured command, which describes a clean quit that never happened for a session closed mid-run.
 - **It is not the denylist.** `restore-denylist.conf` is deliberately bypassed for overrides — an override
   names its command on purpose — so a denylisted basename is never the reason it did not run.
 

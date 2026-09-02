@@ -309,9 +309,6 @@ public struct ControlScheduledNode: Codable, Sendable, Equatable {
     }
 
     public static func isoString(_ date: Date, timeZone: TimeZone = .current) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        formatter.timeZone = timeZone
-        return formatter.string(from: date)
+        ControlISO8601.string(date, timeZone: timeZone)
     }
 }

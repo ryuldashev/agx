@@ -15,6 +15,21 @@ agtermctl window list --json # windows, with open/active flags
 agtermctl tree --json | jq -r '.result.tree.workspaces[].sessions[] | "\(.name): \(.foreground // "shell")"'
 ```
 
+## Bring a closed session back
+
+The last twenty closes are reopenable, and a reopen re-runs whatever the pane pinned with `session restore`
+— so a closed agent comes back as that agent, not as a bare shell in the right directory. The printed id is
+the one the session had before it closed.
+
+```bash
+agtermctl restore list                      # newest first: index, id, time, title, workspace, cwd, ↺ command
+agtermctl restore last                      # bring back the one you just closed
+agtermctl restore open 3                    # …or by index
+agtermctl restore open "$sid"               # …or by the id tree gave you before the close
+agtermctl restore list --json | jq -r '.result.closed[] | select(.restoreCommand) | .id' | head -1 |
+  xargs agtermctl restore open              # the newest close that will actually resume a program
+```
+
 ## Reset the restore-on-restart commands
 
 The opt-in "Restore running commands on restart" setting saves each pane's foreground command at quit.

@@ -261,9 +261,9 @@ omitted when expanded).
 
 **session**
 - `new [--cwd DIR] [--workspace W] [--workspace-name NAME] [--create-workspace] [--command CMD] [--wait] [--durable] [--name NAME] [--after SID | --before SID] [--no-select]` —
-  create (and focus) a session. Target the workspace by id/prefix (`--workspace`) OR by name
-  (`--workspace-name`, mutually exclusive); add `--create-workspace` to reuse-or-create the named
-  workspace when absent. `--command` runs that program as the session process instead of a login shell
+  create (and focus) a session. Target the workspace by id/prefix (`--workspace`, which also takes an exact
+  name when nothing matches as an id) OR by name (`--workspace-name`, mutually exclusive); add
+  `--create-workspace` to reuse-or-create the named workspace when absent — `--workspace` never creates one. `--command` runs that program as the session process instead of a login shell
   (argv-only, and with the app's GUI `PATH` — a Homebrew/non-default binary needs an absolute path or a
   `zsh -lc '…'` wrapper, else exit 127; same caveat for `scratch --command` and `overlay open` below);
   `--wait` (with `--command`, else an error) HOLDS the session open after the command exits, showing the
@@ -518,8 +518,14 @@ terminal theme app-wide, per slot: a NAME sets the light/single theme (a dark th
 appearance automatically; `theme set --dark none` stops tracking. The app default is the bundled
 **agterm** theme; omit the name for ghostty's built-in default ("default ghostty"); an unknown name errors.
 
-**restore** — `restore clear` — clear every session's saved foreground command (the
-restore-running-command capture) so the next restart restores plain shells.
+**restore** — `restore list [--limit N]` — the recently closed sessions and workspaces, newest first
+(`result.closed`: `index`, `id`, `kind`, `title`, `workspace`, `cwd`, `closedAt`, `sessionID` or a
+workspace's `sessions` count, and the `restoreCommand` a reopen will run) · `restore open <index|id>` /
+`restore last` — bring one back and print its id, which is the id it had before the close, so `tree` is the
+read-back; a pane that pinned a command with `session restore` comes back RUNNING it, not as a bare shell.
+The target is the printed index, the entry id or prefix, or the closed session's own id. ·
+`restore clear` — a different thing entirely: clears every session's saved foreground command (the
+restore-running-command capture) so the next restart restores plain shells. It does not touch this list.
 
 **app** — `app relaunch` — persist state, quit, and reopen (the menu's Relaunch): durable panes reattach their live process, the rest restore. `app quit` — quit without the confirmation alert (state still persisted), no reopen. Both app-global, print `ok`.
 

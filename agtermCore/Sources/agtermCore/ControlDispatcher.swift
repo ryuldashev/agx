@@ -123,6 +123,12 @@ public protocol ControlActions {
     /// Cancel a native picker. The host owns window resolution, registry lookup, and dismissal.
     func cancelPick(_ target: String, window: String?) -> ControlResponse
     func clearRestoreCommands() -> ControlResponse
+    /// The recently-closed entries, newest first, capped at `limit` when given. App-global: the list lives
+    /// beside the window snapshots, not inside one.
+    func listRecentClosed(limit: Int?) -> ControlResponse
+    /// Reopen one recently-closed entry into `window`'s store (frontmost when nil), the control twin of
+    /// File > Open Recent. `target` nil takes the newest. Answers the reopened session's id.
+    func openRecentClosed(_ target: String?, window: String?) -> ControlResponse
     func scheduleAdd(_ options: ControlScheduleAddOptions) -> ControlResponse
     func scheduleList() -> ControlResponse
     func scheduleCancel(_ target: String) -> ControlResponse
@@ -132,76 +138,6 @@ public protocol ControlActions {
 public extension ControlActions {
     func splitSession(_ target: String?, window: String?, mode: String?, axis _: SplitAxis?) -> ControlResponse {
         splitSession(target, window: window, mode: mode)
-    }
-}
-
-public struct ControlSessionTypeOptions: Equatable, Sendable {
-    public let text: String
-    public let select: Bool
-    public let pane: String?
-
-    public init(text: String, select: Bool, pane: String?) {
-        self.text = text
-        self.select = select
-        self.pane = pane
-    }
-}
-
-public struct ControlSessionOverlayOpenOptions: Equatable, Sendable {
-    public let command: String
-    public let cwd: String?
-    public let wait: Bool
-    public let sizePercent: Int?
-    public let backgroundColor: String?
-    public let follow: Bool
-    /// The pane to cover, nil for the session-wide overlay. A pane overlay is always full, so this and
-    /// `sizePercent` are mutually exclusive (rejected in the dispatcher).
-    public let pane: OverlayPane?
-
-    public init(command: String, cwd: String?, wait: Bool, sizePercent: Int?, backgroundColor: String?,
-                follow: Bool = false, pane: OverlayPane? = nil) {
-        self.command = command
-        self.cwd = cwd
-        self.wait = wait
-        self.sizePercent = sizePercent
-        self.backgroundColor = backgroundColor
-        self.follow = follow
-        self.pane = pane
-    }
-}
-
-public struct ControlSessionBackgroundOptions: Equatable, Sendable {
-    public let watermark: BackgroundWatermark?
-
-    public init(watermark: BackgroundWatermark?) {
-        self.watermark = watermark
-    }
-}
-
-public struct ControlSessionTextOptions: Equatable, Sendable {
-    public let pane: String?
-    public let all: Bool
-    public let lines: Int?
-
-    public init(pane: String?, all: Bool, lines: Int?) {
-        self.pane = pane
-        self.all = all
-        self.lines = lines
-    }
-}
-
-/// `session.overlay.text`'s inputs. `pane` is the parsed `OverlayPane` rather than
-/// `ControlSessionTextOptions`' raw string: the overlay family takes only `left`/`right`, so the dispatcher
-/// resolves it and the host never re-parses a vocabulary it could widen by accident.
-public struct ControlSessionOverlayTextOptions: Equatable, Sendable {
-    public let pane: OverlayPane?
-    public let all: Bool
-    public let lines: Int?
-
-    public init(pane: OverlayPane?, all: Bool, lines: Int?) {
-        self.pane = pane
-        self.all = all
-        self.lines = lines
     }
 }
 
@@ -237,7 +173,7 @@ public struct ControlDispatcher {
             return dispatchWorkspaceCommand(request)
         case .quick, .fontInc, .fontDec, .fontReset, .keymapReload, .keymapList,
                 .configReload, .appRelaunch, .appQuit, .notify, .themeSet, .themeList, .sidebar, .sidebarMode,
-                .sidebarExpand, .sidebarCollapse, .restoreClear:
+                .sidebarExpand, .sidebarCollapse, .restoreClear, .restoreList, .restoreOpen:
             return dispatchAppCommand(request)
         case .quickType, .quickText:
             return await dispatchQuickCommand(request)
@@ -764,6 +700,13 @@ public struct ControlDispatcher {
             return actions.collapseSidebar(window: request.args?.window)
         case .restoreClear:
             return actions.clearRestoreCommands()
+        case .restoreList:
+            if let limit = request.args?.limit, limit <= 0 {
+                return ControlResponse(ok: false, error: "--limit must be greater than 0")
+            }
+            return actions.listRecentClosed(limit: request.args?.limit)
+        case .restoreOpen:
+            return actions.openRecentClosed(request.target.trimmedOrNilValue, window: request.args?.window)
         default:
             preconditionFailure("unexpected app command: \(request.cmd.rawValue)")
         }

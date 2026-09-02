@@ -200,6 +200,9 @@ struct SocketClient {
         if let scheduled = response.result?.scheduled, !(echoID && response.result?.id != nil) {
             return formatScheduled(scheduled)
         }
+        if let closed = response.result?.closed {
+            return formatRecentClosed(closed)
+        }
         if let text = response.result?.text {
             return text
         }
@@ -221,6 +224,25 @@ struct SocketClient {
             return id
         }
         return "ok"
+    }
+
+    /// Render the `restore.list` payload one entry per line: the index `restore open` takes, the entry id's
+    /// first 8, when it closed, the title and its workspace. A session whose reopen will re-run a pinned
+    /// command is tagged `↺ <line>`; one that will come back a plain shell carries nothing, which is the
+    /// question a caller reads this list to answer.
+    static func formatRecentClosed(_ closed: [ControlRecentClosedNode]) -> String {
+        guard !closed.isEmpty else { return "no recently closed items" }
+        return closed.map { node in
+            var parts = ["\(node.index)", String(node.id.prefix(8)), node.closedAt, "\"\(node.title)\""]
+            if node.kind == "workspace" {
+                parts.append("(workspace, \(node.sessions ?? 0) sessions)")
+            } else if let workspace = node.workspace {
+                parts.append("→ \(workspace)")
+            }
+            if let cwd = node.cwd { parts.append(cwd) }
+            if let command = node.restoreCommand { parts.append("↺ \(command)") }
+            return parts.joined(separator: "  ")
+        }.joined(separator: "\n")
     }
 
     /// Render the `theme.list` payload as one theme name per line (no trailing newline), the active

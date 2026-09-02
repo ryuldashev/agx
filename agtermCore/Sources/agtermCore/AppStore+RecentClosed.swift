@@ -1,6 +1,9 @@
 import Foundation
 
 extension AppStore {
+    /// Reopening a closed item rebuilds its sessions with their `session.restore` pins ARMED, so a pane whose
+    /// agent pinned a resume line (`claude --resume …`) comes back as that agent rather than a bare shell in
+    /// the right directory. `.reopen` withholds the quit-time captures — see `SnapshotArming`.
     @discardableResult
     public func restoreRecentClosed(_ item: RecentClosedItem) -> Bool {
         switch item.kind {
@@ -15,7 +18,7 @@ extension AppStore {
                 workspaces.insert(rebuiltWorkspaceShell(id: recent.workspaceID, name: recent.workspaceName), at: insertAt)
                 index = insertAt
             }
-            let session = session(from: recent.snapshot)
+            let session = session(from: recent.snapshot, arming: .reopen)
             let insertAt = max(0, min(recent.sessionIndex, workspaces[index].sessions.count))
             workspaces[index].sessions.insert(session, at: insertAt)
             emitSessionCreated(session, workspace: workspaces[index].id)
@@ -28,7 +31,7 @@ extension AppStore {
         case .workspace:
             guard let recent = item.workspace else { return false }
             if restoreOrSelectExistingRecentWorkspace(recent) { return true }
-            var workspace = workspace(from: recent.snapshot)
+            var workspace = workspace(from: recent.snapshot, arming: .reopen)
             // a session of this snapshot may have been moved into another workspace that is itself pending
             // a close. its original object is alive in that record, so rebuild everything except it.
             let taken = Set(workspaces.flatMap(\.sessions).map(\.id)).union(pendingHeldSessionIDs())
@@ -85,7 +88,7 @@ extension AppStore {
             // caller deletes the recent entry on success. rebuild only the ones absent from the tree AND from
             // a pending close whose undo would reinsert the original.
             let taken = Set(workspaces.flatMap(\.sessions).map(\.id)).union(pendingHeldSessionIDs())
-            let missing = recent.snapshot.sessions.filter { !taken.contains($0.id) }.map { session(from: $0) }
+            let missing = recent.snapshot.sessions.filter { !taken.contains($0.id) }.map { session(from: $0, arming: .reopen) }
             workspaces[index].sessions.append(contentsOf: missing)
             for session in missing { emitSessionCreated(session, workspace: workspaces[index].id) }
             if recent.focusMember == true { markFocusMember(workspaces[index].id) } // before the reselect, as above

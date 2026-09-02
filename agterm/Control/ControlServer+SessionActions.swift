@@ -147,13 +147,35 @@ extension ControlServer: ControlActions {
                 }
                 return makeSessionResponse(in: store, workspaceID: workspace.id, options: options)
             }
-            // id addressing (default `active`): the canonical prefix/active resolver.
+            // id addressing (default `active`), falling back to an exact NAME so an agent that knows the
+            // workspace as "mmee" does not have to look its uuid up first. Ids win — the name arm runs only
+            // on a clean id miss.
             let target = options.workspace ?? "active"
-            return resolver.resolve(target, candidates: store.workspaces.map(\.id),
-                           active: store.currentWorkspaceID, noun: "workspace") { workspaceID in
+            return resolveWorkspaceSelector(target, in: store) { workspaceID in
                 makeSessionResponse(in: store, workspaceID: workspaceID, options: options)
             }
         }
+    }
+
+    /// Resolve a `--workspace` selector: id / unique prefix / `active` first, then an exact case-insensitive
+    /// NAME. Two workspaces may share a name, so a name collision errors with the candidate ids rather than
+    /// picking one; an id miss with no name match keeps the plain "no such workspace" wording.
+    private func resolveWorkspaceSelector(_ target: String, in store: AppStore,
+                                          _ body: (UUID) -> ControlResponse) -> ControlResponse {
+        let candidates = store.workspaces.map(\.id)
+        let resolution = ControlResolve.resolve(target, candidates: candidates, active: store.currentWorkspaceID)
+        if case .resolved(let id) = resolution { return body(id) }
+        if case .notFound = resolution {
+            let named = ControlResolve.idsNamed(target, candidates: store.workspaces.map { ($0.id, $0.name) })
+            if named.count == 1 { return body(named[0]) }
+            if named.count > 1 {
+                return ControlResponse(ok: false,
+                                       error: ControlResolve.ambiguousNameMessage(noun: "workspace",
+                                                                                  target: target, hits: named))
+            }
+        }
+        return ControlResponse(ok: false, error: ControlResolve.errorMessage(noun: "workspace", target: target,
+                                                                            resolution: resolution))
     }
 
     /// Resolve an `--after`/`--before` anchor across all workspaces (so it names its own destination) and

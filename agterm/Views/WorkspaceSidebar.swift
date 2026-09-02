@@ -158,7 +158,8 @@ struct WorkspaceSidebar: NSViewRepresentable {
         var pendingRowToggle: DispatchWorkItem?
         /// Scheduled spring-loaded workspace expand while a drag hovers over a collapsed workspace row.
         /// View-only like the selection reveal: opens the target for this drag without persisting expansion.
-        var pendingSpringLoadedExpansion: (workspaceID: UUID, workItem: DispatchWorkItem)?
+        /// `nonisolated(unsafe)` only so `deinit` can cancel it — see `SystemWakeObserver`.
+        nonisolated(unsafe) var pendingSpringLoadedExpansion: (workspaceID: UUID, workItem: DispatchWorkItem)?
         /// A workspace opened by spring-loading during the current drag. Finder-style spring navigation is
         /// transient: leaving/cancelling collapses this row back to its pre-drag state.
         var springLoadedWorkspaceID: UUID?
@@ -224,7 +225,7 @@ struct WorkspaceSidebar: NSViewRepresentable {
                                                    name: .agtermAccessibilityDisplayOptionsChanged, object: nil)
         }
 
-        isolated deinit {
+        deinit {
             pendingSpringLoadedExpansion?.workItem.cancel()
             NotificationCenter.default.removeObserver(self)
         }

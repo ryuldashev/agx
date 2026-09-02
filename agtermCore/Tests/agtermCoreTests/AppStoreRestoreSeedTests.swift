@@ -47,7 +47,7 @@ struct AppStoreRestoreSeedTests {
         let snap = SessionSnapshot(id: UUID(), customName: nil, cwd: "/a", isSplit: false,
                                    restoreCommand: "claude --resume abc", splitRestoreCommand: "tail -f")
         #expect(store.session(from: snap).splitRestoreCommand == nil)
-        #expect(store.session(from: snap, launchRestore: true).splitRestoreCommand == nil)
+        #expect(store.session(from: snap, arming: .launch).splitRestoreCommand == nil)
     }
 
     @Test func bootstrapRestoreSeedsTheEmptyPinnedToNothingValue() {
@@ -96,7 +96,7 @@ struct AppStoreRestoreSeedTests {
         let store = makeStore()
         let snap = SessionSnapshot(id: UUID(), customName: nil, cwd: "/a", isSplit: true,
                                    foregroundCommand: ["tee", "/tmp/m"], splitForegroundCommand: ["tail", "-f"])
-        let session = store.session(from: snap, launchRestore: true)
+        let session = store.session(from: snap, arming: .launch)
         // the transient slots, never the persisted fields: `snapshot()` serializes those, so arming them
         // would let a save before the surface spawns rewrite the argv the launch strip just removed.
         #expect(session.pendingForegroundCommand == ["tee", "/tmp/m"])
