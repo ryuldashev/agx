@@ -142,7 +142,17 @@ static ssize_t write_all(int fd, const char *buf, size_t len) {
 	while (len > 0) {
 		ssize_t res = write(fd, buf, len);
 		if (res < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				/* Wait for room instead of spinning: on a non-blocking fd the
+				 * bare retry burns a core until the peer drains (see PATCHES.md). */
+				fd_set wfds;
+				FD_ZERO(&wfds);
+				FD_SET(fd, &wfds);
+				if (select(fd+1, NULL, &wfds, NULL, NULL) == -1 && errno != EINTR)
+					return -1;
+				continue;
+			}
+			if (errno == EINTR)
 				continue;
 			return -1;
 		}
@@ -434,6 +444,14 @@ static bool create_session(const char *name, char * const argv[]) {
 				_exit(EXIT_FAILURE);
 				break;
 			default: /* parent = server process */
+				/* The mainloop must never block on the pty: a blocking write of
+				 * client input deadlocks against the application's own write of
+				 * output once both pty queues fill (see PATCHES.md). */
+				{
+					int ptyfl = fcntl(server.pty, F_GETFL);
+					if (ptyfl != -1)
+						fcntl(server.pty, F_SETFL, ptyfl | O_NONBLOCK);
+				}
 				sa.sa_handler = server_sigterm_handler;
 				sigaction(SIGTERM, &sa, NULL);
 				sigaction(SIGINT, &sa, NULL);

@@ -109,14 +109,46 @@ static bool server_read_pty(Packet *pkt) {
 	return len > 0;
 }
 
+/* Client input on its way to the pty. At most one packet is held here: while it
+ * is unflushed the mainloop stops reading client sockets, so back-pressure runs
+ * back to the client instead of growing a buffer. A packet is <= BUFSIZ, which
+ * is also the pty queue size, so one slot is always enough. */
+static struct {
+	char buf[BUFSIZ];
+	size_t len, off;
+} ptyout;
+
+static bool server_pty_pending(void) {
+	return ptyout.off < ptyout.len;
+}
+
+static void server_flush_pty(void) {
+	while (ptyout.off < ptyout.len) {
+		ssize_t n = write(server.pty, ptyout.buf + ptyout.off, ptyout.len - ptyout.off);
+		if (n > 0) {
+			ptyout.off += n;
+			continue;
+		}
+		if (n < 0 && errno == EINTR)
+			continue;
+		if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+			return; /* retry when select() reports the pty writable */
+		debug("server-write-pty: FAILED\n");
+		server.running = false;
+		break;
+	}
+	ptyout.len = ptyout.off = 0;
+}
+
 static bool server_write_pty(Packet *pkt) {
 	print_packet("server-write-pty:", pkt);
-	size_t size = pkt->len;
-	if (write_all(server.pty, pkt->u.msg, size) == size)
-		return true;
-	debug("FAILED\n");
-	server.running = false;
-	return false;
+	if (pkt->len > sizeof(ptyout.buf))
+		return false;
+	memcpy(ptyout.buf, pkt->u.msg, pkt->len);
+	ptyout.len = pkt->len;
+	ptyout.off = 0;
+	server_flush_pty();
+	return server.running;
 }
 
 static bool server_recv_packet(Client *c, Packet *pkt) {
@@ -205,11 +237,14 @@ static void server_mainloop(void) {
 		if (FD_ISSET(server.socket, &readfds))
 			server_accept_client();
 
+		if (FD_ISSET(server.pty, &writefds))
+			server_flush_pty();
+
 		if (FD_ISSET(server.pty, &readfds))
 			pty_data = server_read_pty(&server_packet);
 
 		for (Client **prev_next = &server.clients, *c = server.clients; c;) {
-			if (FD_ISSET(c->socket, &readfds) && server_recv_packet(c, &client_packet)) {
+			if (FD_ISSET(c->socket, &readfds) && !server_pty_pending() && server_recv_packet(c, &client_packet)) {
 				switch (client_packet.type) {
 				case MSG_CONTENT:
 					server_write_pty(&client_packet);
@@ -256,7 +291,8 @@ static void server_mainloop(void) {
 				continue;
 			}
 
-			FD_SET_MAX(c->socket, &new_readfds, new_fdmax);
+			if (!server_pty_pending())
+				FD_SET_MAX(c->socket, &new_readfds, new_fdmax);
 
 			if (pty_data)
 				server_send_packet(c, &server_packet);
@@ -279,6 +315,9 @@ static void server_mainloop(void) {
 
 		if (server.running && server.read_pty)
 			FD_SET_MAX(server.pty, &new_readfds, new_fdmax);
+
+		if (server.running && server_pty_pending())
+			FD_SET_MAX(server.pty, &new_writefds, new_fdmax);
 	}
 
 	exit(EXIT_SUCCESS);
