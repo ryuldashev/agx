@@ -302,6 +302,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// Whether the first-launch pointer at the Help menu extras has been shown; nil/false = not yet.
     /// Written once, by the launch that shows it. See `FirstRunWelcome`.
     public var welcomeShown: Bool?
+    /// Whether the first-launch permission wall has been shown; nil/false = not yet. Written once, by the
+    /// launch that shows it. See `PermissionPrimer`.
+    public var permissionsPrimerShown: Bool?
     /// The agents the user has connected (Settings ▸ Agents), in display order. Each carries the shell
     /// line that launches it; a workspace points at one by id (`WorkspaceDefaults.agentID`). nil/empty =
     /// none connected, which is also a fresh install — detection only OFFERS agents, it never adds them.
@@ -328,6 +331,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
                 interfaceFontSize: Double? = nil,
                 hiddenInterfaceElements: [String]? = nil,
                 autoHideSidebarInactiveWindows: Bool? = nil, welcomeShown: Bool? = nil,
+                permissionsPrimerShown: Bool? = nil,
                 agents: [AgentDefinition]? = nil) {
         self.fontFamily = fontFamily
         self.fontSize = fontSize
@@ -370,6 +374,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.hiddenInterfaceElements = hiddenInterfaceElements
         self.autoHideSidebarInactiveWindows = autoHideSidebarInactiveWindows
         self.welcomeShown = welcomeShown
+        self.permissionsPrimerShown = permissionsPrimerShown
         self.agents = agents
     }
 

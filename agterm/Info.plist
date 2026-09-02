@@ -36,6 +36,8 @@
 	<string>© 2026 Umputun</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Command-line tools you run inside agx (for example, an osascript one-liner or a build script) request permission to control other apps through agx.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Command-line tools you run inside agx (for example, a find or du sweep of your home folder, which reaches the Music library) request access to your media library through agx.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Command-line tools you run inside agx (for example, a system-audio capture or transcription tool) request permission to record system audio through agx.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
@@ -50,12 +52,26 @@
 	<string>Command-line tools you run inside agx (for example, ffmpeg capturing video) request camera access through agx.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Command-line tools you run inside agx request access to your contacts through agx.</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Command-line tools you run inside agx (for example, a build script or a find sweep) request access to your Desktop folder through agx.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Command-line tools you run inside agx (for example, a build script or a find sweep) request access to your Documents folder through agx.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Command-line tools you run inside agx (for example, an installer or a find sweep) request access to your Downloads folder through agx.</string>
+	<key>NSFileProviderDomainUsageDescription</key>
+	<string>Command-line tools you run inside agx request access to files synced by iCloud Drive, Dropbox, or another file provider through agx.</string>
+	<key>NSFocusStatusUsageDescription</key>
+	<string>Command-line tools you run inside agx (for example, a notifier that stays quiet during Do Not Disturb) request your Focus status through agx.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Command-line tools you run inside agx (for example, connecting to a .local host) request local network access through agx.</string>
 	<key>NSLocationUsageDescription</key>
 	<string>Command-line tools you run inside agx request your location through agx.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Command-line tools you run inside agx (for example, voice dictation in Claude Code) request microphone access through agx.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>Command-line tools you run inside agx (for example, rsync to a mounted share) request access to network volumes through agx.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>Command-line tools you run inside agx (for example, a backup script) request access to removable volumes such as USB drives through agx.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Command-line tools you run inside agx (for example, osxphotos) request access to your photo library through agx.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>

@@ -406,6 +406,8 @@ extension agtermApp {
                 Button("Install Command Line Tool…") { CLIInstaller.run() }
                 Button("Install Agent Status Hooks…") { AgentHooksInstaller.run() }
                 Button("Install Agent Skill…") { SkillInstaller.run() }
+                Divider()
+                Button("Permissions…") { PermissionsAlert.present(library: library) }
             }
     }
 
