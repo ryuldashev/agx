@@ -291,8 +291,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Confirm a user-initiated quit (menu Quit / ⌘Q) when windows are open. Skip system shutdown,
     /// restart, logout, XCUITest, auto-quit after the last window closes, or an unwired library.
+    /// Set by `AppActions.restartApp()` so an explicit Restart App skips the quit-confirmation alert below —
+    /// the user already chose to relaunch, and the graceful `applicationWillTerminate` path still runs.
+    static var isRestarting = false
+
     func applicationShouldTerminate(_: NSApplication) -> NSApplication.TerminateReply {
         guard !ContentView.isUITestLaunch, let library else { return .terminateNow }
+        if Self.isRestarting { return .terminateNow }
         if QuitReason.isSystemQuit(NSAppleEventManager.shared().currentAppleEvent) { return .terminateNow }
         let counts = library.openCounts()
         guard counts.windows > 0 else { return .terminateNow }

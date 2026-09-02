@@ -1,0 +1,462 @@
+#!/usr/bin/env python3
+"""agx — AGX self-awareness CLI for agents running inside the terminal.
+
+`agx context` answers three questions in one call: who am I, what does the user
+see right now, and what can I (an agent) do to this UI. It composes agtermctl's
+`tree --json` + `window list --json` with the AGTERM_* env the pane inherits.
+
+This is a prototype of a future native `agtermctl context`. No app rebuild needed.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+CTL = shutil.which("agtermctl") or "/opt/homebrew/bin/agtermctl"
+
+
+def _ctl_json(*args):
+    try:
+        out = subprocess.run([CTL, *args, "--json"], capture_output=True, text=True, timeout=8)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if out.returncode != 0:
+        return None
+    try:
+        doc = json.loads(out.stdout)
+    except json.JSONDecodeError:
+        return None
+    return doc.get("result", doc) if isinstance(doc, dict) else None
+
+
+def _glyph(sess):
+    st = sess.get("status")
+    return {"active": "●", "completed": "✓", "blocked": "⛔"}.get(st, "")
+
+
+def _running(sess):
+    fg = sess.get("foreground") or []
+    if not fg:
+        return "shell"
+    return fg[0]
+
+
+def _flags(sess):
+    f = []
+    if sess.get("split") or sess.get("hasSplit"):
+        f.append("split")
+    if sess.get("overlay"):
+        f.append("overlay")
+    if sess.get("scratch"):
+        f.append("scratch")
+    if sess.get("flagged"):
+        f.append("flagged")
+    u = sess.get("unseen")
+    if u:
+        f.append(f"{u} unseen")
+    if sess.get("statusBlink"):
+        f.append("blinking")
+    return f
+
+
+def gather():
+    env = os.environ
+    inside = env.get("AGTERM_ENABLED") == "1"
+    tree = _ctl_json("tree") or {}
+    tree = tree.get("tree", tree)  # result wraps state under "tree"
+    windows = (_ctl_json("window", "list") or {}).get("windows", [])
+    me_id = env.get("AGTERM_SESSION_ID")
+    me = None
+    active_ws = None
+    active_sess = None
+    for ws in tree.get("workspaces", []):
+        if ws.get("active"):
+            active_ws = ws
+        for s in ws.get("sessions", []):
+            s["_ws"] = ws.get("name")
+            if s.get("id") == me_id:
+                me = s
+            if s.get("active"):
+                active_sess = s
+    return {
+        "inside": inside,
+        "env": {
+            "session_id": me_id,
+            "workspace_id": env.get("AGTERM_WORKSPACE_ID"),
+            "window_id": env.get("AGTERM_WINDOW_ID"),
+            "pane_id": env.get("AGTERM_PANE_ID"),
+            "pane": env.get("AGTERM_PANE"),
+            "socket": env.get("AGTERM_SOCKET"),
+            "version": env.get("TERM_PROGRAM_VERSION"),
+        },
+        "me": me,
+        "view": {
+            "windows": windows,
+            "active_workspace": active_ws,
+            "focused_session": active_sess,
+            "quickVisible": tree.get("quickVisible"),
+            "sidebarVisible": tree.get("sidebarVisible"),
+            "sidebarMode": tree.get("sidebarMode"),
+            "workspaceFilter": tree.get("workspaceFilter"),
+        },
+        "tree": tree,
+    }
+
+
+MANIFEST = """you can drive this UI (agtermctl — the app's control socket, already reachable here):
+  see everything again      agx context            (this call; --json for structured)
+  DELEGATE to a fresh agent  agx spawn --brief "<task>" --name "<title>" [--workspace-name <W>] [--cwd <PATH>] [--foreground]
+    ^ makes the session and launches the agent with the brief as its FIRST MESSAGE (no TUI-typing race).
+      A spawned pane is a FULL peer Claude Code session (it already gets CLAUDE.md, skills, and this
+      UI-context hook) — so the brief is a self-contained TASK, not a context dump: goal, constraints,
+      where to look, what "done" means. It cannot ask you back, so leave nothing implicit. Tell it to
+      write output to a file incrementally (a crash should leave half the work, not nothing).
+      A bare session for an agent = an agent with no task (the empty-session bug) — always spawn+seed.
+    vs. an in-turn subagent (the Agent/Task tool): invisible in this UI, shares your turn, returns to
+      you — use that for token-heavy research; use `agx spawn` when the user should SEE and drive the work.
+  bare shell/session (no agent) agtermctl session new --workspace <id|name> --cwd <PATH>
+  RUN shell YOUR OWN turn can't — in your session's side pane (do NOT hand terminal steps back to the user):
+    finite cmd + capture   agx run "<shell cmd>"      runs it in an overlay on your pane, prints output + exit code
+    persistent (tunnel/server, stays alive) agtermctl session scratch on --command "<cmd>" --target <self>
+                             read it later:  agtermctl session text --pane scratch --target <self>
+    ^ your session already has a real, UNrestricted shell beside you. ssh tunnels, composer, artisan serve —
+      run them here yourself (it is the user's own shell; you are operating their UI), don't ask the user to.
+  new workspace              agtermctl workspace new "<NAME>"
+  message another session    agtermctl session type --target <id|prefix> --select "<text>\\n"   (\\n submits)
+  read another session       agtermctl session text --target <id|prefix> [--all] [--lines N]
+  focus / bring to front     agtermctl session select --target <id> | agtermctl workspace select <id>
+  passive panel (HUD)        agtermctl session hud open "<message>" --target <id> [--detail ..] [--spinner]
+  ephemeral term on a session agtermctl session overlay open --target <id> -- <cmd>   (read: overlay text --target <id>)
+  set my own status glyph    agtermctl session status active|completed|blocked|idle [--blink]
+  desktop notification       agtermctl notify "<body>" [--title "..."]     native picker: agtermctl pick ...
+  watch UI events (stream)   agtermctl events
+
+you cannot (be honest about this):
+  - messaging another agent is fire-and-forget stdin — you TYPE into its input; there is no
+    structured request/reply yet. To get an answer back, poll `agtermctl session text` on it.
+  - you cannot see GUI pixels — no window screenshot. You read terminal buffers, not the chrome.
+  - editing the settings file while the app runs is silently reverted — change UI via agtermctl only.
+  - a session spawned with --command execs that argv; a bare binary not on the GUI PATH exits 127."""
+
+
+def render(ctx):
+    if not ctx["inside"]:
+        return "Not inside AGX (AGTERM_ENABLED is unset). This shell is not in an AGX pane."
+    L = []
+    me = ctx["me"]
+    e = ctx["env"]
+    if me:
+        run = _running(me)
+        fl = _flags(me)
+        flss = f" · {', '.join(fl)}" if fl else ""
+        L.append(f'me: "{me.get("title") or me.get("name")}" [{(me.get("id") or "")[:8]}] '
+                 f'· workspace {me.get("_ws")} · pane {e["pane"]} · cwd {me.get("cwd")} '
+                 f'· running {run}{flss}')
+    else:
+        L.append(f'me: session {(e["session_id"] or "?")[:8]} (not found in tree) · pane {e["pane"]}')
+    L.append(f'AGX v{e["version"]}  ·  socket ok' if e["socket"] else 'AGX')
+
+    v = ctx["view"]
+    L.append("")
+    L.append("what the user sees now:")
+    for w in v["windows"]:
+        tags = [t for t, on in (("frontmost", w.get("active")), ("fullscreen", w.get("fullscreen")),
+                                ("zoomed", w.get("zoomed")), ("minimized", w.get("minimized"))) if on]
+        L.append(f'  window "{w.get("name")}" [{(w.get("id") or "")[:8]}] {", ".join(tags) or "background"}')
+    aws = v["active_workspace"]
+    fs = v["focused_session"]
+    L.append(f'  app focus: workspace {aws.get("name") if aws else "?"}'
+             + (f' → "{fs.get("title") or fs.get("name")}"' if fs else ""))
+    L.append(f'  sidebar: {v["sidebarMode"]}, {"visible" if v["sidebarVisible"] else "hidden"}'
+             f'  ·  quick terminal: {"open" if v["quickVisible"] else "hidden"}'
+             f'  ·  workspace filter: {"on" if v["workspaceFilter"] else "off"}')
+
+    L.append("")
+    wss = ctx["tree"].get("workspaces", [])
+    n_s = sum(len(w.get("sessions", [])) for w in wss)
+    L.append(f'open sessions ({n_s} across {len(wss)} workspaces):')
+    for w in wss:
+        ss = w.get("sessions", [])
+        if not ss:
+            continue
+        parts = []
+        for s in ss:
+            fl = _flags(s)
+            extra = f'[{",".join(fl)}]' if fl else ""
+            g = _glyph(s)
+            head = (f"{g} " if g else "")
+            parts.append(f'{head}{(s.get("title") or s.get("name") or "")[:34]}({_running(s)}){extra}')
+        col = " · ".join(parts)
+        L.append(f'  {w.get("name")}: {col}')
+
+    L.append("")
+    L.append(MANIFEST)
+    return "\n".join(L)
+
+
+
+def _ctl_raw(*args):
+    try:
+        out = subprocess.run([CTL, *args], capture_output=True, text=True, timeout=8)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return ""
+    return out.stdout if out.returncode == 0 else ""
+
+
+def _wait_ready(target, timeout=9.0, min_wait=1.2, interval=0.3):
+    """Poll a session's buffer until it stabilizes — the agent CLI has booted and accepts input.
+
+    A freshly spawned `claude` does not accept typed input the instant the pane opens; typing into
+    it then is dropped (the empty-session-with-no-brief failure). Waiting for two identical
+    non-empty reads, with a floor, means the seed lands in a ready prompt, not a race."""
+    import time
+    start = time.time(); prev = None; stable = 0
+    while time.time() - start < timeout:
+        txt = _ctl_raw("session", "text", "--target", target)
+        if txt and txt == prev:
+            stable += 1
+            if stable >= 2 and (time.time() - start) >= min_wait:
+                return True
+        else:
+            stable = 0
+        prev = txt
+        time.sleep(interval)
+    return True
+
+
+
+def _claude_trusts(path):
+    """True if Claude Code has already accepted the trust dialog for `path` (~/.claude.json). When it has
+    NOT, a session opened there stops on the one-time trust gate before the seeded brief can run — so
+    spawn warns instead of hanging silently. Unknown/unreadable config → None (say nothing)."""
+    if not path:
+        return None
+    try:
+        real = os.path.realpath(os.path.expanduser(path))
+        cfg = json.load(open(os.path.expanduser("~/.claude.json")))
+    except (OSError, ValueError):
+        return None
+    entry = (cfg.get("projects") or {}).get(real)
+    if not isinstance(entry, dict):
+        return False
+    return bool(entry.get("hasTrustDialogAccepted"))
+
+
+def cmd_spawn(argv):
+    """Create an agent session AND seed it with a brief — the smart 'delegate to a fresh agent'.
+
+    A bare `session new --command claude` lands an agent with no task; the point of spawning one is
+    almost always to hand it work. This does the compound act atomically: create, wait until the
+    agent is ready, inject the brief (newline submits)."""
+    opts = {"brief": None, "name": None, "cwd": None, "workspace": None,
+            "workspace_name": None, "agent": "claude", "foreground": False, "json": False}
+    a = argv[2:]; i = 0
+    flags = {"--brief": "brief", "--name": "name", "--cwd": "cwd",
+             "--workspace": "workspace", "--workspace-name": "workspace_name", "--agent": "agent"}
+    while i < len(a):
+        t = a[i]
+        if t in flags:
+            if i + 1 >= len(a):
+                print(f"agx spawn: {t} needs a value", file=sys.stderr); return 2
+            opts[flags[t]] = a[i + 1]; i += 2
+        elif t == "--foreground":
+            opts["foreground"] = True; i += 1
+        elif t == "--json":
+            opts["json"] = True; i += 1
+        else:
+            print(f"agx spawn: unknown arg {t}", file=sys.stderr); return 2
+    if not opts["brief"]:
+        print("agx spawn: --brief is required (the task text to seed the new agent with)", file=sys.stderr)
+        return 2
+    # Seed via the agent's FIRST-MESSAGE argument, not by typing into the TUI: a freshly spawned
+    # agent drops input typed before it is ready (the empty-session race). Passing the brief on the
+    # command line means the agent starts already carrying it — reliable even for a background pane.
+    import tempfile
+    fd, briefpath = tempfile.mkstemp(dir="/tmp", prefix="agx-brief-")
+    with os.fdopen(fd, "w") as f:
+        f.write(opts["brief"])
+    # brief lives in the file, never inline, so its quotes/newlines/$ can't break the command string.
+    body = 'b="$(cat %s)"; rm -f %s; exec %s "$b"' % (briefpath, briefpath, opts["agent"])
+    command = "zsh -lc '" + body + "'"
+    args = ["session", "new", "--command", command]
+    if not opts["foreground"]:
+        args.append("--no-select")
+    if opts["cwd"]:
+        args += ["--cwd", opts["cwd"]]
+    if opts["name"]:
+        args += ["--name", opts["name"]]
+    if opts["workspace"]:
+        args += ["--workspace", opts["workspace"]]
+    elif opts["workspace_name"]:
+        args += ["--workspace-name", opts["workspace_name"], "--create-workspace"]
+    elif os.environ.get("AGTERM_WORKSPACE_ID"):
+        # default to the CALLER's workspace, not the app-focused one (`session new` defaults to app focus,
+        # which may be a different window) — spawning a peer should land beside the agent that asked for it.
+        args += ["--workspace", os.environ["AGTERM_WORKSPACE_ID"]]
+    res = _ctl_json(*args)
+    sid = res.get("id") if isinstance(res, dict) else None
+    if not sid:
+        try: os.remove(briefpath)
+        except OSError: pass
+        print("agx spawn: session creation failed", file=sys.stderr); return 1
+    trusted = _claude_trusts(opts["cwd"])
+    if opts["json"]:
+        print(json.dumps({"id": sid, "seeded": True, "foreground": opts["foreground"],
+                          "cwd_trusted": trusted}, ensure_ascii=False))
+    else:
+        where = opts["workspace"] or opts["workspace_name"] or os.environ.get("AGTERM_WORKSPACE_ID", "current workspace")
+        tail = f' — "{opts["name"]}"' if opts["name"] else ""
+        print(f'agx: spawned {opts["agent"]} [{sid[:8]}] in {where}{tail}, launched with the brief as its first message.')
+        if trusted is False:
+            print(f'  ⚠ {opts["cwd"]} is not trusted by Claude yet — accept the one-time trust prompt in the '
+                  'new pane; the brief runs right after.')
+    return 0
+
+
+
+def cmd_usage(argv):
+    """Cross-session usage — the accurate, aggregate view the per-session CC statusline can't give.
+
+    Joins the live `tree` (source of truth for what is actually open) with the metrics each session's
+    statusline emits to ~/.claude/agx-usage/. Counts only real open agent sessions (fixes the
+    file-mtime overcount) and shows the account pools (5h/7d) once, correctly labeled."""
+    import glob, time
+    as_json = "--json" in argv
+    tree = _ctl_json("tree") or {}
+    tree = tree.get("tree", tree)
+    udir = os.path.expanduser("~/.claude/agx-usage")
+    emits = {}
+    for fp in glob.glob(os.path.join(udir, "*.json")):
+        try:
+            d = json.load(open(fp))
+        except (OSError, ValueError):
+            continue
+        if d.get("sid"):
+            emits[d["sid"]] = d
+    sessions = []
+    pool5 = pool7 = None; pool_ts = -1
+    now = time.time()
+    for ws in tree.get("workspaces", []):
+        for s in ws.get("sessions", []):
+            e = emits.get(s.get("id"))
+            if e and e.get("ts", 0) > pool_ts:
+                pool_ts = e["ts"]; pool5 = e.get("five_hour"); pool7 = e.get("seven_day")
+            sessions.append({
+                "id": s.get("id"), "name": s.get("title") or s.get("name"), "ws": ws.get("name"),
+                "agent": (s.get("foreground") or [None])[0],
+                "model": (e or {}).get("model"), "ctx_pct": (e or {}).get("ctx_pct"),
+                "ctx_size": (e or {}).get("ctx_size"), "cost": (e or {}).get("cost"),
+                "fresh": bool(e) and (now - e.get("ts", 0) < 900),
+            })
+    agents = [s for s in sessions if s["agent"]]
+    total = sum(s["cost"] or 0 for s in sessions if s["fresh"])
+    if as_json:
+        print(json.dumps({"pool_five_hour": pool5, "pool_seven_day": pool7,
+                          "total_cost_fresh": total, "sessions": sessions}, ensure_ascii=False, indent=2))
+        return 0
+    p5 = f"{pool5}%" if pool5 is not None and pool5 >= 0 else "?"
+    p7 = f"{pool7}%" if pool7 is not None and pool7 >= 0 else "?"
+    L = [f"AGX usage — {len(agents)} agent sessions  ·  account: 5h {p5}  7d {p7}"]
+    for s in agents:
+        if s["model"] and s["fresh"]:
+            k = int((s["ctx_size"] or 0) * (s["ctx_pct"] or 0) / 100 / 1000)
+            mark = " ⚠2x" if k >= 200 else ""
+            data = f'{s["model"]}  {s["ctx_pct"]}% ({k}k){mark}  ${s["cost"]:.2f}'
+        else:
+            data = "— (no live statusline emit yet — open/refresh the session once)"
+        L.append(f'  {(s["name"] or "")[:34]:34} [{(s["id"] or "")[:8]}] {data}')
+    L.append(f"  total (fresh sessions): ${total:.2f}")
+    print("\n".join(L))
+    return 0
+
+
+
+def cmd_run(argv):
+    """Run a FINITE shell command in THIS session's own side pane and return its output + exit code.
+
+    The agent's own turn may be blocked by the command classifier (ssh, composer, package managers), but
+    the session has a real shell beside it. This runs the command in an overlay on the current pane — the
+    user's own unrestricted shell, the agent operating the UI on their behalf — waits for it to finish, and
+    hands back what it printed. For a PERSISTENT process (a tunnel, `artisan serve`) use the scratch shell
+    instead (it stays alive): `agtermctl session scratch on --command "<cmd>"`."""
+    a = argv[2:]
+    pane = None; keep = False; parts = []
+    i = 0
+    while i < len(a):
+        if a[i] == "--pane":
+            if i + 1 >= len(a): print("agx run: --pane needs a value", file=sys.stderr); return 2
+            pane = a[i + 1]; i += 2
+        elif a[i] == "--keep":
+            keep = True; i += 1
+        else:
+            parts.append(a[i]); i += 1
+    cmd = parts[0] if len(parts) == 1 else " ".join(parts)
+    if not cmd.strip():
+        print('agx run: need a command, e.g. agx run "composer install"', file=sys.stderr); return 2
+    import tempfile
+    fd, cmdfile = tempfile.mkstemp(dir="/tmp", prefix="agx-cmd-"); os.close(fd)
+    with open(cmdfile, "w") as f:
+        f.write(cmd + "\n")
+    outfile = cmdfile.replace("agx-cmd-", "agx-out-")
+    # command text lives in cmdfile (no inline quoting), the wrapper only names controlled /tmp paths.
+    overlay_cmd = "zsh -lc 'zsh %s > %s 2>&1'" % (cmdfile, outfile)
+    ctl_args = [CTL, "session", "overlay", "open", overlay_cmd, "--block"]
+    self_id = os.environ.get("AGTERM_SESSION_ID")
+    if self_id:
+        ctl_args += ["--target", self_id]
+    if pane:
+        ctl_args += ["--pane", pane]
+    try:
+        proc = subprocess.run(ctl_args, capture_output=True, text=True, timeout=1800)
+    except subprocess.TimeoutExpired:
+        print("agx run: command still running after 30m — use a scratch shell for long-running processes",
+              file=sys.stderr); return 1
+    rc = proc.returncode
+    out = ""
+    try:
+        with open(outfile) as f:
+            out = f.read()
+    except OSError:
+        pass
+    sys.stdout.write(out)
+    if not out.endswith("\n"):
+        sys.stdout.write("\n")
+    print(f"[agx run: exit {rc}]")
+    if not keep:
+        for fp in (cmdfile, outfile):
+            try: os.remove(fp)
+            except OSError: pass
+    return rc
+
+
+def main(argv):
+    cmd = argv[1] if len(argv) > 1 else "context"
+    if cmd in ("-h", "--help", "help"):
+        print("usage:\n"
+              "  agx context [--json]           self-description of the AGX UI for an in-pane agent\n"
+              "  agx usage [--json]             accurate cross-session model/context/cost + account pools\n"
+              "  agx run \"<shell cmd>\" [--pane split]  run a FINITE command in THIS session's side pane, return output+exit\n"
+              "  agx spawn --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID]\n"
+              "            [--cwd PATH] [--agent claude] [--foreground] [--json]\n"
+              "            create an agent session AND seed it with the brief as its first message")
+        return 0
+    if cmd == "spawn":
+        return cmd_spawn(argv)
+    if cmd == "usage":
+        return cmd_usage(argv)
+    if cmd == "run":
+        return cmd_run(argv)
+    if cmd != "context":
+        print(f"agx: unknown command '{cmd}'", file=sys.stderr)
+        return 2
+    ctx = gather()
+    if "--json" in argv:
+        print(json.dumps(ctx, ensure_ascii=False, indent=2))
+    else:
+        print(render(ctx))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

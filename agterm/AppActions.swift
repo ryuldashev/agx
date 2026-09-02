@@ -642,6 +642,22 @@ final class AppActions {
 
     // MARK: - Windows
 
+    /// Relaunch the app: mark the terminate as an intentional restart (skips the quit-confirmation alert),
+    /// spawn a detached watcher that waits for THIS process to exit and then re-opens the bundle, and quit
+    /// through the normal `NSApp.terminate` path so `applicationWillTerminate` persists windows/sessions and,
+    /// when the restore toggle is on, each pane's restore command. The watcher polls the pid rather than
+    /// racing `open` against a still-running instance.
+    func restartApp() {
+        AppDelegate.isRestarting = true
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let path = Bundle.main.bundleURL.path
+        let watcher = Process()
+        watcher.executableURL = URL(fileURLWithPath: "/bin/sh")
+        watcher.arguments = ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"\(path)\""]
+        try? watcher.run()
+        NSApp.terminate(nil)
+    }
+
     /// Create a fresh window (one default workspace + session) and open it via the scene's window opener,
     /// the seam the control channel uses. No-op before the scene `.task` wires the opener.
     ///

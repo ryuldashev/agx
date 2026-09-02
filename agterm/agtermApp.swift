@@ -522,9 +522,10 @@ struct agtermApp: App {
         // scratchCommand is run-once: read it for this spawn, then clear so a post-exit respawn is a shell.
         let command = session.scratchCommand
         session.scratchCommand = nil
+        let checked = SurfaceCommand.checked(command)
         let view = GhosttySurfaceView(workingDirectory: session.effectiveCwd,
                                       fontSize: session.fontSize.map(Float.init),
-                                      command: command,
+                                      command: checked.command, initialInput: checked.initialInput,
                                       autoFocus: !suppressAutoFocus, env: env)
         view.watermarkSession = session
         let sessionID = session.id
@@ -562,6 +563,7 @@ struct agtermApp: App {
                                           workspaceID: workspaceID, socketPath: controlServer.resolvedSocketPath,
                                           programVersion: Self.terminalProgramVersion,
                                           pane: pane, paneToken: pane == nil ? nil : UUID().uuidString)
+            .merging(LoginShellPath.env) { surfaceValue, _ in surfaceValue }
     }
 
     /// The environment the quick terminal exposes — scratch, not in the tree and owned by no window, so its
@@ -570,6 +572,7 @@ struct agtermApp: App {
     func quickTerminalEnv() -> [String: String] {
         SurfaceEnvironment.quickTerminal(socketPath: controlServer.resolvedSocketPath,
                                          programVersion: Self.terminalProgramVersion)
+            .merging(LoginShellPath.env) { surfaceValue, _ in surfaceValue }
     }
 
     /// Bind the app's one quick terminal to the library. Every provider resolves through `activeStore` at
@@ -597,5 +600,70 @@ struct agtermApp: App {
             return PickRegistry.shared.controller(for: library.activeWindowID)?.pending == nil
         }
         controller.terminalColorProvider = { WindowContentView.resolvedTerminalColor() }
+    }
+}
+
+/// The user's real `PATH`, resolved once from a login shell and injected into every spawned surface.
+///
+/// A GUI app inherits launchd's minimal `PATH` (`/usr/bin:/bin:/usr/sbin:/sbin` + the bundle), not the one
+/// the user's shell profile builds. A login-shell surface rebuilds it from the profile and is fine, but a
+/// surface spawned with a `command` (a workspace's default agent, `session.new --command`, an overlay)
+/// EXECs that argv directly, so a bare binary living in `~/.local/bin` or Homebrew exits 127 and the
+/// session dies the instant it opens. Seeding the surface env with the login-shell `PATH` makes a bare
+/// agent command resolve without every caller wrapping itself in `zsh -lc`.
+///
+/// Resolved lazily exactly once (`static let`), and only as a FALLBACK: `merging` keeps any `PATH` the
+/// surface builder already set, and a login shell still re-exports its own on top. Any failure — no
+/// `SHELL`, a non-executable one, a nonzero exit, empty output — yields no key at all, leaving today's
+/// inherited environment untouched.
+enum LoginShellPath {
+    static let env: [String: String] = resolve().map { ["PATH": $0] } ?? [:]
+
+    private static func resolve() -> String? {
+        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        guard FileManager.default.isExecutableFile(atPath: shell) else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: shell)
+        process.arguments = ["-lc", "printf %s \"$PATH\""]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        process.standardInput = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let path = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return path.isEmpty ? nil : path
+    }
+}
+
+/// Platform half of `CommandPreflight`: resolve a surface `command` against the effective `PATH` and, when
+/// its binary is missing, hand back a plain login shell that SAYS SO instead of a pane that dies at 127.
+///
+/// This is the guard that makes the failure class impossible to hit silently, whatever caused it — a bare
+/// agent name under a GUI `PATH`, an uninstalled binary, a typo in a workspace default. `LoginShellPath`
+/// stops the common cause; this stops the consequence.
+enum SurfaceCommand {
+    /// The `(command, initialInput)` pair to spawn. Unchanged for anything preflight declines to judge
+    /// (shell lines, explicit paths, empty) and for a binary that resolves — the fallback fires ONLY on a
+    /// bare name proven absent from the effective PATH, where the alternative is a vanishing session.
+    static func checked(_ command: String?) -> (command: String?, initialInput: String?) {
+        guard let command, let token = CommandPreflight.executableToken(command) else { return (command, nil) }
+        guard !resolves(token) else { return (command, nil) }
+        // a login shell runs this as typed: `printf` is a builtin everywhere, so the notice cannot itself
+        // fail the way the command just did, and the pane lands at a usable prompt.
+        let escaped = CommandPreflight.unresolvedMessage(command: command).replacingOccurrences(of: "'", with: "'\\''")
+        return (nil, "printf '%s\\n' '\(escaped)'\n")
+    }
+
+    /// Whether `token` names an executable on the effective PATH — the login-shell one when resolved, else
+    /// the process's own. Mirrors execvp: PATH entries in order, each joined with the token.
+    private static func resolves(_ token: String) -> Bool {
+        let path = LoginShellPath.env["PATH"] ?? ProcessInfo.processInfo.environment["PATH"] ?? ""
+        for directory in path.split(separator: ":") where !directory.isEmpty {
+            if FileManager.default.isExecutableFile(atPath: directory + "/" + token) { return true }
+        }
+        return false
     }
 }

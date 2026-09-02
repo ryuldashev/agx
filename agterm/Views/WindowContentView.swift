@@ -324,10 +324,21 @@ struct WindowContentView: View {
             WorkspaceSidebar(store: store, actions: actions)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
-        .safeAreaInset(edge: .bottom) { bottomBar }
+        .safeAreaInset(edge: .bottom) { sidebarFooter }
         // sits behind the transparent outline + bottom bar so the column reads as one surface, behind the
         // content (never tints row text) and over the window background (composes with translucency/blur).
         .background(sidebarTintWash)
+    }
+
+    /// The sidebar footer: the cross-session usage strip stacked over the workspace/session button bar.
+    /// Usage sits above the buttons (glanceable, static); the buttons stay at the very bottom where the
+    /// hand expects them.
+    private var sidebarFooter: some View {
+        VStack(spacing: 0) {
+            UsagePanel(store: store, chromeText: chromeText)
+            Rectangle().fill(chromeText.opacity(0.12)).frame(height: 1)
+            bottomBar
+        }
     }
 
     /// The wash for the current `sidebarShift`: black (darker) or white (lighter) at the shift's magnitude

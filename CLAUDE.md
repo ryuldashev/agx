@@ -132,6 +132,14 @@ C-boundary concurrency before changing the bridge.
   `Bundle.main`'s `agtermctl` path into the installed wrappers. A Debug install silently repoints the
   user's live hooks at DerivedData, and removing the worktree leaves them dead with no error.
   Verify installer behavior through `agtermCore` tests, or redeploy Release and reinstall from it.
+- Never edit `~/Library/Application Support/agx/settings.json` (or a window snapshot) while the app runs.
+  `SettingsModel` holds settings in memory and rewrites the file wholesale at quit, silently reverting the
+  edit — and a workspace keeps its OWN `defaults.command`, so patching the agent definition never reaches
+  existing workspaces. Change settings through the Settings UI or the control API, not the file.
+- A GUI app inherits launchd's minimal `PATH`, so a surface spawned with a `command` execs a bare binary
+  that is not on it and exits 127 — the session vanishes the instant it opens. `LoginShellPath` seeds the
+  surface env from a login shell, and `SurfaceCommand.checked` falls back to a shell that PRINTS the reason
+  rather than letting a pane die silently. Keep both: a spawn failure must always leave something on screen.
 - Unix socket paths cap near 104 bytes. A long scratch path lets the app launch while control bind fails.
 - Use absolute repo-root paths for existence checks. Tool cwd persists across calls and often drifts into
   `agtermCore`.

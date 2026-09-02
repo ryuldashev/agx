@@ -190,6 +190,9 @@ extension agtermApp {
                 // re-read ghostty.conf and rebroadcast to every surface; banner-warns on a malformed file.
                 Button { actions.reloadGhosttyConfig() } label: { Label("Reload Config", systemImage: "arrow.clockwise") }
                     .disabled(!PaletteCommand.reloadConfig.isEnabled(in: context))
+                Divider()
+                // quit gracefully (persisting sessions per the restore toggle) and relaunch; keyless.
+                Button { actions.restartApp() } label: { Label("Restart App", systemImage: "arrow.clockwise.circle") }
             }
             // View: font zoom (on the focused terminal), the status-bar toggle, split / quick terminal /
             // palettes. Every item needs an SF Symbol: one iconless item renders as a blank, indented slot

@@ -407,15 +407,7 @@ final class GhosttyApp {
     /// and the sidebar pill falls back.
     private static func resolveSelectionColors(ghosttyConfigPath: String, inheritGlobalConfig: Bool,
                                                isDark: Bool) -> (NSColor?, NSColor?) {
-        var sources: [String] = []
-        if let defaults = Bundle.main.url(forResource: "ghostty-defaults", withExtension: "conf") {
-            sources.append(defaults.path)
-        }
-        if inheritGlobalConfig {
-            sources.append((NSHomeDirectory() as NSString).appendingPathComponent(".config/ghostty/config"))
-        }
-        sources.append(ghosttyConfigPath)
-        sources.append(settingsConfigURL.path)
+        let sources = configSources(scopedPath: ghosttyConfigPath, inheritGlobalConfig: inheritGlobalConfig)
 
         var themeName: String?
         var selBg: NSColor?
@@ -442,6 +434,46 @@ final class GhosttyApp {
             }
         }
         return (selBg, selFg)
+    }
+
+    /// The top-level config files `loadConfig` loads, in load order — the sources the text re-readers below
+    /// re-scan for keys `ghostty_config_get` doesn't expose.
+    private static func configSources(scopedPath: String, inheritGlobalConfig: Bool) -> [String] {
+        var sources: [String] = []
+        if let defaults = Bundle.main.url(forResource: "ghostty-defaults", withExtension: "conf") {
+            sources.append(defaults.path)
+        }
+        if inheritGlobalConfig {
+            sources.append((NSHomeDirectory() as NSString).appendingPathComponent(".config/ghostty/config"))
+        }
+        sources.append(scopedPath)
+        sources.append(settingsConfigURL.path)
+        return sources
+    }
+
+    /// The resolved `shell-integration-features` minus the ssh features, or nil when no source enables them.
+    ///
+    /// The executable is `agx`, so `"$GHOSTTY_BIN_DIR/ghostty" +ssh` — what the shell integration's `ssh`
+    /// wrapper runs once `ssh-env` or `ssh-terminfo` is on — cannot exist, and every `ssh` in a pane dies with
+    /// "no such file or directory". An inherited Ghostty.app config routinely enables them. ghostty replaces
+    /// the whole set per assignment rather than merging, so the last assignment minus the ssh names is the
+    /// resolved set; the `no-` names guard a future ssh feature. Carries `resolveSelectionColors`' limitation:
+    /// a value behind a `config-file` include is loaded later, by `ghostty_config_load_recursive_files`.
+    static func sshFreeShellIntegrationFeatures(scopedPath: String, inheritGlobalConfig: Bool) -> String? {
+        var raw: String?
+        for path in configSources(scopedPath: scopedPath, inheritGlobalConfig: inheritGlobalConfig) {
+            for (key, value) in keyValues(ofFileAt: path) where key == "shell-integration-features" {
+                raw = value
+            }
+        }
+        guard let raw else { return nil }
+        var kept: [String] = []
+        var stripped = false
+        for name in raw.split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }) where !name.isEmpty {
+            if name == "ssh-env" || name == "ssh-terminfo" { stripped = true } else { kept.append(name) }
+        }
+        guard stripped else { return nil }
+        return (kept + ["no-ssh-env", "no-ssh-terminfo"]).joined(separator: ",")
     }
 
     /// Parse a ghostty-style config file into its `key = value` pairs in file order, skipping blank and `#`
@@ -548,6 +580,18 @@ final class GhosttyApp {
         // it, the app/global build leaves it nil.
         if let extraOverlayPath, FileManager.default.fileExists(atPath: extraOverlayPath) {
             extraOverlayPath.withCString { ghostty_config_load_file(cfg, $0) }
+        }
+
+        // last word on the ssh features, after every source has had its say; sets no other key.
+        if let features = Self.sshFreeShellIntegrationFeatures(
+            scopedPath: scopedPath, inheritGlobalConfig: inputs.inheritGlobalConfig) {
+            let tmp = (NSTemporaryDirectory() as NSString)
+                .appendingPathComponent("agterm-ssh-\(UUID().uuidString).conf")
+            let line = "shell-integration-features = \(features)\n"
+            if (try? line.write(toFile: tmp, atomically: true, encoding: .utf8)) != nil {
+                tmp.withCString { ghostty_config_load_file(cfg, $0) }
+                try? FileManager.default.removeItem(atPath: tmp)
+            }
         }
 
         ghostty_config_load_recursive_files(cfg)
