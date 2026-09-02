@@ -45,6 +45,12 @@ public enum DurablePane {
         return "\(quote(abduco)) -A -f \(quote(socket)) /bin/zsh -lc \(quote(wrapper))"
     }
 
+    /// Sockets under `<stateDir>/abduco/` no persisted session owns: entries named by a session uuid (the `.pid`
+    /// sidecars never parse as one) minus `known`, in a stable order.
+    public static func orphans(entries: [String], known: Set<UUID>) -> [UUID] {
+        Set(entries.compactMap { UUID(uuidString: $0) }).subtracting(known).sorted { $0.uuidString < $1.uuidString }
+    }
+
     private static func quote(_ text: String) -> String {
         "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }

@@ -114,6 +114,14 @@ session id. App quit detaches; session close kills.** Plain login-shell sessions
 
 - A live Claude session keeps its process, context, cache and session id across `agx` restarts,
   crashes, and window close/reopen. An unfinished turn continues; the redraw is a SIGWINCH.
+- Whether that happened is read back, not inferred: `tree.attached` and a `session.durable` event
+  carry attach-vs-create per spawn (decided by the pid file's program being alive under this socket's
+  server). A `--resume` fallback also restores the conversation, so a context check cannot tell the two
+  apart — the first restart after the deploy proved it (2026-09-02: every session forked, as migration
+  predicts).
+- Launch sweeps `<stateDir>/abduco/` against every indexed window's persisted sessions and kills the
+  rest (`DurableSpawn.reapOrphans`), so a window file removed by hand or a crash between discard and
+  pid-file removal cannot leak a server.
 - `^\` (abduco's default detach key) in a durable pane detaches the client, which closes the pane
   and — because that is a session close — kills the program. Same outcome as SIGQUIT today; noted
   in docs. Not remapped: any other byte is something a program might legitimately receive.

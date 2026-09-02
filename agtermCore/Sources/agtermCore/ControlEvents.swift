@@ -6,6 +6,8 @@ public enum ControlEventKind: String, Codable, CaseIterable, Sendable, Equatable
     case notify
     case sessionCreated = "session.created"
     case sessionClosed = "session.closed"
+    /// A durable pane spawned (ADR 0001); `attached` says whether the program survived or the fallback ran.
+    case sessionDurable = "session.durable"
     case treeChanged = "tree.changed"
 }
 
@@ -22,10 +24,12 @@ public struct ControlEventPayload: Codable, Sendable, Equatable {
     public var shape: String?
     public var title: String?
     public var body: String?
+    /// `session.durable` only: reattached to the running program (true) or created a fresh one (false).
+    public var attached: Bool?
 
     public init(name: String? = nil, status: String? = nil, pane: String? = nil,
                 blink: Bool? = nil, color: String? = nil, shape: String? = nil,
-                title: String? = nil, body: String? = nil) {
+                title: String? = nil, body: String? = nil, attached: Bool? = nil) {
         self.name = name
         self.status = status
         self.pane = pane
@@ -34,6 +38,7 @@ public struct ControlEventPayload: Codable, Sendable, Equatable {
         self.shape = shape
         self.title = title
         self.body = body
+        self.attached = attached
     }
 }
 

@@ -659,6 +659,16 @@ public final class WindowLibrary {
         windowsDirectory.appendingPathComponent("\(id.uuidString).json")
     }
 
+    /// Every session id an indexed window holds, from the live store when loaded and the file otherwise —
+    /// the ownership set the launch-time durable-server sweep checks against.
+    public func persistedSessionIDs() -> Set<UUID> {
+        Set(windows.flatMap { window -> [UUID] in
+            let workspaces = stores[window.id]?.workspaces.map { $0.sessions.map(\.id) }
+                ?? persistenceStore(for: window.id).load().workspaces.map { $0.sessions.map(\.id) }
+            return workspaces.flatMap { $0 }
+        })
+    }
+
     private func persistenceStore(for id: UUID) -> PersistenceStore {
         PersistenceStore(directory: windowsDirectory, fileName: "\(id.uuidString).json")
     }

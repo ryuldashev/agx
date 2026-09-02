@@ -216,6 +216,7 @@ struct agtermApp: App {
             guard let library else { return }
             DurableSpawn.discard(session: session, stateDirectory: library.directory.path)
         }
+        DurableSpawn.reapOrphans(stateDirectory: library.directory.path, known: library.persistedSessionIDs())
         return library
     }
 
@@ -252,6 +253,7 @@ struct agtermApp: App {
         // precedence, one more wrapper, and the restore override becomes the server's fallback.
         let plan = DurableSpawn.plan(CommandRestore.restorePlan(inputs), session: session,
                                      stateDirectory: library.directory.path)
+        if session.durable { store.emitSessionDurable(session) }
         let checked = SurfaceCommand.checked(plan.command)
         let view = GhosttySurfaceView(workingDirectory: session.initialCwd, fontSize: session.fontSize.map(Float.init),
                                       command: checked.command, initialInput: checked.initialInput ?? plan.initialInput,

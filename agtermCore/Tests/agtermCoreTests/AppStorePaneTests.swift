@@ -607,6 +607,24 @@ struct AppStorePaneTests {
         session.durable = true
         node = try #require(store.controlTree().workspaces[0].sessions.first)
         #expect(node.durable == true)
+        #expect(node.attached == false)
+        session.durableAttached = true
+        node = try #require(store.controlTree().workspaces[0].sessions.first)
+        #expect(node.attached == true)
+    }
+
+    @Test func sessionDurableEventCarriesWhetherTheProgramWasReattached() {
+        var drafts: [ControlEventDraft] = []
+        let store = AppStore(controlEventSink: { drafts.append($0) })
+        let ws = store.addWorkspace(name: "work")
+        let session = store.addSession(toWorkspace: ws.id, cwd: "/a", command: "claude")!
+        session.durable = true
+        store.emitSessionDurable(session)
+        session.durableAttached = true
+        store.emitSessionDurable(session)
+        let durable = drafts.filter { $0.kind == .sessionDurable }
+        #expect(durable.map(\.payload.attached) == [false, true])
+        #expect(durable.map(\.session) == [session.id.uuidString, session.id.uuidString])
     }
 
     @Test func discardSinkFiresOnCloseAndWorkspaceRemovalOnly() {

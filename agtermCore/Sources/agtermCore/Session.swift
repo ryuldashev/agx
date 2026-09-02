@@ -191,6 +191,10 @@ public final class Session: Identifiable {
     /// the server. Never persisted.
     @ObservationIgnored public var durable = false
 
+    /// With `durable`: this spawn found the session's server alive and attached (the program kept running)
+    /// rather than creating one (the restore fallback ran). Never persisted.
+    @ObservationIgnored public var durableAttached = false
+
     /// True when the session was rebuilt by `AppStore.restore(from:)` rather than freshly created; gates the
     /// `initialCommand` re-run on `restoreRunningCommand` (a fresh session always runs it, a restored one gets
     /// a plain shell when off). Never persisted.

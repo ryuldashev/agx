@@ -74,6 +74,8 @@ enum EventFormatter {
             return parts.joined(separator: " ")
         case .notify:
             return "\(time) \(event.kind.rawValue) \(name) \(event.payload.title ?? name): \(event.payload.body ?? "")"
+        case .sessionDurable:
+            return "\(time) \(event.kind.rawValue) \(name) \(event.payload.attached == true ? "attached" : "created")"
         case .sessionCreated, .sessionClosed, .treeChanged:
             return "\(time) \(event.kind.rawValue) \(name)"
         }

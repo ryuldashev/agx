@@ -17,6 +17,8 @@ struct ControlEventProtocolTests {
             ControlEvent(seq: 4, ts: 4.5, kind: .sessionClosed, window: "win", workspace: "work",
                          session: "closed", payload: ControlEventPayload(name: "old")),
             ControlEvent(seq: 5, ts: 5.5, kind: .treeChanged, window: "win"),
+            ControlEvent(seq: 6, ts: 6.5, kind: .sessionDurable, window: "win", workspace: "work",
+                         session: "agent", payload: ControlEventPayload(name: "agent", attached: true)),
         ]
 
         let data = try JSONEncoder().encode(events)

@@ -56,6 +56,23 @@ final class WindowLibraryTests {
         #expect(library.windowName(for: UUID()) == "")
     }
 
+    @Test func persistedSessionIDsCoverLoadedAndUnloadedWindows() throws {
+        let library = WindowLibrary(directory: directory)
+        let first = try #require(library.store(for: library.windows[0].id))
+        let added = first.addSession(toWorkspace: first.workspaces[0].id, cwd: "/a")!
+        let work = library.newWindow(name: "work")
+        let second = try #require(library.store(for: work.id))
+        let inWork = second.workspaces[0].sessions[0].id
+        first.save()
+        second.save()
+
+        let reopened = WindowLibrary(directory: directory)
+        let ids = reopened.persistedSessionIDs()
+        #expect(ids.contains(added.id))
+        #expect(ids.contains(inWork))
+        #expect(!ids.contains(UUID()))
+    }
+
     @Test func allOpenSessionsFlattensEverySessionAcrossWindows() {
         let library = WindowLibrary(directory: directory)
         #expect(library.allOpenSessions().count == 1)

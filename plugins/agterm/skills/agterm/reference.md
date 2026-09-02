@@ -44,6 +44,8 @@ The five event kinds and payloads are:
 - `session.created` / `session.closed`: session `name`, emitted when the session enters or leaves a
   visible window tree. Undo emits a new `session.created`; grace-period finalization does not emit a
   second close.
+- `session.durable`: a durable pane spawned; `attached` is true when the running program was reattached
+  across a restart, false when a fresh one was created (the restore fallback ran).
 - `tree.changed`: an empty payload and the affected window id. Name, membership, and ordering changes
   are coalesced for 100 ms per window. Read `tree --json` for the current snapshot.
 
@@ -128,6 +130,8 @@ to restore focus via `session focus left|right`),
 exits — the read side of `session new --wait`; omitted for a plain or non-holding session),
 `durable` (the main pane's program runs under a detached session server an app restart reattaches —
 `session new --durable` or the Durable agent panes setting; omitted otherwise),
+`attached` (with `durable`: whether this launch reattached the running program or created a fresh one
+because the restore fallback ran; omitted otherwise),
 `overlay` (overlay shown),
 `overlaySizePercent` (an open overlay's size — the
 floating panel's percent of the pane, 1–100; omitted = a full-pane overlay or no overlay, so gate on

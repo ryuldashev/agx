@@ -37,6 +37,8 @@ enum DurableSpawn {
         try? FileManager.default.createDirectory(atPath: (socket as NSString).deletingLastPathComponent,
                                                  withIntermediateDirectories: true)
         session.durable = true
+        session.durableAttached = live(sessionID: session.id, stateDirectory: stateDirectory) != nil
+        logger.notice("durable \(session.id.uuidString, privacy: .public) \(session.durableAttached ? "attaching" : "creating", privacy: .public)")
         return CommandRestore.RestorePlan(command: DurablePane.command(abduco: abduco, socket: socket, line: line),
                                           initialInput: nil)
     }
@@ -61,6 +63,28 @@ enum DurableSpawn {
             kill(live.server, SIGTERM)
         }
         try? FileManager.default.removeItem(atPath: DurablePane.pidFilePath(socket: socket))
+    }
+
+    /// Launch-time sweep: a server whose session no indexed window persists (a window file removed by hand, a
+    /// crash between discard and pid-file removal) is killed and its files dropped. A server whose program
+    /// already exited is not `live`, so it is found by its socket path in argv instead.
+    @MainActor
+    static func reapOrphans(stateDirectory: String, known: Set<UUID>) {
+        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: stateDirectory + "/abduco") else { return }
+        for id in DurablePane.orphans(entries: entries, known: known) {
+            let socket = DurablePane.socketPath(stateDirectory: stateDirectory, sessionID: id)
+            if let live = live(sessionID: id, stateDirectory: stateDirectory) {
+                kill(live.server, SIGTERM)
+            } else {
+                let sweep = Process()
+                sweep.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+                sweep.arguments = ["-f", socket]
+                try? sweep.run()
+                try? FileManager.default.removeItem(atPath: socket)
+            }
+            try? FileManager.default.removeItem(atPath: DurablePane.pidFilePath(socket: socket))
+            logger.notice("reaped orphaned durable server \(id.uuidString, privacy: .public)")
+        }
     }
 
     /// The program and server pids behind a session's pid file, nil unless both are alive and the parent's

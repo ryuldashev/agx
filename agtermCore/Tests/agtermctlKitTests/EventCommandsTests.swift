@@ -155,6 +155,10 @@ struct EventCommandsTests {
             // shape WITHOUT a color: `shape=` must be its own arm, not nested inside the color one
             ControlEvent(seq: 7, ts: 0, kind: .status,
                          payload: ControlEventPayload(name: "api", status: "completed", shape: "star")),
+            ControlEvent(seq: 8, ts: 0, kind: .sessionDurable,
+                         payload: ControlEventPayload(name: "agent", attached: true)),
+            ControlEvent(seq: 9, ts: 0, kind: .sessionDurable,
+                         payload: ControlEventPayload(name: "agent", attached: false)),
         ]
         let human = events.map { EventFormatter.human($0, timeZone: TimeZone(secondsFromGMT: 0)!) }
         #expect(human[0] == "00:00:00 status api blocked pane=right blink")
@@ -164,6 +168,8 @@ struct EventCommandsTests {
         #expect(human[4] == "00:00:00 tree.changed win")
         #expect(human[5] == "00:00:00 status api active color=#ff8800 shape=triangle")
         #expect(human[6] == "00:00:00 status api completed shape=star")
+        #expect(human[7] == "00:00:00 session.durable agent attached")
+        #expect(human[8] == "00:00:00 session.durable agent created")
 
         for event in events {
             let line = try EventFormatter.json(event)

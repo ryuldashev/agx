@@ -173,7 +173,8 @@ seen` — omitted when zero), `commandWait` (whether a `--command` session was c
 hold open after the command exits — the read side of `session new --wait`, omitted for a plain or
 non-holding session), `durable` (the main pane's program runs under a detached session server an app
 restart reattaches — `session new --durable` or the Durable agent panes setting; omitted otherwise),
-`overlaySizePercent` (an open overlay's floating-panel percent 1–100,
+`attached` (with `durable`: whether this launch reattached the running program or created a fresh one;
+omitted otherwise), `overlaySizePercent` (an open overlay's floating-panel percent 1–100,
 omitted for a full-pane overlay or no overlay so gate on `overlay` first; the read side of `overlay
 resize` for a record-then-restore zoom), `paneOverlays` (the panes covered by their own overlay —
 `["left"]`, `["right"]` or `["left","right"]`, omitted when neither is; the read side of `overlay open
@@ -213,7 +214,7 @@ that window, omitted when no pick is pending.
 
 **events**: continuously print control events, subscribing from the current tail when no cursor is
 given. Use `--json` for one bare event object per line; filter with repeatable or comma-separated
-`--kind status|notify|session.created|session.closed|tree.changed`; resume with paired
+`--kind status|notify|session.created|session.closed|session.durable|tree.changed`; resume with paired
 `--run RUN --after SEQ`; and set page size with `--limit 1...1000`. The app retains 4,096 events for
 one process run. Cursor run changes, expiry, and ahead-of-tail errors are fatal and are never silently
 rebaselined. There is no terminal-output event stream.

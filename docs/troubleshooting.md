@@ -171,8 +171,11 @@ Durable panes (agx fork, ADR 0001) keep each command session's program under an 
 `<state dir>/abduco/<session id>` with a `.pid` sidecar. A restart that re-runs the command instead of
 reattaching means the server was gone: a reboot, a `kill`, or the program exited while agx was away (the
 pane then shows `session terminated with exit status N` before the fresh run). Servers are per state
-dir, so an isolated `AGTERM_STATE_DIR` never sees the live app's. abduco's own listing does not show
-absolute-path sessions; to see or clear them by hand:
+dir, so an isolated `AGTERM_STATE_DIR` never sees the live app's. `tree --json` says which happened per
+session: `attached: true` is a reattach, `false` a fresh run; `agtermctl events --kind session.durable`
+streams the same at spawn. Launch kills servers whose session no window persists any more (logged as
+`reaped orphaned durable server`). abduco's own listing does not show absolute-path sessions; to see or
+clear them by hand:
 
 ```
 ls ~/Library/Application\ Support/agx/abduco/

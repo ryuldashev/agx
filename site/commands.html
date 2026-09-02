@@ -477,7 +477,9 @@
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session new --wait</span>; omitted otherwise),
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">durable</span> (the main pane runs its program under a detached session server that an app
                 restart reattaches — <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session new --durable</span> or the Durable agent panes setting; omitted
-                otherwise, and when present <span style="font-family: &quot;JetBrains Mono&quot;, monospace">foreground</span> is the program's own argv), and
+                otherwise, and when present <span style="font-family: &quot;JetBrains Mono&quot;, monospace">foreground</span> is the program's own argv),
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">attached</span> (with <span style="font-family: &quot;JetBrains Mono&quot;, monospace">durable</span>: whether this launch reattached the
+                running program, or created a fresh one because the restore fallback ran; omitted otherwise), and
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">unseen</span>.
               </p>
               <p style="font-size: 14px; line-height: 1.65; color: #949ba4; margin: 8px 0 0">
@@ -552,7 +554,9 @@
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">status</span>,
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">notify</span>,
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session.created</span>,
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session.closed</span>, and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session.closed</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session.durable</span> (a durable pane spawned; its
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">attached</span> says whether the program survived the restart), and
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">tree.changed</span> (a 100 ms coalesced signal that a
                 window's names, membership, or ordering moved — read
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">tree --json</span> for the new

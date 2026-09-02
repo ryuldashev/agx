@@ -31,6 +31,13 @@ extension AppStore {
         scheduleTreeChanged()
     }
 
+    /// A durable pane spawned; only the surface factory knows whether it attached or created, so it calls this.
+    public func emitSessionDurable(_ session: Session) {
+        guard let workspace = workspace(forSession: session.id) else { return }
+        emitControlEvent(.sessionDurable, workspace: workspace.id, session: session.id,
+                         payload: ControlEventPayload(name: session.displayName, attached: session.durableAttached))
+    }
+
     /// Records an accepted terminal/control notification in the app event ring and returns its effective
     /// title. An unresolved session returns nil and emits nothing. Delivery gating belongs to the caller.
     @discardableResult

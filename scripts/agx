@@ -57,6 +57,8 @@ def _flags(sess):
         f.append(f"{u} unseen")
     if sess.get("statusBlink"):
         f.append("blinking")
+    if sess.get("attached"):
+        f.append("reattached")
     return f
 
 

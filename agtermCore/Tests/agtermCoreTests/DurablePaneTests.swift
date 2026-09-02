@@ -36,6 +36,14 @@ struct DurablePaneTests {
         #expect(!DurablePane.shouldWrap(settingOn: true, requested: true, serverExists: true, line: nil))
     }
 
+    @Test func orphansAreSocketEntriesNoKnownSessionOwns() {
+        let other = UUID(uuidString: "0A0A0A0A-0000-4000-8000-000000000001")!
+        let entries = [id.uuidString, id.uuidString + ".pid", other.uuidString, other.uuidString + ".pid", ".DS_Store"]
+        #expect(DurablePane.orphans(entries: entries, known: [id]) == [other])
+        #expect(DurablePane.orphans(entries: entries, known: [id, other]).isEmpty)
+        #expect(DurablePane.orphans(entries: [], known: []).isEmpty)
+    }
+
     @Test func commandAttachesOrCreatesAndRecordsTheProgramPid() {
         let command = DurablePane.command(abduco: "/Applications/agx.app/Contents/Resources/abduco/abduco",
                                           socket: "/tmp/agx/abduco/ID",
