@@ -233,11 +233,12 @@ public final class Session: Identifiable {
     /// The split (right) pane's persisted restore-command override, the split analogue of `restoreCommand`.
     @ObservationIgnored public var splitRestoreCommand: String?
 
-    /// The main pane's TRANSIENT override for THIS launch, copied from `restoreCommand` by an app-bootstrap
-    /// restore, consumed by `takePendingRestoreOverride(pane:)`, never persisted. A session that was not
-    /// bootstrap-restored (fresh, Recent Closed, duplicated, rebuilt after a mid-process window reload) starts
-    /// nil, so nothing fires. The ONLY restore-override state a surface factory may read: it freezes what was
-    /// eligible at process start, so a command written over the socket during this run never executes in it.
+    /// The main pane's TRANSIENT override for the pane about to spawn, copied from `restoreCommand` by an
+    /// app-bootstrap restore or a Reopen Closed Item (`SnapshotArming.launch`/`.reopen`), consumed by
+    /// `takePendingRestoreOverride(pane:)`, never persisted. A session built any other way — fresh,
+    /// duplicated, rebuilt after a mid-process window reload — starts nil, so nothing fires. The ONLY
+    /// restore-override state a surface factory may read, which is what keeps a command written over the
+    /// socket from executing in a pane that is already running.
     @ObservationIgnored public var pendingRestoreCommand: String?
     /// The split analogue of `pendingRestoreCommand`, seeded only when the restored split was SHOWN
     /// (`isSplit`) — a hidden split builds no right surface at bootstrap, so a pending payload would instead

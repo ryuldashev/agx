@@ -19,8 +19,13 @@ extension WindowContentView {
     /// The app-wide recently CLOSED sessions, newest first and capped like the MRU list. Workspaces are left
     /// to File ▸ Open Recent: this popover is the session switcher, and a workspace row here would restore a
     /// whole tree from a control that otherwise only moves the selection.
+    /// A `.session` entry whose payload is nil is dropped: it draws a row whose click resolves to nothing,
+    /// and the failed reopen does not consume the entry, so the dead row would survive every attempt.
     private var recentClosedSessions: [RecentClosedItem] {
-        Array(library.recentClosedItems.filter { $0.kind == .session }.prefix(SessionSwitcher.maxCandidates))
+        library.recentClosedItems
+            .filter { $0.kind == .session && $0.session != nil }
+            .prefix(SessionSwitcher.maxCandidates)
+            .map { $0 }
     }
 
     /// Title-bar button opening the recent-sessions popover — the mouse equivalent of the Ctrl-Tab switcher.
@@ -73,18 +78,25 @@ extension WindowContentView {
     private var recentSessionsPopover: some View {
         // no `.accessibilityIdentifier` on this container: a SwiftUI identifier on a parent propagates to and
         // OVERRIDES its descendants', clobbering the per-row `recent-session-row` ids the tests read.
-        VStack(spacing: 2) {
-            ForEach(recentSessions, id: \.self) { id in
-                recentSessionRow(id)
-            }
-            if !recentClosedSessions.isEmpty {
-                if !recentSessions.isEmpty { Divider().padding(.vertical, 4) }
-                sectionHeader("Recently closed")
-                ForEach(recentClosedSessions) { item in
-                    recentClosedRow(item)
+        // both lists are capped at `SessionSwitcher.maxCandidates`, so the stack can reach twice the height
+        // one list ever did and a title-bar-anchored popover that tall gets repositioned or clipped. The
+        // scroller only engages past that bound; `.fixedSize` keeps a short list its natural height.
+        ScrollView {
+            VStack(spacing: 2) {
+                ForEach(recentSessions, id: \.self) { id in
+                    recentSessionRow(id)
+                }
+                if !recentClosedSessions.isEmpty {
+                    if !recentSessions.isEmpty { Divider().padding(.vertical, 4) }
+                    sectionHeader("Recently closed")
+                    ForEach(recentClosedSessions) { item in
+                        recentClosedRow(item)
+                    }
                 }
             }
         }
+        .frame(maxHeight: GhosttyApp.shared.interfaceMetrics.scaled(420))
+        .fixedSize(horizontal: false, vertical: true)
         .padding(6)
         .frame(width: GhosttyApp.shared.interfaceMetrics.scaled(320))
         .background(terminalColor)

@@ -13,8 +13,8 @@ extension AppStore {
     /// `setFlag`: an unchanged value writes nothing and skips the save. No-op for an unknown id.
     ///
     /// It deliberately does NOT touch the pending slots: a write during this run must not execute during
-    /// this run. Only an app-bootstrap restore copies the persisted value into `pendingRestoreCommand`
-    /// (see `session(from:launchRestore:)`), which is what the surface factories consume. `.scratch` is
+    /// this run. Only a snapshot rebuild that arms copies the persisted value into `pendingRestoreCommand`
+    /// (see `session(from:arming:)`), which is what the surface factories consume. `.scratch` is
     /// rejected at the command layer (the scratch terminal is never restored), so it is not handled here.
     ///
     /// Returns whether the requested value is now on disk, so a caller can refuse to acknowledge a write

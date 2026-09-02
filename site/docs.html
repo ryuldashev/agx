@@ -2807,7 +2807,9 @@ command = "'/Users/you/.config/agterm/agent-status/agterm-codex-status.sh' stop"
               and the <em>Recently closed</em> section of the title-bar clock popover do, from the last twenty closes. A rebuilt
               session comes back with its directory, name, split, and font size — and it runs the command its pane pinned with
               <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">agtermctl session restore</span>, so a
-              closed agent comes back as that agent rather than as a bare shell in the right folder. Claude Code's status hook
+              closed agent comes back as that agent rather than as a bare shell in the right folder — provided the
+              <strong style="color: #e6e1d7">Restore running commands on restart</strong> toggle is on, the same switch that gates
+              pins at launch and is off by default. Claude Code's status hook
               keeps that pin current, which is why reopening a Claude session resumes the conversation. It does not replay the
               command a pane merely <em>happened</em> to be running: that capture describes a clean quit, and this session never
               quit. The same list is scriptable as

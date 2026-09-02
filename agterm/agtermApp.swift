@@ -261,8 +261,8 @@ struct agtermApp: App {
         // foreground pid, so it is never captured and restores via the exec `command` path, keeping close-on-exit.
         // Precedence is host-free `CommandRestore.restorePlan`: fresh always runs, restored honors the toggle, a
         // captured foreground preempts `initialCommand` even when denylist-suppressed. A `session.restore` override
-        // beats both, from the TRANSIENT pending slot (only an app-bootstrap restore seeds it) not the sticky
-        // persisted field; taking it clears it, so this pane's next surface is a plain shell.
+        // beats both, from the TRANSIENT pending slot (an app-bootstrap restore or a Reopen Closed Item seeds
+        // it) not the sticky persisted field; taking it clears it, so this pane's next surface is a plain shell.
         let pendingForeground = session.takePendingForegroundCommand(pane: .left)
         let hadForeground = pendingForeground != nil
         let restoreInput = Self.restoreInitialInput(pendingForeground)
@@ -436,8 +436,8 @@ struct agtermApp: App {
         // parent's window/workspace/session ids. The captured foreground command re-runs via initial_input
         // (run-once); splits never carry an `initialCommand`, so there is no mutual-exclusion guard and no
         // `restorePlan` — `restoreInput` alone decides. A `session.restore` override wins over the capture, from
-        // the TRANSIENT pending slot (seeded only by an app-bootstrap restore whose split was shown) not the
-        // sticky persisted field; taking it clears it, so a fresh ⌘D split after a split shell exits is a shell.
+        // the TRANSIENT pending slot (seeded by a bootstrap restore or a reopen, and only for a SHOWN split) not
+        // the sticky persisted field; taking it clears it, so a fresh ⌘D split after a split shell exits is a shell.
         let capturedInput = Self.restoreInitialInput(session.takePendingForegroundCommand(pane: .right))
         let restoreInput = CommandRestore.restoreInput(restoreEnabled: GhosttyApp.shared.restoreRunningCommand,
                                                        restoreOverride: session.takePendingRestoreOverride(pane: .right),

@@ -787,8 +787,8 @@ public final class AppStore {
     /// current state wholesale. A persisted selection pointing at a session that no longer exists is cleared.
     /// Deliberately does NOT call `save()` — it loads what was just read from disk; the closing
     /// `reselectIfSelectionHidden` is the exception, since repairing a stranded selection is worth writing.
-    /// `launchRestore` marks an APP-BOOTSTRAP restore, the only thing that arms anything executable — a
-    /// persisted `session.restore` override and the captured `foregroundCommand`/`splitForegroundCommand`.
+    /// `launchRestore` marks an APP-BOOTSTRAP restore, the only thing that arms a captured
+    /// `foregroundCommand`/`splitForegroundCommand` on top of the `session.restore` pins (`SnapshotArming`).
     /// It defaults to false because reopening a closed window mid-process reloads its store through here,
     /// and that RUNTIME caller must not execute anything.
     public func restore(from snapshot: Snapshot, launchRestore: Bool = false) {

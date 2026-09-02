@@ -18,8 +18,8 @@ Full detail for every `agtermctl` command. See `SKILL.md` for the model and addr
 - **Response shape**: `{"ok": true, "result": {…}}` or `{"ok": false, "error": "<message>"}`.
   `result` carries one of: `id` (affected/new session/workspace/window), `text` (session copy/text),
   `exitCode` (overlay result), `count` (diagnostics/search), `affected` (sessions actually changed by a
-  batch close/move), `tree` (the tree), `windows` (window list). The process exit code is non-zero when
-  `ok` is false.
+  batch close/move), `tree` (the tree), `windows` (window list), `closed` (the recently closed list).
+  The process exit code is non-zero when `ok` is false.
 - **Options go after the subcommand**: `agtermctl session type "ls" --target active`, never before it.
 
 ## events
@@ -1253,6 +1253,28 @@ kept); over the socket `theme set` is the commit, with no preview.
 
 ## restore
 
+Three verbs on one noun, and only the first two are about the recently closed list.
+
+`agtermctl restore list [--limit N]` — the sessions and workspaces closed recently, newest first, capped
+at twenty by the store. One row per entry: its 1-based INDEX, the entry id, the close time, the title,
+the workspace, the directory, and after `↺` the command a reopen will run. `--json` returns
+`result.closed` with `index`, `id`, `kind` (`session`/`workspace`), `title`, `workspace`, `cwd`,
+`closedAt` (ISO 8601), `sessionID` for a session entry or `sessions` (a member count) for a workspace
+one, and `restoreCommand`. `restoreCommand` reports a SESSION entry's own pin only — a workspace entry
+never carries one, whatever its members pinned — and a pane pinned to a plain shell
+(`session restore --none`) reports none, because that is what it will do.
+
+`agtermctl restore open <index | id> [--window W]` / `agtermctl restore last` — bring one entry back,
+exactly as File ▸ Reopen Closed Item does, and print the reopened session's id. That id is the one the
+session had BEFORE the close, so `tree` is the read-back and the entry leaves `restore list`. A pane that
+pinned a command with `session restore` comes back RUNNING it rather than as a bare shell in the right
+directory — which is how a closed agent comes back as that agent — subject to the same
+**Restore running commands on restart** setting as every other pin; with that setting off every reopen is
+a plain shell. The target is the printed index, the entry id or a unique prefix of it, or the closed
+session's or workspace's own id, so an id read from `tree` before the close still addresses it. An
+all-digit target is always the index and never an id prefix. `restore last` is `restore open` with no
+target at all; a blank target is refused rather than taken as the newest.
+
 `agtermctl restore clear` — clear every session's saved CAPTURED foreground command and persist, so the
 next restart restores plain shells for those panes (not whatever each pane was running). It does NOT clear
 a `session.new --command` session's own command (`initialCommand`, the durable creation identity), which
@@ -1268,7 +1290,8 @@ user-edited file read at launch — there is no control command for it.
 For a PER-SESSION, per-pane override that pins (or suppresses) what a pane restores, use
 `session restore` (in the session section above): it wins over the captured foreground, bypasses the
 denylist, and is what a `SessionStart` hook rewrites to reattach a non-idempotent command. `restore clear`
-here is app-global and touches only the captured commands, not those overrides.
+here is app-global and touches only the captured commands, not those overrides — and it does not touch the
+recently closed list either; that is `restore list` / `restore open`.
 
 ## app
 

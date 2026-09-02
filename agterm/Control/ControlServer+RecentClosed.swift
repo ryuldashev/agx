@@ -15,8 +15,9 @@ extension ControlServer {
     }
 
     /// Reopen one entry. `target` nil takes the newest, so the CLI's `restore last` needs no argument of its
-    /// own. Answers the id of the session now selected — the reopened one, or for a workspace entry its
-    /// restored selection — which is what a caller drives `session.type` at next.
+    /// own. Answers the id of the session the reopen BROUGHT BACK, which is what a caller drives
+    /// `session.type` at next — never the store's standing selection, which a workspace entry with no
+    /// surviving member leaves untouched and would hand the caller its own live foreground session.
     func openRecentClosed(_ target: String?, window: String?) -> ControlResponse {
         resolver.resolveOpenPlacementStore(window) { store in
             let items = library.recentClosedItems
@@ -36,8 +37,20 @@ extension ControlServer {
                 return ControlResponse(ok: false, error: "could not reopen \(item.title)")
             }
             if store === library.activeStore { actions.focusActiveSession() }
-            let reopened = store.selectedSessionID ?? item.session?.snapshot.id
-            return ControlResponse(ok: true, result: ControlResult(id: reopened?.uuidString))
+            return ControlResponse(ok: true, result: ControlResult(id: reopenedSessionID(item, in: store)?.uuidString))
         }
+    }
+
+    /// The session a reopen actually produced. A session entry keeps its id, so the snapshot answers
+    /// directly. A workspace entry has no id of its own to hand back, so it reports the selection the
+    /// rebuild made — but only once that selection is confirmed to live in the rebuilt workspace, since an
+    /// entry whose members were all taken restores an EMPTY workspace and selects nothing.
+    private func reopenedSessionID(_ item: RecentClosedItem, in store: AppStore) -> UUID? {
+        if let session = item.session { return store.session(withID: session.snapshot.id)?.id }
+        guard let workspaceID = item.workspace?.snapshot.id,
+              let workspace = store.workspaces.first(where: { $0.id == workspaceID }),
+              let selected = store.selectedSessionID,
+              workspace.sessions.contains(where: { $0.id == selected }) else { return nil }
+        return selected
     }
 }

@@ -145,12 +145,21 @@ final class RecentClosedControlTests {
         #expect(actions.calls == [.restoreOpen(target: "2", window: "w1")])
     }
 
-    /// `restore last` is `restore.open` with no target, so a blank one has to reach the host as nil rather
-    /// than as an empty string nothing resolves.
+    /// `restore last` is `restore.open` with no target at all, and only that means the newest entry.
     @Test func openWithoutATargetMeansTheNewest() async {
         let actions = MockControlActions()
         _ = await ControlDispatcher(actions: actions).dispatch(ControlRequest(cmd: .restoreOpen))
-        _ = await ControlDispatcher(actions: actions).dispatch(ControlRequest(cmd: .restoreOpen, target: "  "))
-        #expect(actions.calls == [.restoreOpen(target: nil, window: nil), .restoreOpen(target: nil, window: nil)])
+        #expect(actions.calls == [.restoreOpen(target: nil, window: nil)])
+    }
+
+    /// An unset shell variable reaches the socket as `""`. Reopening "whatever is newest" for it would run a
+    /// pinned command the caller never named and consume the entry.
+    @Test func openWithABlankTargetIsRejectedRatherThanTakenAsTheNewest() async {
+        let actions = MockControlActions()
+        let response = await ControlDispatcher(actions: actions)
+            .dispatch(ControlRequest(cmd: .restoreOpen, target: "  "))
+        #expect(response?.ok == false)
+        #expect(response?.error == "restore.open target must not be blank")
+        #expect(actions.calls.isEmpty)
     }
 }

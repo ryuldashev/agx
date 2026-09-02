@@ -81,3 +81,38 @@ in `zsh -lc '…'`.
 - The popover's row CLICK is verified by hand only: a synthesized XCUITest click on a SwiftUI `Button`
   inside an `NSPopover` does not fire the action (see `.claude/rules/ui-tests.md`). The test asserts
   the section and row are present and labelled.
+
+## Code review pass (Opus, adversarial, over the whole day's diff)
+
+A separate Opus subagent reviewed everything committed today. Findings applied here, in the second
+commit:
+
+- **A1 — `restore open` returned the wrong id.** The response reported `store.selectedSessionID`
+  whatever the entry was, so a workspace entry whose members had all been taken restored an EMPTY
+  workspace and still handed back the previously selected session's id. `reopenedSessionID(_:in:)`
+  now answers from the snapshot for a session entry, and for a workspace entry only returns a
+  selection confirmed to live in the rebuilt workspace.
+- **A2 — a blank target silently meant "the newest".** `restore open ""` (an unset shell variable)
+  reopened whatever was newest and ran its pin. The dispatcher now rejects a present-but-blank target
+  with `restore.open target must not be blank`; an ABSENT target still means the newest, which is what
+  `restore last` sends.
+- **B1 (found by my own new test, fixed before the review) —** an out-of-range all-digit target fell
+  through to UUID-prefix matching, so `restore open 2` could reopen entry 1 when entry 1's id started
+  with a 2. An all-digit target is now the index and nothing else.
+- **D1 — the popover could outgrow the screen.** Both lists are capped at `maxCandidates`, so the
+  stack can reach twice the height one list ever did and a title-bar-anchored popover that tall gets
+  repositioned or clipped. Wrapped in a `ScrollView` with `maxHeight: scaled(420)` and `.fixedSize`,
+  so a short list keeps its natural height.
+- **D2 — a dead row.** A `.session` entry with a nil payload drew a row whose click resolved to
+  nothing, and the failed reopen did not consume the entry, so the row survived every attempt. Such
+  entries are filtered out of the popover list.
+- **E1–E4 — docs.** `reference.md` gained a full `## restore` section and `closed` in the
+  response-shape bullet; `control-api.md` and `SKILL.md` got the same; `site/commands.html` now prints
+  `restore last [--window W] [--json]` and `restore open … [--json]`, and distinguishes session rows
+  from workspace rows in `restore list`; `site/docs.html` now says the reopen re-runs the pin only
+  with **Restore running commands on restart** on, which is off by default.
+- **E2 — five stale comments** in `Session.swift`, `AppStore.swift`, `AppStore+Restore.swift` and
+  `agtermApp.swift` still described the pending slots as launch-only.
+
+Gates re-run once after the fixes: `swift test` **2702 pass**, `make test-app` **255 pass**,
+`make lint` **clean**.

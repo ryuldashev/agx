@@ -520,10 +520,13 @@ appearance automatically; `theme set --dark none` stops tracking. The app defaul
 
 **restore** — `restore list [--limit N]` — the recently closed sessions and workspaces, newest first
 (`result.closed`: `index`, `id`, `kind`, `title`, `workspace`, `cwd`, `closedAt`, `sessionID` or a
-workspace's `sessions` count, and the `restoreCommand` a reopen will run) · `restore open <index|id>` /
-`restore last` — bring one back and print its id, which is the id it had before the close, so `tree` is the
-read-back; a pane that pinned a command with `session restore` comes back RUNNING it, not as a bare shell.
-The target is the printed index, the entry id or prefix, or the closed session's own id. ·
+workspace's `sessions` count, and the `restoreCommand` a reopen will run — a SESSION entry's own pin only,
+never a workspace's) · `restore open <index|id>` / `restore last` — bring one back and print its id, which
+is the id it had before the close, so `tree` is the read-back; a pane that pinned a command with
+`session restore` comes back RUNNING it rather than as a bare shell, on the same terms as every other pin,
+so with Settings ▸ General ▸ "Restore running commands on restart" off every reopen is a plain shell.
+The target is the printed index, the entry id or prefix, or the closed session's own id; an all-digit
+target is always the index, and a blank one is refused rather than taken as the newest. ·
 `restore clear` — a different thing entirely: clears every session's saved foreground command (the
 restore-running-command capture) so the next restart restores plain shells. It does not touch this list.
 

@@ -599,18 +599,26 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 - `restore.list` projects `RecentClosedStore`'s newest-first entries as `result.closed`
   (`ControlRecentClosedNode`): 1-based `index`, entry `id`, `kind`, `title`, `workspace`, `cwd`,
   ISO-8601 `closedAt`, `sessionID` or workspace `sessions` count, and the `restoreCommand` that will run.
-  A pinned plain shell (`session.restore --none`, an empty pin) reports NO command, which is what it means.
+  `restoreCommand` is a SESSION entry's own pin: a workspace entry never reports one, whatever its members
+  pinned. A pinned plain shell (`session.restore --none`, an empty pin) reports NO command, which is what
+  it means. Nothing in the projection reflects the `restoreRunningCommand` master switch, so a listed
+  command is what WOULD run, on the same terms as every other pin.
   `--limit` must be positive. The entries are the same records File ▸ Reopen Closed Item and the title-bar
   popover's Recently closed section show.
 - `restore.open` reopens one entry through the same `AppStore.restoreRecentClosed` the GUI uses and echoes
   the reopened session's id, which is the CLOSED session's own id — the read-back is that id reappearing in
-  `tree`, and the entry leaving `restore.list`. `RecentClosedResolve` takes the printed index first, then
-  the entry id or prefix, then the closed session's/workspace's own id, so an id a caller last read from
-  `tree` addresses it. An absent target means the newest entry, which is all `agtermctl restore last` is.
+  `tree`, and the entry leaving `restore.list`. A workspace entry has no id of its own to answer with, so
+  it reports the selection the rebuild made, and NOTHING when it restored an empty workspace — never the
+  store's standing selection, which would hand the caller its own live session. `RecentClosedResolve` takes
+  the printed index first, then the entry id or prefix, then the closed session's/workspace's own id, so an
+  id a caller last read from `tree` addresses it; an all-digit target is always the index.
+  An ABSENT target means the newest entry, which is all `agtermctl restore last` is — a present but BLANK
+  one is refused, because an unset shell variable must not reopen and consume an arbitrary entry.
   `--window` places the reopened item like any other open command.
 - A reopen ARMS the session's `restoreCommand` pins (`SnapshotArming.reopen`) but withholds the quit-time
   captures, which describe a quit that never happened for a session closed mid-run. Only app bootstrap
-  arms both (`.launch`).
+  arms both (`.launch`). An armed pin still obeys the `restoreRunningCommand` master switch, which is OFF
+  by default, so any surface claiming a reopened agent comes back running must say so.
 - `session.restore` pins per-session, per-pane next-launch behavior for discussion #264:
   - nil/unpin/clear uses capture;
   - empty/pinNone/none forces plain shell and suppresses capture plus initial command;

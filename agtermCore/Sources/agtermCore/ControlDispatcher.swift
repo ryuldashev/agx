@@ -706,6 +706,12 @@ public struct ControlDispatcher {
             }
             return actions.listRecentClosed(limit: request.args?.limit)
         case .restoreOpen:
+            // an ABSENT target means the newest entry (`restore last`); a present but blank one is an unset
+            // shell variable, and answering that with "reopen whatever is newest" runs a pinned command the
+            // caller never asked for. `restore open` always sends the key, `restore last` never does.
+            if let target = request.target, target.trimmedOrNil == nil {
+                return ControlResponse(ok: false, error: "restore.open target must not be blank")
+            }
             return actions.openRecentClosed(request.target.trimmedOrNilValue, window: request.args?.window)
         default:
             preconditionFailure("unexpected app command: \(request.cmd.rawValue)")
