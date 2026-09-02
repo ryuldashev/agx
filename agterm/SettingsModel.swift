@@ -275,6 +275,11 @@ final class SettingsModel {
     /// Persist that the first-run welcome has been shown, so it never appears again on this state directory.
     func setWelcomeShown(_ value: Bool?) { settings.welcomeShown = value; try? settingsStore.save(settings) }
 
+    func setPermissionsPrimerShown(_ value: Bool?) {
+        settings.permissionsPrimerShown = value
+        try? settingsStore.save(settings)
+    }
+
     // MARK: - Agents
 
     /// Append a connected agent and persist. Blank name/command rows are allowed here (the row is editable

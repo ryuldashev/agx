@@ -157,18 +157,24 @@ targets:
           dest="$CODESIGNING_FOLDER_PATH/Contents/MacOS/agtermctl"
           mkdir -p "$(dirname "$dest")"
           cp -f "$src" "$dest"
-          # ad-hoc sign the helper + re-seal the app (Debug/normal builds). Developer ID signing for
-          # releases is done authoritatively by scripts/release.sh AFTER xcodebuild returns (so it
-          # can't be clobbered by Xcode's own final code-sign, which also adds the required timestamp).
-          codesign --force --options runtime --sign - "$dest"
+          # Sign the helper + re-seal the app with the SAME identity Xcode used, not ad-hoc. TCC binds a
+          # permission grant to the app's designated requirement, and for an ad-hoc signature that
+          # requirement is the cdhash — so re-sealing ad-hoc here would make every rebuild a new app to
+          # macOS and re-ask for every permission the tools in panes use. CODE_SIGN_IDENTITY is exported
+          # to this phase by Xcode; scripts/build.sh sets it to the Developer ID when one is in the
+          # keychain, and it stays "-" for Debug and for machines without a certificate. Developer ID
+          # signing for RELEASES is still done authoritatively by scripts/release.sh AFTER xcodebuild
+          # returns (it also adds the required timestamp).
+          SIGN_ID="${CODE_SIGN_IDENTITY:--}"
+          codesign --force --options runtime --sign "$SIGN_ID" "$dest"
           # re-seal the whole app: this phase can run AFTER Xcode's own code-sign on incremental
           # builds, so adding the helper would otherwise break the seal. --deep because a clean
           # build can reach here before Xcode has signed agterm.debug.dylib. Entitlements come in a
           # SECOND pass instead: --deep applies them to every nested binary, and agtermctl is a
           # standalone CLI on the user's PATH, not a library.
-          codesign --force --deep --options runtime --sign - "$CODESIGNING_FOLDER_PATH"
+          codesign --force --deep --options runtime --sign "$SIGN_ID" "$CODESIGNING_FOLDER_PATH"
           # CODE_SIGN_ENTITLEMENTS, not a literal path: Debug and Release use different files.
-          codesign --force --options runtime --entitlements "$SRCROOT/$CODE_SIGN_ENTITLEMENTS" --sign - "$CODESIGNING_FOLDER_PATH"
+          codesign --force --options runtime --entitlements "$SRCROOT/$CODE_SIGN_ENTITLEMENTS" --sign "$SIGN_ID" "$CODESIGNING_FOLDER_PATH"
     dependencies:
       - framework: GhosttyKit.xcframework
         embed: false

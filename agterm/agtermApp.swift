@@ -28,6 +28,10 @@ struct agtermApp: App {
     /// as prior state.
     private let welcomeDue: Bool
 
+    /// Whether this launch owes the user the permission wall — once per install, whether or not this is a
+    /// first launch. See `PermissionPrimer.isDue`.
+    private let permissionsPrimerDue: Bool
+
     /// The plain `WindowGroup`'s scene id, used by `openWindow(id:)` to spawn additional windows.
     private static let windowGroupID = "terminal"
 
@@ -58,6 +62,7 @@ struct agtermApp: App {
         _settingsModel = State(initialValue: settingsModel)
         welcomeDue = FirstRunWelcome.isDue(welcomeShown: settingsModel.settings.welcomeShown,
                                            hasPriorState: hadPriorState)
+        permissionsPrimerDue = PermissionPrimer.isDue(primerShown: settingsModel.settings.permissionsPrimerShown)
         let controlServer = ControlServer(library: library, actions: actions, settingsModel: settingsModel)
         _controlServer = State(initialValue: controlServer)
         _sessionSwitcher = State(initialValue: SessionSwitcher(library: library, canSwitch: { actions.uiActionsEnabled }))
@@ -189,7 +194,16 @@ struct agtermApp: App {
                         wakeObserver.start()
                         // last: a modal here blocks the rest of the task, and the window behind it should be
                         // fully wired before it opens. `presentOnce` latches, so the per-window .task is safe.
-                        if welcomeDue { WelcomeAlert.presentOnce(settingsModel: settingsModel) }
+                        // the wall follows the welcome rather than opening beside it — see `presentOnce`.
+                        if welcomeDue {
+                            WelcomeAlert.presentOnce(settingsModel: settingsModel) {
+                                if permissionsPrimerDue {
+                                    PermissionsAlert.presentOnce(settingsModel: settingsModel, library: library)
+                                }
+                            }
+                        } else if permissionsPrimerDue {
+                            PermissionsAlert.presentOnce(settingsModel: settingsModel, library: library)
+                        }
                     }
             }
         }
