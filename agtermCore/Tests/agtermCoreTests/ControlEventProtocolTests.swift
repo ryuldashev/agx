@@ -19,6 +19,13 @@ struct ControlEventProtocolTests {
             ControlEvent(seq: 5, ts: 5.5, kind: .treeChanged, window: "win"),
             ControlEvent(seq: 6, ts: 6.5, kind: .sessionDurable, window: "win", workspace: "work",
                          session: "agent", payload: ControlEventPayload(name: "agent", attached: true)),
+            ControlEvent(seq: 7, ts: 7.5, kind: .scheduleAdded, window: "win", workspace: "work",
+                         payload: ControlEventPayload(name: "job", at: "2026-09-04T09:00:00+05:00")),
+            ControlEvent(seq: 8, ts: 8.5, kind: .scheduleFired, window: "win", workspace: "work",
+                         session: "fired", payload: ControlEventPayload(name: "job", at: "2026-09-04T09:00:00+05:00")),
+            ControlEvent(seq: 9, ts: 9.5, kind: .scheduleCancelled, window: "win", payload: ControlEventPayload(name: "job")),
+            ControlEvent(seq: 10, ts: 10.5, kind: .scheduleMissed, window: "win",
+                         payload: ControlEventPayload(name: "job", at: "2026-09-04T09:00:00+05:00")),
         ]
 
         let data = try JSONEncoder().encode(events)

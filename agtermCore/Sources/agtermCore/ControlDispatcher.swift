@@ -123,6 +123,10 @@ public protocol ControlActions {
     /// Cancel a native picker. The host owns window resolution, registry lookup, and dismissal.
     func cancelPick(_ target: String, window: String?) -> ControlResponse
     func clearRestoreCommands() -> ControlResponse
+    func scheduleAdd(_ options: ControlScheduleAddOptions) -> ControlResponse
+    func scheduleList() -> ControlResponse
+    func scheduleCancel(_ target: String) -> ControlResponse
+    func scheduleRun(_ target: String) -> ControlResponse
 }
 
 public extension ControlActions {
@@ -249,6 +253,8 @@ public struct ControlDispatcher {
             return dispatchPickCommand(request)
         case .sessionHudOpen, .sessionHudUpdate, .sessionHudClose:
             return dispatchHudCommand(request)
+        case .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun:
+            return dispatchScheduleCommand(request)
         }
     }
 

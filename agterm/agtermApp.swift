@@ -22,6 +22,7 @@ struct agtermApp: App {
     @State private var appearanceObserver: SystemAppearanceObserver
     @State private var accessibilityObserver: SystemAccessibilityObserver
     @State private var wakeObserver: SystemWakeObserver
+    @State private var scheduler: SessionScheduler
 
     /// Whether this launch owes the user the first-run welcome. Decided in `init()`, because the first
     /// launch writes its own window snapshot moments after the scene appears and that write would read back
@@ -77,6 +78,9 @@ struct agtermApp: App {
         // re-attempts surface creation on display wake: libghostty refuses to create one while the display
         // sleeps, which leaves a scheduled job's session realized-never and its --command unrun (#416).
         _wakeObserver = State(initialValue: SystemWakeObserver())
+        // fires overdue jobs on start and arms a timer for the next; needs the library for a store and the
+        // action hub to seed the agent, both already built.
+        _scheduler = State(initialValue: SessionScheduler(directory: stateDirectory, library: library, actions: actions))
     }
 
     var body: some Scene {
@@ -187,6 +191,10 @@ struct agtermApp: App {
                         // consumers read current accessibility values at first render; this handles live flips.
                         accessibilityObserver.start()
                         wakeObserver.start()
+                        // after reopenWindows so a due job finds a store; idempotent per-window re-entry.
+                        actions.scheduler = scheduler
+                        appDelegate.scheduler = scheduler
+                        scheduler.start()
                         // last: a modal here blocks the rest of the task, and the window behind it should be
                         // fully wired before it opens. `presentOnce` latches, so the per-window .task is safe.
                         if welcomeDue { WelcomeAlert.presentOnce(settingsModel: settingsModel) }

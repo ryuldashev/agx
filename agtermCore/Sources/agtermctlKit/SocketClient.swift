@@ -196,6 +196,10 @@ struct SocketClient {
         if let defaults = response.result?.defaults {
             return formatWorkspaceDefaults(defaults)
         }
+        // `schedule.add` echoes the job it stored, but the id is the scriptable answer there.
+        if let scheduled = response.result?.scheduled, !(echoID && response.result?.id != nil) {
+            return formatScheduled(scheduled)
+        }
         if let text = response.result?.text {
             return text
         }
@@ -259,6 +263,31 @@ struct SocketClient {
             if !details.isEmpty { background += " (\(details.joined(separator: ", ")))" }
         }
         return "dir:   \(defaults.cwd ?? "(unset)")\nagent: \(agent)\nbg:    \(background)"
+    }
+
+    /// One line per job: id prefix, fire time, countdown, destination, name. `(missed)` marks a job past its
+    /// grace that waits for `schedule run` or `schedule cancel`.
+    static func formatScheduled(_ scheduled: [ControlScheduledNode]) -> String {
+        guard !scheduled.isEmpty else { return "no scheduled sessions" }
+        return scheduled.map { node in
+            var parts = [String(node.id.prefix(8)), node.at, countdown(node.inSeconds)]
+            if let workspace = node.workspace { parts.append("→ \(workspace)") }
+            if let name = node.name { parts.append("\"\(name)\"") }
+            if node.state == "missed" { parts.append("(missed)") }
+            return parts.joined(separator: "  ")
+        }.joined(separator: "\n")
+    }
+
+    static func countdown(_ seconds: Int) -> String {
+        let magnitude = abs(seconds)
+        let text: String
+        switch magnitude {
+        case ..<60: text = "\(magnitude)s"
+        case ..<3600: text = "\(magnitude / 60)m"
+        case ..<86_400: text = "\(magnitude / 3600)h \(magnitude % 3600 / 60)m"
+        default: text = "\(magnitude / 86_400)d \(magnitude % 86_400 / 3600)h"
+        }
+        return seconds < 0 ? "\(text) ago" : "in \(text)"
     }
 
     static func formatKeymap(_ keymap: ControlKeymap) -> String {

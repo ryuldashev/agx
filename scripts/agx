@@ -117,6 +117,11 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
       A bare session for an agent = an agent with no task (the empty-session bug) — always spawn+seed.
     vs. an in-turn subagent (the Agent/Task tool): invisible in this UI, shares your turn, returns to
       you — use that for token-heavy research; use `agx spawn` when the user should SEE and drive the work.
+  DELEGATE LATER (tomorrow, 09:00, +2h) agx schedule add --at "<time>" --brief "<task>" --name "<title>" [--workspace-name W] [--cwd PATH]
+    ^ the APP itself opens the session at that time and hands the agent the brief as its first message;
+      survives app restart (fires on the next launch if it was closed, parked as "missed" after 24h).
+      Same brief rules as spawn. --at: +30m | +2h | +1d | HH:MM | "tomorrow 09:00" | "YYYY-MM-DD HH:MM".
+      list / cancel <id> / run <id> (fire now) — agx schedule list|cancel|run
   bare shell/session (no agent) agtermctl session new --workspace <id|name> --cwd <PATH>
   RUN shell YOUR OWN turn can't — in your session's side pane (do NOT hand terminal steps back to the user):
     finite cmd + capture   agx run "<shell cmd>"      runs it in an overlay on your pane, prints output + exit code
@@ -441,10 +446,15 @@ def main(argv):
               "  agx run \"<shell cmd>\" [--pane split]  run a FINITE command in THIS session's side pane, return output+exit\n"
               "  agx spawn --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID]\n"
               "            [--cwd PATH] [--agent claude] [--foreground] [--json]\n"
-              "            create an agent session AND seed it with the brief as its first message")
+              "            create an agent session AND seed it with the brief as its first message\n"
+              "  agx schedule add --at <time> --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID] [--cwd PATH]\n"
+              "  agx schedule list | cancel <id> | run <id>\n"
+              "            the APP opens the session at <time> with the brief as its first message (survives restart)")
         return 0
     if cmd == "spawn":
         return cmd_spawn(argv)
+    if cmd == "schedule":
+        return subprocess.call([CTL, "schedule", *argv[2:]])
     if cmd == "usage":
         return cmd_usage(argv)
     if cmd == "run":

@@ -22,7 +22,8 @@ extension AppStore {
                             dashboardHighlighted: () -> String? = { nil },
                             dashboardFontSize: () -> Double? = { nil },
                             dashboardFontMode: () -> String? = { nil },
-                            workspaceDefaults: (WorkspaceDefaults) -> ControlWorkspaceDefaults? = { _ in nil })
+                            workspaceDefaults: (WorkspaceDefaults) -> ControlWorkspaceDefaults? = { _ in nil },
+                            scheduled: () -> [ControlScheduledNode]? = { nil })
     -> ControlTree {
         let activeID = selectedSessionID
         // `currentWorkspaceID`, not the selected session's owner: an EMPTY destination selects nothing, so
@@ -95,7 +96,8 @@ extension AppStore {
                            dashboardHighlighted: dashboardHighlighted(),
                            dashboardFontSize: dashboardFontSize(),
                            dashboardFontMode: dashboardFontMode(),
-                           pickPending: pickPending())
+                           pickPending: pickPending(),
+                           scheduled: scheduled())
     }
 
     /// The tree's `paneOverlays`: the panes covered by their own overlay, omitted when neither is.

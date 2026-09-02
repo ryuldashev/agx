@@ -133,6 +133,7 @@ renumbering. Do not reintroduce a count anywhere.
 - `window.new`, `.list`, `.select`, `.close`, `.rename`, `.delete`, `.resize`, `.move`, `.zoom`,
   `.fullscreen`, `.minimize`
 - `keymap.reload`, `keymap.list`, `config.reload`, `theme.set`, `theme.list`, `restore.clear`
+- `schedule.add`, `.list`, `.cancel`, `.run`
 
 `debug.appearance` is a private `Command` case, absent from the list above, used only by `AppearanceFlipUITests`.
 It accepts light/dark, sets `NSApp.appearance`, posts `.agtermSystemAppearanceChanged`, echoes the effective
@@ -213,6 +214,24 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 - `session.duplicate` atomically creates a plain login shell after the source in the same workspace from
   `focusedCwd`. Copy no name, command, pane, status, flag, font, or background state. The new tree node is
   the read-back. Source `tree.cwd` remains primary, so it can differ from the focused cwd copied.
+
+## Scheduled sessions
+
+- `schedule.add` persists a job to `<stateDir>/scheduled.json`, with its brief in a sibling
+  `<stateDir>/scheduled/<id>.brief` file; jobs survive an app restart.
+- `SessionScheduler` fires on a main-runloop timer armed for the earliest pending job, and re-sweeps at
+  app start (after windows restore) and on display wake, so sleep or a relaunch never loses a due job.
+- A job found overdue by more than 24h is parked as `missed` rather than fired: a brief written for
+  "tomorrow morning" opened days later would only burn an agent turn on stale context. `schedule.run`
+  or `schedule.cancel` resolves it by hand; one overdue by less fires on the very next sweep.
+- `--workspace-name` is looked up at add time (a typo fails immediately) and, if still absent, created
+  only at fire time, so a job added well ahead of its `--at` does not pre-create the workspace.
+- Omitting both `--workspace` and `--workspace-name` defaults to the caller's `AGTERM_WORKSPACE_ID` env
+  when set, else `active`, so a scheduled peer lands beside the agent that asked for it.
+- Read back through the tree's top-level `scheduled` array and `schedule.added`/`.fired`/`.cancelled`/
+  `.missed` events; `.fired` carries the NEW session's id, the others the job's own id.
+- Control-native like `session.hud.*`: no menu item, chord, or palette entry, a deliberate exemption
+  from menu-actions' shared-action-seam rule — the GUI shows only the session the job creates.
 
 ## Surface input, output, and search
 

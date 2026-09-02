@@ -78,6 +78,11 @@ enum EventFormatter {
             return "\(time) \(event.kind.rawValue) \(name) \(event.payload.attached == true ? "attached" : "created")"
         case .sessionCreated, .sessionClosed, .treeChanged:
             return "\(time) \(event.kind.rawValue) \(name)"
+        case .scheduleAdded, .scheduleFired, .scheduleCancelled, .scheduleMissed:
+            var parts = [time, event.kind.rawValue, name]
+            if let at = event.payload.at { parts.append("at=\(at)") }
+            if let session = event.session { parts.append("session=\(session)") }
+            return parts.joined(separator: " ")
         }
     }
 }

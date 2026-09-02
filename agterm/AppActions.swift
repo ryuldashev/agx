@@ -68,6 +68,10 @@ final class AppActions {
     /// palette. Wired in the scene `.task`.
     var palette: PaletteController?
 
+    /// The scheduled-session owner, wired in the scene `.task` like `settingsModel`; the control server and
+    /// the sidebar footer both reach it through here.
+    var scheduler: SessionScheduler?
+
     /// Both theme slots captured when the picker opened, restored on Esc/cancel. Snapshotting the WHOLE pair
     /// keeps the revert flip-safe across a mid-preview macOS appearance switch, whichever slot the preview
     /// wrote. `themePreviewActive` gates preview/commit/cancel so the hooks are inert outside the picker.

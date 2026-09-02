@@ -82,6 +82,10 @@ public enum Command: String, Codable, Sendable {
     case pickResult = "pick.result"
     case pickCancel = "pick.cancel"
     case restoreClear = "restore.clear"
+    case scheduleAdd = "schedule.add"
+    case scheduleList = "schedule.list"
+    case scheduleCancel = "schedule.cancel"
+    case scheduleRun = "schedule.run"
     /// UI-TEST-ONLY: forces the app-level appearance (`light`|`dark` via `args.name`) so an XCUITest can
     /// simulate a macOS light/dark flip; with NO name it READS the side the last config feed applied, so a
     /// test can assert the flip drove the reload. Refused outside an XCUITest launch, and EXEMPT from the
@@ -309,6 +313,10 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// fewer if the window has fewer) instead of explicit ids (the CLI's `--mru`). Mutually exclusive with
     /// `targets`/`close`, composes with the font flags; resolved app-side, which needs the store's recency.
     public var mru: Bool?
+    /// When `schedule.add` fires, in any `ScheduleTime` form; the dispatcher resolves it against now.
+    public var at: String?
+    /// The task text `schedule.add` hands the agent as its first message.
+    public var brief: String?
 
     public init(name: String? = nil, cwd: String? = nil, targets: [String]? = nil,
                 workspace: String? = nil, workspaceName: String? = nil,
@@ -332,7 +340,7 @@ public struct ControlArgs: Codable, Sendable, Equatable {
                 position: String? = nil, repeats: Bool? = nil, all: Bool? = nil, lines: Int? = nil,
                 light: String? = nil, dark: String? = nil,
                 close: Bool? = nil, fontSize: Double? = nil, autoSize: Bool? = nil, mru: Bool? = nil,
-                agent: String? = nil) {
+                agent: String? = nil, at: String? = nil, brief: String? = nil) {
         self.name = name
         self.cwd = cwd
         self.agent = agent
@@ -398,6 +406,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
         self.fontSize = fontSize
         self.autoSize = autoSize
         self.mru = mru
+        self.at = at
+        self.brief = brief
     }
 }
 
@@ -462,6 +472,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
     /// The workspace's new-session seed, for `workspace.defaults` (both the read form and the write's
     /// echo of the stored state).
     public var defaults: ControlWorkspaceDefaults?
+    public var scheduled: [ControlScheduledNode]?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -469,7 +480,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 theme: String? = nil, themes: [String]? = nil, ratio: Double? = nil,
                 sync: Bool? = nil, light: String? = nil, dark: String? = nil,
                 events: ControlEventBatch? = nil, keymap: ControlKeymap? = nil,
-                pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil) {
+                pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil,
+                scheduled: [ControlScheduledNode]? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -487,6 +499,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.keymap = keymap
         self.pick = pick
         self.defaults = defaults
+        self.scheduled = scheduled
     }
 }
 

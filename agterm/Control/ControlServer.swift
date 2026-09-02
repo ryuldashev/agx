@@ -432,7 +432,8 @@ final class ControlServer {
                 .windowNew, .windowList, .windowSelect,
                 .windowClose, .windowRename, .windowDelete, .windowResize, .windowMove, .windowZoom,
                 .windowFullscreen, .windowMinimize,
-                .restoreClear, .dashboard, .appRelaunch, .appQuit:
+                .restoreClear, .dashboard, .appRelaunch, .appQuit,
+                .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun:
             return ControlResponse(ok: false, error: "control dispatcher did not handle \(request.cmd.rawValue)")
         case .debugAppearance:
             return setDebugAppearance(args: request.args)
@@ -639,7 +640,8 @@ final class ControlServer {
                 }
             },
             // the store holds the agent id; only settings know its name and launch line.
-            workspaceDefaults: { [weak self] defaults in self?.controlDefaults(defaults) }
+            workspaceDefaults: { [weak self] defaults in self?.controlDefaults(defaults) },
+            scheduled: { [weak self] in self?.scheduledNodes() }
         )
     }
 

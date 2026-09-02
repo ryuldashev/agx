@@ -369,13 +369,16 @@ public struct ControlTree: Codable, Sendable, Equatable {
     public let dashboardFontMode: String?
     /// The id of the picker currently awaiting a choice, or nil when no picker is open.
     public let pickPending: String?
+    /// App-wide jobs from `schedule.add`, omitted when none is pending or missed.
+    public let scheduled: [ControlScheduledNode]?
 
     public init(workspaces: [ControlWorkspaceNode], idleMs: Int? = nil, autoFollowMs: Int? = nil,
                 sidebarVisible: Bool? = nil, sidebarMode: String? = nil, workspaceFilter: Bool? = nil,
                 quickVisible: Bool? = nil,
                 zoomedSurface: String? = nil, dashboardMembers: [String]? = nil,
                 dashboardHighlighted: String? = nil, dashboardFontSize: Double? = nil,
-                dashboardFontMode: String? = nil, pickPending: String? = nil) {
+                dashboardFontMode: String? = nil, pickPending: String? = nil,
+                scheduled: [ControlScheduledNode]? = nil) {
         self.workspaces = workspaces
         self.idleMs = idleMs
         self.autoFollowMs = autoFollowMs
@@ -389,6 +392,7 @@ public struct ControlTree: Codable, Sendable, Equatable {
         self.dashboardFontSize = dashboardFontSize
         self.dashboardFontMode = dashboardFontMode
         self.pickPending = pickPending
+        self.scheduled = scheduled
     }
 }
 

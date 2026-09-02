@@ -33,6 +33,15 @@ in. Here the button always leaves the primary pane on screen. Focus-following zo
 covers what the scratch was for, while zoom had no button at all. The scratch itself is untouched: ⌘J, the
 palette and `session.scratch` still reach it.
 
+**Scheduled sessions** (`agtermctl schedule add --at "tomorrow 09:00" --brief "…"`) — the app itself opens
+a session at a future time and launches the agent with the brief as its first message. Jobs persist in
+`<stateDir>/scheduled.json`, fire from a main-runloop timer, on the next launch when the app was closed at
+the time, and on display wake; one overdue by more than 24h is parked as `missed` for `schedule run` or
+`cancel` instead of firing days late. Control-native like `session.hud`: `schedule.add/list/cancel/run`,
+top-level `tree.scheduled`, and `schedule.*` events, with no menu twin. `agx schedule …` wraps it for
+in-pane agents. Replaces the launchd-plist-plus-shell-script pattern, which needed the Mac awake and the
+app already running at the moment the job fired.
+
 **Its own theme** — `Resources/custom-themes/agx` is the fork's default theme
 (`AppSettings.defaultTheme`). It currently carries upstream's neutral palette verbatim: a warm-dark
 variant read as worse, not different, and the windows are told apart by the icon and the background

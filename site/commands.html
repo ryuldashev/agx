@@ -191,6 +191,7 @@
             <a href="#session" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session</a>
             <a href="#overlay" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session overlay</a>
             <a href="#hud" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session hud</a>
+            <a href="#schedule" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">schedule</a>
             <a href="#window" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">window</a>
             <a href="#surface" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">surface zoom</a>
             <a href="#dashboard" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">dashboard</a>
@@ -1758,6 +1759,130 @@
             </div>
           </section>
 
+          <!-- SCHEDULE -->
+          <section id="schedule" style="scroll-margin-top: 88px; padding-top: 56px">
+            <h2
+              style="
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+                font-weight: 700;
+                font-size: 28px;
+                letter-spacing: -0.02em;
+                margin: 0 0 16px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              "
+            >
+              schedule
+            </h2>
+            <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0 0 16px">
+              A session the app opens later, seeded with a brief as the agent's first message. Jobs persist to
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace">scheduled.json</span> and survive an app restart; the
+              scheduler fires on a timer and re-sweeps at launch and on display wake.
+            </p>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl schedule add --at &lt;time&gt; (--brief T | --brief-file PATH) [--name N] [--workspace W |
+                --workspace-name N] [--cwd DIR] [--agent A | --command CMD] [--background] [--window W]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">schedule.add</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Add a scheduled session. <strong style="color: #bfbab0">Returns</strong> the new schedule
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span>, plus
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.scheduled</span> carrying the one node. At
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--at</span>, the app creates the session and hands the
+                agent <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--brief</span> as its FIRST message — never typed
+                into a TUI: the brief is written to a file and the launch line reads it, then deletes it, so quotes, newlines
+                and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">$</span> in the brief never reach the shell as
+                syntax. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--brief-file</span> reads the text from a local
+                file instead.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--at</span> accepts
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">+30s|+30m|+2h|+1d</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">HH:MM</span> (today, or tomorrow if already past),
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">tomorrow [HH:MM]</span> (09:00 default),
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">YYYY-MM-DD [HH:MM]</span> (09:00 default), or ISO 8601
+                with or without a zone (local when absent) — and must resolve to a time still in the future.
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--workspace</span> and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--workspace-name</span> are mutually exclusive; omitting
+                both defaults to the caller's own
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">$AGTERM_WORKSPACE_ID</span> when set, else
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">active</span>, so a scheduled peer lands beside the
+                agent that asked for it. A named workspace is looked up NOW and, if still absent, created at FIRE time.
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--agent</span> and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--command</span> are mutually exclusive; omitting both
+                falls back to the workspace's own default agent, else
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">claude</span>.
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--background</span> opens it unselected; the default
+                selects the new session and activates the app when it fires.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                A job overdue by more than 24 hours when the app checks is never fired stale — it parks as
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">missed</span> for
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">schedule run</span> or
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">schedule cancel</span> to resolve;
+                one overdue by less fires on the very next sweep.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                There is no menu item, chord, or palette entry: this is control-only, with nothing for a human to invoke by hand.
+              </p>
+            </div>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl schedule list
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">schedule.list</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                List pending and missed jobs, sorted by fire time. Human rows show the id prefix, fire time, countdown,
+                destination workspace, and name, with a trailing
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">(missed)</span> marker.
+                <strong style="color: #bfbab0">Returns</strong>
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.scheduled</span>, the same node shape as the
+                tree's top-level <span style="font-family: &quot;JetBrains Mono&quot;, monospace">scheduled</span> array.
+              </p>
+            </div>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl schedule cancel &lt;id&gt;
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">schedule.cancel</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Drop a pending or missed job without firing it, and delete its brief file.
+                <strong style="color: #bfbab0">Returns</strong>
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span> and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.affected: 1</span>. Errors
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no such scheduled session</span>.
+              </p>
+            </div>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl schedule run &lt;id&gt;
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">schedule.run</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Fire a job NOW, whatever its time or missed state, then remove it from the queue.
+                <strong style="color: #bfbab0">Returns</strong> the NEW session's
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span>, not the schedule id. Errors
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no such scheduled session</span> and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">could not open the scheduled session (no open window?)</span>.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                Read the queue back from the tree's top-level
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">scheduled</span> array. Events
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">schedule.added</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">schedule.fired</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">schedule.cancelled</span>, and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">schedule.missed</span> announce lifecycle changes;
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">schedule.fired</span> carries the new session's id
+                under <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session</span>, the others the job's own id.
+              </p>
+            </div>
+          </section>
+
           <!-- WINDOW -->
           <section id="window" style="scroll-margin-top: 88px; padding-top: 56px">
             <h2
@@ -3019,6 +3144,227 @@
                     white-space: nowrap;
                   "
                   >invalid spinner: &lt;value&gt;<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (hud)</span></span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >schedule.add requires a brief</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >schedule.add requires --at (+30m|+2h|+1d, HH:MM, tomorrow [HH:MM], YYYY-MM-DD [HH:MM], or ISO 8601)</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >invalid time: &lt;value&gt;<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (schedule add)</span></span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >time is in the past: &lt;value&gt;<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (schedule add)</span></span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >use either --workspace or --workspace-name, not both</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >use either --agent or --command, not both</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >name must not contain control characters<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (schedule add)</span></span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >schedule.cancel requires a schedule id</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >schedule.run requires a schedule id</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >no such scheduled session<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (schedule cancel/run)</span></span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >scheduler not started</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >no such agent: &lt;value&gt;<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (schedule add)</span></span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >no such workspace: &lt;value&gt;<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (schedule add)</span></span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >could not persist the scheduled session</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >could not open the scheduled session (no open window?)</span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >pass exactly one of --brief or --brief-file<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (schedule add, CLI)</span></span
+                >
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12.5px;
+                    color: #cbc6bc;
+                    background: #191d20;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 6px;
+                    padding: 4px 9px;
+                    white-space: nowrap;
+                  "
+                  >cannot read brief file: &lt;path&gt;<span style="color: #6b727a; font-family: &quot;IBM Plex Sans&quot;, sans-serif"> (schedule add, CLI)</span></span
                 >
                 <span
                   style="

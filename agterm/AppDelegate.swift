@@ -18,6 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Action hub, set on scene appear so `application(_:open:)` can open a session at an `open -a` path.
     var actions: AppActions?
 
+    /// Scheduled-session timer owner, set on scene appear; terminate disarms it so no fire races teardown.
+    var scheduler: SessionScheduler?
+
     /// Strongly retains the current Dock menu's target objects so nil-sender dispatch never depends on
     /// AppKit's target lifetime; replaced whenever the Dock asks for a fresh menu.
     var dockMenuActionTargets: [DockMenuActionTarget] = []
@@ -316,6 +319,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // cancellation, but a later poll can still race socket teardown at process exit.
         actions?.cancelAllPendingPicks()
         controlServer?.stop()
+        scheduler?.stop()
         customCommandRunner?.stop()
         // clear the OS-level Dock badge — it outlives the process while unseenCount is ephemeral, so a quit
         // with unseen > 0 pins a stale count (the willClose refresh() can't: isTerminating no-ops closeWindow).

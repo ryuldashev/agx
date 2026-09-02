@@ -12,14 +12,17 @@ description: >
   select, close, resize, move); change font size; or reload and edit the keymap and the agterm-scoped
   ghostty config. Also covers the
   window/workspace/session addressing model and the AGTERM_* environment a spawned shell sees, plus
-  subscribe to status, notification, session lifecycle, and tree-change events; diagnose problems
+  subscribe to status, notification, session lifecycle, and tree-change events; schedule a session to
+  open later with a brief as the agent's first message; diagnose problems
   (keymap editor, custom actions, logs); and file a bug as a GitHub issue or a
   feature request / question as a GitHub Discussion.
 when_to_use: >
   Trigger on: agterm, agtermctl, agterm control socket, session.new, session.close, session.type,
   session.split, session.split.close, session.scratch, session.focus, session.resize, surface.zoom, dashboard, pick, pick.open, pick.result, pick.cancel, native picker, session.go, session.copy, session.paste, session.selectall, session.text, session.search, session.status,
   session.flag, session.seen, session.reveal, session.duplicate, session.background, session.overlay,
-  session.hud, hud panel, show a message over a session, workspace.new, workspace.select, workspace.go, workspace.move, workspace.focus, workspace.filter, window.new, window.list,
+  session.hud, hud panel, show a message over a session, schedule.add, schedule.list, schedule.cancel,
+  schedule.run, scheduled session, run this later, remind me tomorrow, continue at 09:00,
+  workspace.new, workspace.select, workspace.go, workspace.move, workspace.focus, workspace.filter, window.new, window.list,
   window.select, window.resize, window.move, window.zoom, window.fullscreen, window.minimize, quick terminal, sidebar, sidebar.mode, sidebar.expand, sidebar.collapse, flagged, notify, font.inc, keymap.reload, keymap.list, config.reload,
   theme.set, theme.list, events, events.read, event subscription, select theme, edit keymap, show an image, display an image inline, show-image,
   AGTERM_SESSION_ID, AGTERM_SOCKET, and asks to drive or script agterm. Also: troubleshoot agterm,
@@ -151,6 +154,20 @@ prompt concatenates with yours, and the program starts on the merged line. (`--n
 focus, but the newline and shared-buffer hazards of `type`-as-launcher remain — `--command` is still the
 rule.) After `--command`, confirm in `tree --json` that the new node's `foreground` shows your program running, not a bare shell prompt.
 
+## Scheduling a session for later
+
+Use `schedule add` instead of `session new` when the work should start later rather than now — "do
+this tomorrow morning", "continue at 09:00", a follow-up you want to fire after a delay. The app
+itself opens the session at `--at` and hands the agent your `--brief` as its first message
+(`+30m|+2h|+1d`, `HH:MM`, `tomorrow [HH:MM]`, `YYYY-MM-DD [HH:MM]`, or ISO 8601). The job survives an
+app restart and a sleeping Mac; one overdue by more than 24h is never fired blind — it parks as
+`missed` for you to inspect with `schedule list` and re-fire with `schedule run` or drop with
+`schedule cancel`.
+
+**Write the brief as if you will not be there to clarify it.** It is the ONLY thing the future agent
+gets — a self-contained task statement (what to do, the file paths and context it needs, what "done"
+looks like), never a question or a reference to "as discussed above." The brief cannot ask back.
+
 ## Command summary
 
 Run `agtermctl <area> <cmd> --help` for exact flags. Full detail in **reference.md**; recipes in
@@ -214,7 +231,7 @@ that window, omitted when no pick is pending.
 
 **events**: continuously print control events, subscribing from the current tail when no cursor is
 given. Use `--json` for one bare event object per line; filter with repeatable or comma-separated
-`--kind status|notify|session.created|session.closed|session.durable|tree.changed`; resume with paired
+`--kind status|notify|session.created|session.closed|session.durable|tree.changed|schedule.added|schedule.fired|schedule.cancelled|schedule.missed`; resume with paired
 `--run RUN --after SEQ`; and set page size with `--limit 1...1000`. The app retains 4,096 events for
 one process run. Cursor run changes, expiry, and ahead-of-tail errors are fatal and are never silently
 rebaselined. There is no terminal-output event stream.
@@ -405,6 +422,19 @@ omitted when expanded).
   works on it while `--full` is refused (`a hud is always floating: pass --size-percent, not --full`),
   and `surface zoom` will not address it. `hud update`/`hud close` with none up answer `no hud`. Read it
   back from the tree node's `hud` object; nothing announces it as an event, so poll `tree`.
+
+**schedule** — `add --at TIME (--brief TEXT | --brief-file PATH) [--name N] [--workspace W |
+--workspace-name N] [--cwd DIR] [--agent A | --command CMD] [--background] [--window W]` (add a
+session the app opens at `TIME`, seeded with the brief as the agent's first message; prints the new
+schedule id; `--workspace` defaults to your own `$AGTERM_WORKSPACE_ID` when set, else `active`;
+`--workspace-name` is looked up now and created at fire time if still missing; `--agent`/`--command`
+are mutually exclusive, defaulting to the workspace's pinned agent, else `claude`) · `list` (human rows
+or `result.scheduled`) · `cancel <id>` · `run <id>` (fire now, whatever its time or missed state;
+prints the NEW session id). Read the queue back from the tree's top-level `scheduled` array. Events
+`schedule.added`/`.fired`/`.cancelled`/`.missed` announce lifecycle changes; `.fired` carries the new
+session's id. A job overdue by more than 24h when the app checks is never fired stale — it parks as
+`missed` instead. Control-native like `session hud`: no menu item or chord, nothing for a human to
+invoke by hand.
 
 **window** — `new [name] [--minimized]` · `list` · `select <id>` · `close <id>` · `rename <id> <name>` ·
 `delete <id>` · `resize <id> --width W --height H` · `move <id> --x X --y Y [--display N]` ·

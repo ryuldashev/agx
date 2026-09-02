@@ -89,6 +89,10 @@ final class MockControlActions: ControlActions {
         case pickResult(target: String, window: String?)
         case pickCancel(target: String, window: String?)
         case restoreClear
+        case scheduleAdd(ControlScheduleAddOptions)
+        case scheduleList
+        case scheduleCancel(target: String)
+        case scheduleRun(target: String)
     }
 
     var calls: [Call] = []
@@ -580,5 +584,27 @@ final class MockControlActions: ControlActions {
     func clearRestoreCommands() -> ControlResponse {
         calls.append(.restoreClear)
         return nextRestoreClearResponse
+    }
+
+    var nextScheduleResponse = ControlResponse(ok: true)
+
+    func scheduleAdd(_ options: ControlScheduleAddOptions) -> ControlResponse {
+        calls.append(.scheduleAdd(options))
+        return nextScheduleResponse
+    }
+
+    func scheduleList() -> ControlResponse {
+        calls.append(.scheduleList)
+        return nextScheduleResponse
+    }
+
+    func scheduleCancel(_ target: String) -> ControlResponse {
+        calls.append(.scheduleCancel(target: target))
+        return nextScheduleResponse
+    }
+
+    func scheduleRun(_ target: String) -> ControlResponse {
+        calls.append(.scheduleRun(target: target))
+        return nextScheduleResponse
     }
 }

@@ -692,6 +692,11 @@ public final class WindowLibrary {
         PersistenceStore(directory: windowsDirectory, fileName: "\(id.uuidString).json")
     }
 
+    /// An app-level event with no owning store — the scheduler's, whose jobs outlive any one window.
+    public func recordControlEvent(_ draft: ControlEventDraft) {
+        controlEventRing.append(draft)
+    }
+
     private func makeStore(for windowID: UUID, persistence: PersistenceStore) -> AppStore {
         AppStore(
             persistence: persistence,

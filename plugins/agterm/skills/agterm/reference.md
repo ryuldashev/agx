@@ -32,7 +32,7 @@ With no cursor, the first read subscribes from now: it returns an empty batch an
 tail, and the CLI prints only later events. The app keeps a non-destructive ring of the latest 4,096
 events for its current process run. Independent readers do not consume one another's events.
 
-The five event kinds and payloads are:
+The six event kinds and payloads are:
 
 - `status`: `name`, normalized `status` (`idle`|`active`|`blocked`|`completed`), a `blink` boolean,
   and optional `pane`, `color` and `shape` (the last two being the per-call `--color`/`--shape`
@@ -48,6 +48,10 @@ The five event kinds and payloads are:
   across a restart, false when a fresh one was created (the restore fallback ran).
 - `tree.changed`: an empty payload and the affected window id. Name, membership, and ordering changes
   are coalesced for 100 ms per window. Read `tree --json` for the current snapshot.
+- `schedule.added` / `schedule.fired` / `schedule.cancelled` / `schedule.missed`: a scheduled session's
+  lifecycle. Payload carries `name` and `at` (the job's fire time, ISO 8601 with the local offset); the
+  event's `session` id is the JOB's own id for `.added`/`.cancelled`/`.missed`, but for `.fired` it is
+  the NEW session the app just created. Human mode: `<time> <kind> <name> at=<iso> session=<id>`.
 
 Every event has `seq` (app-wide sequence), `ts` (Unix timestamp), `kind`, optional
 `window`/`workspace`/`session` ids, and `payload`. Human mode prints one compact line. `--json` emits
@@ -203,7 +207,7 @@ when expanded, so an all-expanded tree carries no `collapsed` keys). They also c
 new-session seed — `dir`, `agent`, `agentID` and the resolved `command`; the read side of
 `workspace defaults`, omitted when the workspace pins nothing).
 
-The tree object itself carries twelve top-level read-only fields: `idleMs` (milliseconds since the last
+The tree object itself carries thirteen top-level read-only fields: `idleMs` (milliseconds since the last
 user input in the window, omitted before any activity), `autoFollowMs` (the window's Auto-follow
 timeout in milliseconds, omitted when the setting is Disabled), `sidebarVisible` (whether the
 window's sidebar is currently shown — the read side of the write-only `sidebar` command, so a script
@@ -227,12 +231,15 @@ as both), `dashboardHighlighted` (the highlighted cell's pane ref — the one En
 that exact pane), `dashboardFontSize` (the absolute font size in points applied to the cells, omitted when
 the mode is `untouched`), and `dashboardFontMode` (`auto` for `--auto-size`, `fixed` for `--font-size`, or
 `untouched`), plus `pickPending` (the id of the native picker currently awaiting an answer in this
-window, omitted when none is pending). `idleMs` is live
+window, omitted when none is pending), and `scheduled` (the read side of `schedule.*` — an array of
+`{id, name?, at, inSeconds, state, workspace?, workspaceID?, cwd?, launch?, foreground, brief}` nodes,
+one per pending or missed job, sorted by fire time; omitted when the queue is empty. It is APP-level
+like `quickVisible`, so every window reports the same array). `idleMs` is live
 and grows while the window is idle, so it is on `tree` only, never `window.list`; `sidebarVisible` is on
-both; `sidebarMode`, `workspaceFilter`, `quickVisible`, `zoomedSurface`, the four `dashboard*` fields, and
-`pickPending`
+both; `sidebarMode`, `workspaceFilter`, `quickVisible`, `zoomedSurface`, the four `dashboard*` fields,
+`pickPending`, and `scheduled`
 are `tree`-only (a GUI/keyboard change would leave a cached copy stale).
-All twelve are read-only projections of GUI state.
+All thirteen are read-only projections of GUI state.
 
 ## workspace
 
@@ -757,6 +764,61 @@ Two simpler routes fail and are why the overlay is needed: emitting graphics esc
 tool stdout (the harness escapes the control bytes) and running an image viewer in the agent's tool
 shell (no controlling terminal — `/dev/tty` errors). See examples.md for usage.
 
+## schedule
+
+- `schedule add --at TIME (--brief TEXT | --brief-file PATH) [--name N] [--workspace W |
+  --workspace-name N] [--cwd DIR] [--agent A | --command CMD] [--background] [--window W]` — have the
+  app create a session at `TIME` and hand it `TEXT` as the agent's FIRST message (never typed into a
+  TUI): the brief is written to a file and the launch line is
+  `zsh -lc 'b="$(cat FILE)"; rm -f FILE; exec <agent> "$b"'`, so quotes, newlines and `$` in the brief
+  never reach the shell as syntax. The job is persisted (`<stateDir>/scheduled.json`, the brief under
+  `<stateDir>/scheduled/<id>.brief`) and survives an app restart. `--brief-file` reads the text from a
+  local file instead of `--brief`; passing both, or neither, is a CLI error
+  (`pass exactly one of --brief or --brief-file`). `TIME` accepts `+30s|+30m|+2h|+1d`; `HH:MM` (today,
+  or tomorrow if already past); `tomorrow` (09:00) or `tomorrow HH:MM`; `YYYY-MM-DD` (09:00) or
+  `YYYY-MM-DD HH:MM`; ISO 8601 with or without a zone (local when absent) — and must resolve to a time
+  still in the future. `--workspace` (id/prefix/`active`) and `--workspace-name` (exact name) are
+  mutually exclusive; omitting both defaults to your own `$AGTERM_WORKSPACE_ID` when the caller runs
+  inside a session, else `active`, so a scheduled peer lands beside the agent that asked for it rather
+  than wherever the user happens to be looking when the job fires. A named workspace is looked up NOW,
+  so a typo fails at add time, and — if still absent — created at FIRE time. `--cwd` defaults to the
+  workspace's pinned directory. `--agent`/`--command` are mutually exclusive: `--agent` resolves a
+  connected agent by name or id against Settings, `--command` is an explicit launch line, and omitting
+  both falls back to the workspace's own default agent, else `claude`. Foreground (the default) selects
+  the new session and activates the app when it fires; `--background` opens it unselected. Prints the
+  new schedule id; `result.id` plus `result.scheduled` carry the one node (same shape as `schedule
+  list`). Errors: `schedule.add requires a brief`, `schedule.add requires --at (+30m|+2h|+1d, HH:MM,
+  tomorrow [HH:MM], YYYY-MM-DD [HH:MM], or ISO 8601)`, `invalid time: <raw> (…)`,
+  `time is in the past: <raw>`, `use either --workspace or --workspace-name, not both`,
+  `use either --agent or --command, not both`, `name must not contain control characters`,
+  `no such agent: <ref>`, `no such workspace: <id>`, `could not persist the scheduled session`,
+  `scheduler not started`, and the CLI-local `cannot read brief file: <path>`.
+- `schedule list` — print pending and missed jobs as human rows
+  (`<id8>  <iso at>  in 2h 5m|3h ago  → <workspace>  "<name>"`, with a trailing `(missed)` marker past
+  the missed grace) or `result.scheduled`, an array of `{id, name?, at, inSeconds, state, workspace?,
+  workspaceID?, cwd?, launch?, foreground, brief}` sorted by fire time — the same shape as the tree's
+  top-level `scheduled` field. `at` is ISO 8601 with the local offset, so it round-trips straight back
+  into `--at`. `inSeconds` is negative once overdue. `state` is `pending` or `missed`. `launch` is the
+  resolved launch line, or nil for the workspace's default agent at fire time.
+- `schedule cancel <id|prefix>` — drop a pending or missed job without firing it; deletes its brief
+  file too. Prints `ok`; `result.id` and `result.affected: 1`. Errors `schedule.cancel requires a
+  schedule id`, `no such scheduled session`.
+- `schedule run <id|prefix>` — fire a job NOW, whatever its `--at` time or missed state, then remove it
+  from the queue. Prints the NEW session's id (`result.id`), not the schedule id. Errors
+  `schedule.run requires a schedule id`, `no such scheduled session`,
+  `could not open the scheduled session (no open window?)` (no window was open to hold the new
+  session).
+- The scheduler fires on a main-runloop timer armed for the earliest pending job, and re-sweeps at app
+  start (once windows have restored) and on display wake, so a job due while the Mac was asleep still
+  fires. A job found overdue by more than 24 hours is NOT fired blind — a brief written for "tomorrow
+  morning" opened three days later would only waste an agent turn — it is parked as `missed` (posting a
+  "Scheduled session missed" notification) for `schedule run` or `schedule cancel` to resolve by hand.
+  One overdue by LESS than 24 hours fires on the very next sweep, e.g. immediately after an app
+  relaunch.
+- `schedule.*` is control-native, like `session hud`: no menu item, chord, or palette entry — nothing
+  here for a human to invoke by hand, so it is a deliberate exemption from the shared menu-actions seam.
+  The GUI shows only the session the job eventually creates.
+
 ## window
 
 - `window new [name] [--minimized]` — create and open a window; returns its id. It replies only once
@@ -1241,6 +1303,17 @@ prompt — `applicationWillTerminate` still saves windows, sessions, and capture
 `text-color must be a #rrggbb hex value`),
 `invalid spinner: <value> (bar|braille|circle|blocks|dot|none)` (same split: the CLI rejects it locally with
 `spinner style must be one of: bar, braille, circle, blocks, dot, none`),
+`schedule.add requires a brief` /
+`schedule.add requires --at (+30m|+2h|+1d, HH:MM, tomorrow [HH:MM], YYYY-MM-DD [HH:MM], or ISO 8601)` /
+`invalid time: <raw> (…)` / `time is in the past: <raw>` /
+`use either --workspace or --workspace-name, not both` / `use either --agent or --command, not both` /
+`name must not contain control characters` (schedule add),
+`schedule.cancel requires a schedule id` / `schedule.run requires a schedule id` /
+`no such scheduled session` (schedule cancel/run),
+`scheduler not started` / `no such agent: <ref>` / `no such workspace: <id>` /
+`could not persist the scheduled session` (schedule add, app-side) /
+`could not open the scheduled session (no open window?)` (schedule run, app-side) /
+`pass exactly one of --brief or --brief-file` / `cannot read brief file: <path>` (schedule add, CLI-local),
 `invalid flag mode` (session flag),
 `invalid fit` / `invalid position` / `invalid opacity` / `invalid color` / `text too long` /
 `unsupported image (PNG or JPEG only)` / `no such image file` / `image path must not contain control characters` / `invalid background mode` (session background),

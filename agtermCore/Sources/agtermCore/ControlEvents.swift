@@ -9,6 +9,10 @@ public enum ControlEventKind: String, Codable, CaseIterable, Sendable, Equatable
     /// A durable pane spawned (ADR 0001); `attached` says whether the program survived or the fallback ran.
     case sessionDurable = "session.durable"
     case treeChanged = "tree.changed"
+    case scheduleAdded = "schedule.added"
+    case scheduleFired = "schedule.fired"
+    case scheduleCancelled = "schedule.cancelled"
+    case scheduleMissed = "schedule.missed"
 }
 
 /// Kind-specific event data. Optional fields keep the encoded payload compact while preserving one
@@ -26,10 +30,12 @@ public struct ControlEventPayload: Codable, Sendable, Equatable {
     public var body: String?
     /// `session.durable` only: reattached to the running program (true) or created a fresh one (false).
     public var attached: Bool?
+    /// `schedule.*`: the job's fire time as ISO 8601 with the local offset.
+    public var at: String?
 
     public init(name: String? = nil, status: String? = nil, pane: String? = nil,
                 blink: Bool? = nil, color: String? = nil, shape: String? = nil,
-                title: String? = nil, body: String? = nil, attached: Bool? = nil) {
+                title: String? = nil, body: String? = nil, attached: Bool? = nil, at: String? = nil) {
         self.name = name
         self.status = status
         self.pane = pane
@@ -39,6 +45,7 @@ public struct ControlEventPayload: Codable, Sendable, Equatable {
         self.title = title
         self.body = body
         self.attached = attached
+        self.at = at
     }
 }
 

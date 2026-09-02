@@ -151,6 +151,17 @@ final class NotificationManager: NSObject, @preconcurrency UNUserNotificationCen
 
     /// Post a banner when the keymap parsed with problems (parse errors or cross-section conflicts), visible
     /// without opening Settings. App-level like `notifyCommandFailure`; a fixed identifier coalesces reloads.
+    func notifyScheduleMissed(name: String) {
+        guard bannersEnabled else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "Scheduled session missed"
+        content.body = "\(name) — agx was closed past its time; run or cancel it from the sidebar or `agtermctl schedule`"
+        let request = UNNotificationRequest(identifier: "schedule-missed:\(name)", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error { logger.error("schedule-missed banner add failed: \(error.localizedDescription, privacy: .public)") }
+        }
+    }
+
     func notifyKeymapDiagnostics(count: Int) {
         guard bannersEnabled else { return }
         let content = UNMutableNotificationContent()
