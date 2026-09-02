@@ -119,6 +119,11 @@ session id. App quit detaches; session close kills.** Plain login-shell sessions
   server). A `--resume` fallback also restores the conversation, so a context check cannot tell the two
   apart — the first restart after the deploy proved it (2026-09-02: every session forked, as migration
   predicts).
+- abduco keeps no screen, so a reattached program repaints only what it believes changed and drops a
+  SIGWINCH that reports its old size: the spawn forces a real resize (`DurableSpawn.nudgeRedraw`, one
+  column narrower then back, 0.8 s and 2.5 s after spawn). The OSC title is in the same position — held
+  by the program, re-emitted only on its next change — so the snapshot carries `title` and a
+  reattached pane adopts it (`Session.consumePendingTitle`); every other spawn drops it.
 - Launch sweeps `<stateDir>/abduco/` against every indexed window's persisted sessions and kills the
   rest (`DurableSpawn.reapOrphans`), so a window file removed by hand or a crash between discard and
   pid-file removal cannot leak a server.

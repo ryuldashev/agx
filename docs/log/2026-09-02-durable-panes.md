@@ -55,3 +55,13 @@
   появляется только после рендера окна — после `open -n` нужен `open -b uz.marshub.agx.debug`.
 - `ControlProtocol.swift` перелил лимит 1000 строк → узлы дерева вынесены в `ControlTreeNodes.swift`
   (механический перенос). Гейты: `swift test` 2611 ✓, `make lint` ✓, Debug и Release build ✓.
+
+## Второй рестарт (21:29): durable работает, два дефекта реаттача
+
+- Все 6 сессий `attached:true`, `fg=claude` — процессы пережили рестарт.
+- Дефект 1: сайдбар показал cwd вместо названий у сессий без customName — OSC-title не персистился,
+  а после реаттача программа переотправляет его только при смене состояния. Фикс: `SessionSnapshot.title`,
+  `Session.pendingTitle` + `consumePendingTitle()` (адоптирует только attached durable-пейн).
+- Дефект 2: экран после реаттача — частичная перерисовка (Ink рисует диффы против экрана, которого abduco
+  не хранил; SIGWINCH с прежним размером Node игнорирует). Фикс: `DurableSpawn.nudgeRedraw` — TIOCSWINSZ
+  на pty программы (col-1, через 250 мс назад), вызывается через 0.8 и 2.5 с после спавна attached-пейна.

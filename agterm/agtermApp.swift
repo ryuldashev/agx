@@ -253,7 +253,18 @@ struct agtermApp: App {
         // precedence, one more wrapper, and the restore override becomes the server's fallback.
         let plan = DurableSpawn.plan(CommandRestore.restorePlan(inputs), session: session,
                                      stateDirectory: library.directory.path)
-        if session.durable { store.emitSessionDurable(session) }
+        session.consumePendingTitle()
+        if session.durable {
+            store.emitSessionDurable(session)
+            if session.durableAttached {
+                // twice: the abduco client may attach after the first, and its own size report changes nothing.
+                for delay in [0.8, 2.5] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        DurableSpawn.nudgeRedraw(session: session, stateDirectory: library.directory.path)
+                    }
+                }
+            }
+        }
         let checked = SurfaceCommand.checked(plan.command)
         let view = GhosttySurfaceView(workingDirectory: session.initialCwd, fontSize: session.fontSize.map(Float.init),
                                       command: checked.command, initialInput: checked.initialInput ?? plan.initialInput,

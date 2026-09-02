@@ -65,6 +65,46 @@ enum DurableSpawn {
         try? FileManager.default.removeItem(atPath: DurablePane.pidFilePath(socket: socket))
     }
 
+    /// A reattached program repaints only what it believes changed, against a screen abduco never kept, and
+    /// ignores a SIGWINCH that reports its old size. Force a real one: the pty a column narrower, then back
+    /// after the program has had time to observe it (Node reads the size on the signal and emits nothing when
+    /// it matches). Two relayouts, and the pane ends at its true size.
+    @MainActor
+    static func nudgeRedraw(session: Session, stateDirectory: String) {
+        guard let live = live(sessionID: session.id, stateDirectory: stateDirectory),
+              let tty = controllingTTY(of: live.program) else { return }
+        guard var size = windowSize(tty: tty), size.ws_col > 1 else { return }
+        let original = size
+        size.ws_col -= 1
+        setWindowSize(tty: tty, size)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { setWindowSize(tty: tty, original) }
+    }
+
+    private static func windowSize(tty: String) -> winsize? {
+        let fd = open(tty, O_RDWR | O_NOCTTY)
+        guard fd >= 0 else { return nil }
+        defer { close(fd) }
+        var size = winsize()
+        return ioctl(fd, UInt(TIOCGWINSZ), &size) == 0 ? size : nil
+    }
+
+    private static func setWindowSize(tty: String, _ size: winsize) {
+        let fd = open(tty, O_RDWR | O_NOCTTY)
+        guard fd >= 0 else { return }
+        var size = size
+        _ = ioctl(fd, UInt(TIOCSWINSZ), &size)
+        close(fd)
+    }
+
+    private static func controllingTTY(of pid: pid_t) -> String? {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        guard sysctl(&mib, u_int(mib.count), &info, &size, nil, 0) == 0, size > 0,
+              info.kp_eproc.e_tdev != -1, let name = devname(info.kp_eproc.e_tdev, mode_t(S_IFCHR)) else { return nil }
+        return "/dev/" + String(cString: name)
+    }
+
     /// Launch-time sweep: a server whose session no indexed window persists (a window file removed by hand, a
     /// crash between discard and pid-file removal) is killed and its files dropped. A server whose program
     /// already exited is not `live`, so it is found by its socket path in argv instead.

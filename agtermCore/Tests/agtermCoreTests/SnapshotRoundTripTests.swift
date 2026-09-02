@@ -74,6 +74,34 @@ struct SnapshotRoundTripTests {
         #expect(r.wasRestored == true) // the surface factory gates the re-run on this
     }
 
+    @Test func titleRoundTripsIntoThePendingSlotAndOnlyAReattachedPaneAdoptsIt() {
+        let store = makeStore()
+        let ws = store.addWorkspace(name: "work")
+        let session = store.addSession(toWorkspace: ws.id, cwd: "/a", command: "claude")!
+        session.oscTitle = "✳ Светлана"
+        let snap = store.snapshot()
+        #expect(snap.workspaces[0].sessions[0].title == "✳ Светлана")
+
+        let fresh = makeStore()
+        fresh.restore(from: snap)
+        let restored = fresh.workspaces[0].sessions[0]
+        #expect(restored.pendingTitle == "✳ Светлана")
+        #expect(restored.oscTitle == nil)
+        restored.durable = true
+        restored.consumePendingTitle()
+        #expect(restored.oscTitle == nil)
+        #expect(restored.pendingTitle == nil)
+
+        let again = makeStore()
+        again.restore(from: snap)
+        let attached = again.workspaces[0].sessions[0]
+        attached.durable = true
+        attached.durableAttached = true
+        attached.consumePendingTitle()
+        #expect(attached.oscTitle == "✳ Светлана")
+        #expect(attached.displayName == "✳ Светлана")
+    }
+
     @Test func commandWaitRoundTripsThroughSnapshot() {
         // a restored session that re-runs its command must hold again, like the original (issue #254).
         let store = makeStore()

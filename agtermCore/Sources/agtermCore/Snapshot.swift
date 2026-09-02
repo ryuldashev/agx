@@ -182,6 +182,9 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
     public var restoreCommand: String?
     /// The split (right) pane's restore-command override, the split analogue of `restoreCommand`.
     public var splitRestoreCommand: String?
+    /// The main pane's OSC title at save. Adopted only by a durable pane that reattaches: the program still
+    /// holds that title but re-emits it only on its next change, so the sidebar would show the cwd until then.
+    public var title: String?
 
     public init(id: UUID, customName: String?, cwd: String, isSplit: Bool? = nil,
                 splitAxis: SplitAxis? = nil, fontSize: Double? = nil,
@@ -189,7 +192,7 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
                 foregroundCommand: [String]? = nil, splitForegroundCommand: [String]? = nil,
                 initialCommand: String? = nil, commandWait: Bool? = nil,
                 backgroundWatermark: BackgroundWatermark? = nil,
-                restoreCommand: String? = nil, splitRestoreCommand: String? = nil) {
+                restoreCommand: String? = nil, splitRestoreCommand: String? = nil, title: String? = nil) {
         self.id = id
         self.customName = customName
         self.cwd = cwd
@@ -206,12 +209,13 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
         self.backgroundWatermark = backgroundWatermark
         self.restoreCommand = restoreCommand
         self.splitRestoreCommand = splitRestoreCommand
+        self.title = title
     }
 
     enum CodingKeys: String, CodingKey {
         case id, customName, cwd, isSplit, splitAxis, fontSize, splitCwd, splitRatio, flagged
         case foregroundCommand, splitForegroundCommand, initialCommand, commandWait, backgroundWatermark
-        case restoreCommand, splitRestoreCommand
+        case restoreCommand, splitRestoreCommand, title
     }
 
     /// Custom decode so every optional is LOSSY, matching `Snapshot.init(from:)`: an unknown

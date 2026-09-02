@@ -195,6 +195,17 @@ public final class Session: Identifiable {
     /// rather than creating one (the restore fallback ran). Never persisted.
     @ObservationIgnored public var durableAttached = false
 
+    /// The saved OSC title, held from restore until the spawn decides (`consumePendingTitle`). Never persisted.
+    @ObservationIgnored public var pendingTitle: String?
+
+    /// A saved title is truthful only while the program that set it still runs: a reattached durable pane
+    /// adopts it, every other spawn drops it and waits for the program's own report.
+    public func consumePendingTitle() {
+        defer { pendingTitle = nil }
+        guard durable, durableAttached, oscTitle == nil, let pendingTitle else { return }
+        oscTitle = pendingTitle
+    }
+
     /// True when the session was rebuilt by `AppStore.restore(from:)` rather than freshly created; gates the
     /// `initialCommand` re-run on `restoreRunningCommand` (a fresh session always runs it, a restored one gets
     /// a plain shell when off). Never persisted.
