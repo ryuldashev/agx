@@ -52,6 +52,35 @@ struct Config: ParsableCommand {
     }
 }
 
+// MARK: - app
+
+/// App-lifecycle commands: relaunch (quit + reopen, preserving durable panes and restoring the rest) and
+/// quit (no reopen). App-global, no `--window`/`--target`. Both persist state through the normal quit path.
+struct App: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "App lifecycle: relaunch or quit.",
+        subcommands: [Relaunch.self, Quit.self]
+    )
+
+    struct Relaunch: RequestCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Restart the app: persist state, quit, and reopen (durable panes reattach; the rest restore)."
+        )
+        @OptionGroup var options: BasicOptions
+
+        func makeRequest() throws -> ControlRequest { ControlRequest(cmd: .appRelaunch) }
+    }
+
+    struct Quit: RequestCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Quit the app without the confirmation alert (state is still persisted); no reopen."
+        )
+        @OptionGroup var options: BasicOptions
+
+        func makeRequest() throws -> ControlRequest { ControlRequest(cmd: .appQuit) }
+    }
+}
+
 // MARK: - restore
 
 struct Restore: ParsableCommand {

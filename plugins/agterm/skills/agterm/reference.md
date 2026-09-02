@@ -1208,6 +1208,18 @@ For a PER-SESSION, per-pane override that pins (or suppresses) what a pane resto
 denylist, and is what a `SessionStart` hook rewrites to reattach a non-idempotent command. `restore clear`
 here is app-global and touches only the captured commands, not those overrides.
 
+## app
+
+`agtermctl app relaunch` — restart the app: persist every window and session, quit, and reopen. It runs
+the same path as the menu's Relaunch (`AppActions.restartApp`): a detached watcher waits for this process
+to exit, then re-opens the bundle. Durable panes (`session.new --command` with durable panes on) reattach
+their live process across the restart; every other pane restores per the restore-running-command setting.
+App-global (no `--window`), prints `ok`.
+
+`agtermctl app quit` — quit the app without the confirmation alert (state is still persisted through the
+normal quit path); no reopen. App-global, prints `ok`. The difference from a plain ⌘Q is only the skipped
+prompt — `applicationWillTerminate` still saves windows, sessions, and captured commands.
+
 ## Errors you may see
 
 `notFound` / `ambiguous` (target resolution), `no such session`, `invalid split mode` /

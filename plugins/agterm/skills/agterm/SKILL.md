@@ -491,6 +491,8 @@ appearance automatically; `theme set --dark none` stops tracking. The app defaul
 **restore** — `restore clear` — clear every session's saved foreground command (the
 restore-running-command capture) so the next restart restores plain shells.
 
+**app** — `app relaunch` — persist state, quit, and reopen (the menu's Relaunch): durable panes reattach their live process, the rest restore. `app quit` — quit without the confirmation alert (state still persisted), no reopen. Both app-global, print `ok`.
+
 ## Displaying an image inline
 
 This skill bundles `scripts/show-image.sh`. It opens an overlay (a real terminal) and renders the

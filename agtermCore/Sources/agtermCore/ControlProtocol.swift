@@ -74,6 +74,8 @@ public enum Command: String, Codable, Sendable {
     case keymapReload = "keymap.reload"
     case keymapList = "keymap.list"
     case configReload = "config.reload"
+    case appRelaunch = "app.relaunch"
+    case appQuit = "app.quit"
     case themeSet = "theme.set"
     case themeList = "theme.list"
     case pickOpen = "pick.open"

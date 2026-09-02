@@ -658,6 +658,13 @@ final class AppActions {
         NSApp.terminate(nil)
     }
 
+    /// Quit the app without the confirmation alert and without relaunching: the control-driven twin of
+    /// `restartApp`. `applicationWillTerminate` still persists windows/sessions and captures restore commands.
+    func quitApp() {
+        AppDelegate.isProgrammaticQuit = true
+        NSApp.terminate(nil)
+    }
+
     /// Create a fresh window (one default workspace + session) and open it via the scene's window opener,
     /// the seam the control channel uses. No-op before the scene `.task` wires the opener.
     ///

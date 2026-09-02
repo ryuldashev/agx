@@ -46,6 +46,8 @@ final class MockControlActions: ControlActions {
         case keymapReload
         case keymapList
         case configReload
+        case appRelaunch
+        case appQuit
         case notify(target: String?, window: String?, title: String?, body: String)
         case themeSet(String?)
         case themeList
@@ -357,6 +359,16 @@ final class MockControlActions: ControlActions {
     func reloadGhosttyConfig() -> ControlResponse {
         calls.append(.configReload)
         return nextConfigResponse
+    }
+
+    func relaunchApp() -> ControlResponse {
+        calls.append(.appRelaunch)
+        return ControlResponse(ok: true)
+    }
+
+    func quitApp() -> ControlResponse {
+        calls.append(.appQuit)
+        return ControlResponse(ok: true)
     }
 
     func sendNotification(_ target: String?, window: String?,

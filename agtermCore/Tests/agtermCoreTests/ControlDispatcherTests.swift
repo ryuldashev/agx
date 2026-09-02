@@ -1131,6 +1131,18 @@ struct ControlDispatcherTests {
         #expect(actions.calls == [.keymapReload, .configReload])
     }
 
+    @Test func appRelaunchAndQuitRouteToActions() async {
+        let actions = MockControlActions()
+        let dispatcher = ControlDispatcher(actions: actions)
+
+        let relaunch = await dispatcher.dispatch(ControlRequest(cmd: .appRelaunch))
+        let quit = await dispatcher.dispatch(ControlRequest(cmd: .appQuit))
+
+        #expect(relaunch?.ok == true)
+        #expect(quit?.ok == true)
+        #expect(actions.calls == [.appRelaunch, .appQuit])
+    }
+
     @Test func keymapListRoutesToActionsAndKeepsThePayload() async {
         let actions = MockControlActions()
         let dispatcher = ControlDispatcher(actions: actions)

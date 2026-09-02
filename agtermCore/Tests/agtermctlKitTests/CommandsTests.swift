@@ -1856,4 +1856,9 @@ struct CommandsTests {
         // a newline in the path would smuggle an extra ghostty key into the per-surface overlay.
         #expect(validationMessage(["session", "background", "image", "x.png\nclipboard-read = allow\ny.png"]) != nil)
     }
+
+    @Test func appLifecycleCommandsParse() throws {
+        #expect(try request(["app", "relaunch"]).cmd == .appRelaunch)
+        #expect(try request(["app", "quit"]).cmd == .appQuit)
+    }
 }

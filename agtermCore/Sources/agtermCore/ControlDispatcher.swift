@@ -63,6 +63,8 @@ public protocol ControlActions {
     func reloadKeymap() -> ControlResponse
     func listKeymap() -> ControlResponse
     func reloadGhosttyConfig() -> ControlResponse
+    func relaunchApp() -> ControlResponse
+    func quitApp() -> ControlResponse
     func sendNotification(_ target: String?, window: String?, title: String?, body: String) -> ControlResponse
     func setTheme(args: ControlArgs?) -> ControlResponse
     func listThemes() -> ControlResponse
@@ -230,8 +232,8 @@ public struct ControlDispatcher {
                 .workspaceDefaults:
             return dispatchWorkspaceCommand(request)
         case .quick, .fontInc, .fontDec, .fontReset, .keymapReload, .keymapList,
-                .configReload, .notify, .themeSet, .themeList, .sidebar, .sidebarMode, .sidebarExpand,
-                .sidebarCollapse, .restoreClear:
+                .configReload, .appRelaunch, .appQuit, .notify, .themeSet, .themeList, .sidebar, .sidebarMode,
+                .sidebarExpand, .sidebarCollapse, .restoreClear:
             return dispatchAppCommand(request)
         case .quickType, .quickText:
             return await dispatchQuickCommand(request)
@@ -726,6 +728,10 @@ public struct ControlDispatcher {
             return actions.listKeymap()
         case .configReload:
             return actions.reloadGhosttyConfig()
+        case .appRelaunch:
+            return actions.relaunchApp()
+        case .appQuit:
+            return actions.quitApp()
         case .notify:
             guard let body = request.args?.body, !body.isEmpty else {
                 return ControlResponse(ok: false, error: "notify requires a body")

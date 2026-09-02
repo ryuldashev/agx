@@ -154,6 +154,21 @@ extension ControlServer {
         ControlResponse(ok: true, result: ControlResult(count: actions.reloadGhosttyConfig()))
     }
 
+    /// `app.relaunch` — graceful restart: persist state, quit, and re-open the bundle (`AppActions.restartApp`,
+    /// the same path the menu drives). The terminate is deferred one hop so this response reaches the caller
+    /// before `NSApp.terminate` tears the socket down; without the delay the client sees a dropped connection.
+    func relaunchApp() -> ControlResponse {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.actions.restartApp() }
+        return ControlResponse(ok: true)
+    }
+
+    /// `app.quit` — graceful quit with no relaunch: skip the confirmation alert, persist state, terminate.
+    /// Deferred for the same socket-flush reason as `relaunchApp`.
+    func quitApp() -> ControlResponse {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.actions.quitApp() }
+        return ControlResponse(ok: true)
+    }
+
     // MARK: - Theme
 
     /// Set + persist a theme PER SLOT — the control half of the Settings pickers / `.themes` palette commit (no

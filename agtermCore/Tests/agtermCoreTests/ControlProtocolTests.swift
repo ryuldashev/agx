@@ -1490,6 +1490,13 @@ struct ControlProtocolTests {
         #expect(decoded.cmd == .configReload)
     }
 
+    @Test func appRelaunchAndQuitRawStringsMapToCommand() throws {
+        let relaunch = try JSONDecoder().decode(ControlRequest.self, from: Data(#"{"cmd":"app.relaunch"}"#.utf8))
+        let quit = try JSONDecoder().decode(ControlRequest.self, from: Data(#"{"cmd":"app.quit"}"#.utf8))
+        #expect(relaunch.cmd == .appRelaunch)
+        #expect(quit.cmd == .appQuit)
+    }
+
     @Test func sidebarExpandCollapseRequestsRoundTrip() throws {
         let cases = [
             ControlRequest(cmd: .sidebarExpand),
