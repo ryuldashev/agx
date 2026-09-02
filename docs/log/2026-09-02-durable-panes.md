@@ -77,3 +77,32 @@
      бьёт по реальному дисковому пути с настоящим сокет-файлом.
 - `tree.attached` теперь тоже правдив до реализации: restore ставит `durable=true`+`attached=true`
   оптимистично по наличию сокета, спавн исправляет на false только при реальном fallback.
+
+## Addendum — app.relaunch / app.quit control verbs + graceful restart hack (session cont.)
+
+Closed the last gap between the active-session menu and the control API: the app's native
+restart is now drivable. The rest of that menu was already covered (Clear Status = `session status
+idle`, Rename/Close/Duplicate/Move/Flag/Reveal/New/Delete/Focus/Defaults all have verbs; Copy Name
+and Open Directory… are interactive-only affordances).
+
+- **New verbs** `app.relaunch` (persist + quit + reopen, via `AppActions.restartApp`) and `app.quit`
+  (no-reopen graceful quit; `AppDelegate.isProgrammaticQuit` skips the confirmation alert,
+  `applicationWillTerminate` still saves state). Both defer `NSApp.terminate` one main-queue hop so
+  the `ok` response flushes before the socket closes. Full cross-surface set: protocol, dispatcher,
+  `ControlServer+AppCommands`, `agtermctl app {relaunch,quit}`, mock + dispatcher/protocol/CLI tests,
+  and docs (commands.html, SKILL.md, reference.md). Commit `71ebcfe`.
+
+- **Restart-hack for a running app that predates the verb.** The deployed build lacked `app.relaunch`,
+  so to make it pick up the new build without a hard kill: send `kAEQuitApplication` to its pid WITH
+  the `kAEQuitReason='rest'` attribute. `QuitReason.isSystemQuit` (already in the deployed build) honors
+  it → `terminateNow`, no alert, `applicationWillTerminate` saves state, durable abduco servers survive.
+  A detached (`nohup`) watcher polls the pid and reopens `/Applications/agx.app` once it exits. Helper:
+  `scratchpad/graceful-restart.swift <pid>`. Self-targeting inside the same app family needed no TCC
+  prompt. If the AE is rejected the app stays up and the session stays attached — safe to attempt.
+
+- **Verified live (22:39):** old pid 92864 quit gracefully, new build (pid 60655, carries the
+  `app.relaunch`/`app.quit` strings) reopened, this driving session reattached. `tree --json`: 10/10
+  durable, **9/10 `attached=true`** (true soft restart — reattached the live process), every session
+  shows a real title (the decoder fix holds; none fell back to cwd). The one fork was games
+  "Pterodactyl Transformer" (`attached=false`, ran the `--resume --fork-session` fallback) — its abduco
+  server was not alive at restart, same lone hold-out as the prior restart.
