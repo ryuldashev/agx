@@ -54,12 +54,12 @@ Two things found while testing, both fixed here:
 
 ## Gates
 
-- `cd agtermCore && swift test` — **2701 tests pass.**
+- `cd agtermCore && swift test` — **2702 tests pass.**
 - `make test-app` — **passes.** It did NOT pass on master; see the `isolated deinit` note above.
 - `make lint` — **clean.**
-- `agtermUITests/ControlRestoreReopenUITests` (8 new tests) — **compiles, NOT RUN.** The screen locked
-  mid-session (`CGSSessionScreenIsLocked=Yes`) and XCUITest answers
-  `Timed out while enabling automation mode`. Run it on an unlocked session:
+- `agtermUITests/ControlRestoreReopenUITests` (9 tests) — **all pass** (31.8s, run 2026-09-03 08:48
+  once the screen was unlocked). The earlier `Timed out while enabling automation mode` was a locked
+  session, not a test fault:
   `xcodebuild test -project agterm.xcodeproj -scheme agterm -destination 'platform=macOS' \
    -derivedDataPath build/DerivedData -only-testing:agtermUITests/ControlRestoreReopenUITests`
 - Manual, in an isolated Debug instance (`AGTERM_STATE_DIR=/tmp/agxrr`, `restoreRunningCommand` on):
@@ -77,7 +77,6 @@ in `zsh -lc '…'`.
 
 ## Next
 
-- Run the UI tests once the screen is unlocked (command above).
 - The popover's row CLICK is verified by hand only: a synthesized XCUITest click on a SwiftUI `Button`
   inside an `NSPopover` does not fire the action (see `.claude/rules/ui-tests.md`). The test asserts
   the section and row are present and labelled.
