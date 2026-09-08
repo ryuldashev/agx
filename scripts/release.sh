@@ -66,6 +66,13 @@ if [ "$PUBLISH" = "1" ]; then
 fi
 APP="$BUILD_DIR/DerivedData/Build/Products/Release/agx.app"
 NOTARY_PROFILE="${AGTERM_NOTARY_PROFILE:-agterm-notary}"
+# API-key auth (CI, or a shell whose keychain search list hides the profile) wins over the profile:
+# AGTERM_NOTARY_KEY=<AuthKey.p8> AGTERM_NOTARY_KEY_ID=<id> AGTERM_NOTARY_ISSUER=<uuid>.
+if [ -n "${AGTERM_NOTARY_KEY:-}" ]; then
+  NOTARY_AUTH=(--key "$AGTERM_NOTARY_KEY" --key-id "$AGTERM_NOTARY_KEY_ID" --issuer "$AGTERM_NOTARY_ISSUER")
+else
+  NOTARY_AUTH=(--keychain-profile "$NOTARY_PROFILE")
+fi
 TAP_REPO="ryuldashev/homebrew-agx"
 
 # resolve the signing identity: explicit override, else the first Developer ID
@@ -92,12 +99,12 @@ fi
 notarize() {
   local path="$1" json status id
   echo "==> notarizing $(basename "$path")"
-  json="$(xcrun notarytool submit "$path" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json)"
+  json="$(xcrun notarytool submit "$path" "${NOTARY_AUTH[@]}" --wait --output-format json)"
   status="$(printf '%s' "$json" | jq -r '.status')"
   id="$(printf '%s' "$json" | jq -r '.id')"
   if [ "$status" != "Accepted" ]; then
     echo "notarization failed: status=$status" >&2
-    xcrun notarytool log "$id" --keychain-profile "$NOTARY_PROFILE" || true
+    xcrun notarytool log "$id" "${NOTARY_AUTH[@]}" || true
     exit 1
   fi
 }
