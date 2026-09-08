@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.24.0 - 2026-09-09
+
+First packaged release of agx (fork of umputun/agterm at the v0.23.0 line, see `FORK.md`).
+
+- Signed and notarized DMG, Homebrew cask `ryuldashev/agx/agx`.
+- Bundled `agx` CLI (`agx context | spawn | schedule | run | usage`) installed next to `agtermctl`
+  by Help ▸ Install Command Line Tool.
+- Help ▸ Install Agent Status Hooks also installs two Claude Code `SessionStart` hooks: the UI
+  self-description injected into every in-pane agent, and the session-restore pin that brings a
+  Claude session back after a relaunch.
+- Everything the fork added since 2026-08-18 (below): connected agents, workspace defaults, durable
+  panes, scheduled sessions, ⌥ chrome names, action journal, reopen-closed-session restore.
+
 ## agx fork - 2026-08-18
 
 Forked from umputun/agterm at `c793b46` (v0.23.0 line). See `FORK.md`. Upstream's history continues below.

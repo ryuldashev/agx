@@ -27,7 +27,7 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 
 TAG="v$VERSION"
-DMG="$BUILD_DIR/agterm-$VERSION.dmg"
+DMG="$BUILD_DIR/agx-$VERSION.dmg"
 
 # ── plugin manifest version ───────────────────────────────────────────────────
 # The agent skill also ships as a Claude Code / Codex plugin, and both plugin
@@ -66,7 +66,7 @@ if [ "$PUBLISH" = "1" ]; then
 fi
 APP="$BUILD_DIR/DerivedData/Build/Products/Release/agx.app"
 NOTARY_PROFILE="${AGTERM_NOTARY_PROFILE:-agterm-notary}"
-TAP_REPO="umputun/homebrew-apps"
+TAP_REPO="ryuldashev/homebrew-agx"
 
 # resolve the signing identity: explicit override, else the first Developer ID
 # Application identity in the keychain, else ad-hoc dry-run.
@@ -123,7 +123,7 @@ release_notes() {
 
 Signed with a Developer ID certificate and notarized by Apple, so macOS Gatekeeper opens it with no extra steps. Apple Silicon (arm64) only, macOS 14 or later.
 
-- **Homebrew:** \`brew install --cask umputun/apps/agterm\`
+- **Homebrew:** \`brew install --cask ryuldashev/agx/agx\`
 - **Direct download:** open the \`.dmg\` and drag \`agx.app\` into \`/Applications\`.
 EOF
 }
@@ -162,7 +162,7 @@ fi
 
 # ── notarize + staple the app ─────────────────────────────────────────────────
 if [ "$SIGNED" = "1" ]; then
-  ZIP="$BUILD_DIR/agterm-$VERSION.zip"
+  ZIP="$BUILD_DIR/agx-$VERSION.zip"
   ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
   notarize "$ZIP"
   rm -f "$ZIP"
@@ -177,7 +177,7 @@ rm -rf "$STAGING"; mkdir -p "$STAGING"
 cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 rm -f "$DMG"
-hdiutil create -volname agterm -srcfolder "$STAGING" -ov -format UDZO "$DMG"
+hdiutil create -volname agx -srcfolder "$STAGING" -ov -format UDZO "$DMG"
 rm -rf "$STAGING"
 
 # ── sign + notarize + staple the DMG ──────────────────────────────────────────
@@ -214,18 +214,18 @@ gh release upload "$TAG" "$DMG" --clobber
 SHA="$(shasum -a 256 "$DMG" | awk '{print $1}')"
 TAP_DIR="$(mktemp -d)"
 gh repo clone "$TAP_REPO" "$TAP_DIR" -- --depth=1 >/dev/null
-CASK="$TAP_DIR/Casks/agterm.rb"
+CASK="$TAP_DIR/Casks/agx.rb"
 if [ ! -f "$CASK" ]; then
   mkdir -p "$TAP_DIR/Casks"
-  cp "$ROOT/packaging/agterm.rb" "$CASK" # first publish: seed from the in-repo source of truth
+  cp "$ROOT/packaging/agx.rb" "$CASK" # first publish: seed from the in-repo source of truth
 fi
 sed -i '' -E "s/^( *version )\".*\"/\1\"$VERSION\"/" "$CASK"
 sed -i '' -E "s/^( *sha256 )\".*\"/\1\"$SHA\"/" "$CASK"
-git -C "$TAP_DIR" add Casks/agterm.rb
+git -C "$TAP_DIR" add Casks/agx.rb
 if git -C "$TAP_DIR" diff --cached --quiet; then
   echo "==> cask already at $VERSION, nothing to push"
 else
-  git -C "$TAP_DIR" commit -m "agterm $VERSION"
+  git -C "$TAP_DIR" commit -m "agx $VERSION"
   git -C "$TAP_DIR" push
   echo "==> cask bumped to $VERSION"
 fi

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://agterm.com/sitemap.xml
+Sitemap: https://agx.marshub.uz/sitemap.xml
