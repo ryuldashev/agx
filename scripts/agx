@@ -13,7 +13,20 @@ import shutil
 import subprocess
 import sys
 
-CTL = shutil.which("agtermctl") or "/opt/homebrew/bin/agtermctl"
+
+
+def _find_ctl():
+    """The agtermctl this agx belongs to: the app bundles agx at Contents/Resources/agx beside
+    Contents/MacOS/agtermctl, so a bundled (or symlinked-from-the-bundle) agx drives ITS app even
+    when the CLI was never put on PATH. A checkout copy has no sibling and falls back to PATH."""
+    here = os.path.dirname(os.path.realpath(__file__))
+    sibling = os.path.normpath(os.path.join(here, "..", "MacOS", "agtermctl"))
+    if os.access(sibling, os.X_OK):
+        return sibling
+    return shutil.which("agtermctl") or "/opt/homebrew/bin/agtermctl"
+
+
+CTL = _find_ctl()
 
 
 def _ctl_json(*args):

@@ -55,6 +55,18 @@ unfinished turn instead of coming back as a `claude --resume … --fork-session`
 kills its server; a program that exited while agx was away is replaced on the next launch by the restore
 command. Design, lifecycle and the one vendored patch: `docs/decisions/0001-abduco-durable-panes.md`.
 
+**The `agx` CLI and its SessionStart hooks, shipped in the app** — `scripts/agx` (python3) is the
+agent-facing side of the control API: `agx context` describes the UI an in-pane agent lives in, `agx spawn`
+opens a peer session seeded with a brief, `agx schedule` wraps scheduled sessions, `agx run` runs a command in
+the pane's overlay. It is bundled at `Contents/Resources/agx`, finds `agtermctl` as its `../MacOS` sibling,
+and Help ▸ Install Command Line Tool links it into `/usr/local/bin` beside `agtermctl` (one admin prompt for
+both). Help ▸ Install Agent Status Hooks adds two Claude Code `SessionStart` hooks from
+`Resources/agent-status/` with the same marker-guarded merge as the status hooks: `agx-session-restore.sh` pins
+`claude --resume <session_id> --fork-session` as the pane's restore command, `agx-session-context.sh` injects
+`agx context` as additional context. Both are gated on `AGTERM_ENABLED=1`, use python3 rather than jq, print
+nothing on failure and always exit 0, so outside agx they cost one `test` and can never block a turn. The
+installer bakes the bundled `agtermctl`/`agx` paths into the wrappers, so nothing needs to be on PATH.
+
 **Workspace defaults** — a workspace pins the directory new sessions open in and the connected agent
 they run, so opening a tab in `mmee` lands in `~/mmee` with Claude Code already running. Set from the
 sidebar's right-click ▸ Workspace Defaults… or over the control API:

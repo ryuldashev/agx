@@ -2,9 +2,10 @@ import AppKit
 import agtermCore
 
 /// Installs the bundled agent-status hooks package into the user's home: the scripts into
-/// `~/.config/<brand>/agent-status/`, the bundled `agtermctl`'s absolute path baked into the wrapper, a
+/// `~/.config/<brand>/agent-status/`, the bundled `agtermctl`/`agx` absolute paths baked into the wrappers, a
 /// marker-guarded `source` line in `~/.zshrc`/`~/.bashrc`/`~/.config/fish/config.fish`, the four Claude Code
-/// hooks merged into `~/.claude/settings.json`, the six Codex lifecycle hooks into `~/.codex/config.toml`,
+/// status hooks plus two agx `SessionStart` hooks merged into `~/.claude/settings.json`, the six Codex
+/// lifecycle hooks into `~/.codex/config.toml`,
 /// and — when each is configured — Pi's lifecycle extension into `~/.pi/agent/extensions/` and OpenCode's
 /// plugin into `~/.config/opencode/plugins/`. Claude/Codex configs get a `.bak` first; the Codex step parses
 /// TOML and points at the docs for a manual merge when that file already has hooks or does not parse. The
@@ -125,19 +126,28 @@ enum AgentHooksInstaller {
         try fm.copyItem(at: source, to: destination)
     }
 
-    // sentinel for the installer-baked AGTERMCTL default; a re-run replaces it instead of duplicating it.
+    // sentinel for the installer-baked tool-path default; a re-run replaces it instead of duplicating it.
     private static let agtermctlMarker = "# >>> agterm agtermctl path (installer-baked) >>>"
 
-    // bake the bundled agtermctl's absolute path into the installed wrappers so the hooks fire even when the
-    // CLI was never symlinked into PATH. `[ -n "${AGTERMCTL:-}" ] ||` assigns only when unset, so an explicit
-    // env override still wins (order 1 > 2 > PATH); shellQuote keeps spaces / metacharacters inert.
+    // bake the bundled tools' absolute paths into the installed wrappers so the hooks fire even when the CLIs
+    // were never symlinked into PATH: agtermctl into the status, Codex and session-restore wrappers, agx into
+    // the session-context one. `[ -n "${VAR:-}" ] ||` assigns only when unset, so an explicit env override
+    // still wins (order 1 > 2 > PATH); shellQuote keeps spaces / metacharacters inert.
     private static func bakeAgtermctlPath() throws {
-        guard let tool = bundledTool else { return } // no bundled CLI: leave the PATH fallback in place
-        for name in [AgentHooksInstall.wrapperName, AgentHooksInstall.codexWrapperName] {
-            let wrapper = destinationFolder.appendingPathComponent(name)
+        let ctl = bundledTool?.path
+        let bakes: [(wrapper: String, variable: String, path: String?)] = [
+            (AgentHooksInstall.wrapperName, "AGTERMCTL", ctl),
+            (AgentHooksInstall.codexWrapperName, "AGTERMCTL", ctl),
+            (AgentHooksInstall.sessionRestoreHookName, "AGTERMCTL", ctl),
+            (AgentHooksInstall.sessionContextHookName, "AGX", CLIInstaller.bundledAgx?.path),
+        ]
+        for bake in bakes {
+            guard let path = bake.path else { continue } // not bundled: leave the PATH fallback in place
+            let wrapper = destinationFolder.appendingPathComponent(bake.wrapper)
             let original = try String(contentsOf: wrapper, encoding: .utf8)
             let stripped = stripBakedBlock(from: original)
-            let block = agtermctlMarker + "\n[ -n \"${AGTERMCTL:-}\" ] || AGTERMCTL=\(AgentHooksInstall.shellQuote(tool.path))\n"
+            let block = agtermctlMarker
+                + "\n[ -n \"${\(bake.variable):-}\" ] || \(bake.variable)=\(AgentHooksInstall.shellQuote(path))\n"
             let baked = insertAfterShebang(stripped, block: block)
             try writePreservingSymlink(baked, to: wrapper)
         }
@@ -191,7 +201,7 @@ enum AgentHooksInstaller {
         }
     }
 
-    // merge the four Claude Code hooks into ~/.claude/settings.json, writing a .bak first when anything
+    // merge the Claude Code hooks (status + SessionStart) into ~/.claude/settings.json, writing a .bak first when anything
     // changes. returns true when the merge was SKIPPED (invalid JSON, or unreadable) and the file left as is.
     private static func mergeClaudeSettings() throws -> Bool {
         let claudeDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude")
@@ -364,7 +374,7 @@ enum AgentHooksInstaller {
         let claudeLine = outcome.settingsSkipped
             ? "Your ~/.claude/settings.json isn't valid JSON (or couldn't be read), so the Claude Code hooks were NOT added "
               + "(the file was left untouched). Fix it and run this again, or add the hooks manually."
-            : "Claude Code hooks merged into ~/.claude/settings.json."
+            : "Claude Code hooks (status, plus the two agx SessionStart hooks) merged into ~/.claude/settings.json."
         return """
         Scripts installed to \(destinationFolder.path).
         \(claudeLine)

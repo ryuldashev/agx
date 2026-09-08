@@ -1,14 +1,15 @@
 import AppKit
 import agtermCore
 
-/// Installs the bundled `agtermctl` CLI into the user's PATH by symlinking it from the app bundle into
-/// `/usr/local/bin`: a direct symlink when the dir is user-writable (no prompt), else a one-time GUI admin
-/// prompt via `osascript` (a clean Apple Silicon Mac has a root-owned `/usr/local/bin`). Host-free
-/// path/command logic is `agtermCore.CLIInstall`; this owns the AppKit filesystem + authorization glue.
+/// Installs the bundled command-line tools into the user's PATH by symlinking them from the app bundle into
+/// `/usr/local/bin`: `agtermctl` (`Contents/MacOS`) and `agx` (`Contents/Resources`, a python3 script).
+/// Direct symlinks when the dir is user-writable (no prompt), else ONE GUI admin prompt via `osascript`
+/// covering every link (a clean Apple Silicon Mac has a root-owned `/usr/local/bin`). Host-free path/command
+/// logic is `agtermCore.CLIInstall`; this owns the AppKit filesystem + authorization glue.
 @MainActor
 enum CLIInstaller {
     enum InstallResult {
-        case installed(path: String)
+        case installed(links: [CLIInstall.Link])
         case failed(String)
         case cancelled
     }
@@ -17,12 +18,21 @@ enum CLIInstaller {
     /// (e.g. a bare `swift build`).
     static var bundledTool: URL? { Bundle.main.url(forAuxiliaryExecutable: CLIInstall.toolName) }
 
+    /// The bundled `agx` at `Contents/Resources/agx`, or nil when this build did not copy it.
+    static var bundledAgx: URL? {
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent(CLIInstall.agxName),
+              FileManager.default.isExecutableFile(atPath: url.path) else { return nil }
+        return url
+    }
+
     /// Run the install and show a result alert (a cancelled admin prompt shows nothing).
     static func run() {
         switch install() {
-        case .installed(let path):
-            present(style: .informational, title: "Command Line Tool Installed",
-                    text: "agtermctl was linked into \(path). Open a new terminal and run “agtermctl --help”.")
+        case .installed(let links):
+            let names = CLIInstall.describe(links)
+            present(style: .informational, title: "Command Line Tools Installed",
+                    text: "\(names) were linked into \(CLIInstall.installDirectory). "
+                        + "Open a new terminal and run “agtermctl --help” or “agx context”.")
         case .failed(let message):
             present(style: .warning, title: "Install Failed", text: message)
         case .cancelled:
@@ -31,38 +41,45 @@ enum CLIInstaller {
     }
 
     private static func install() -> InstallResult {
-        guard let source = bundledTool?.path else {
+        guard let tool = bundledTool?.path else {
             return .failed("\(CLIInstall.toolName) is not bundled in this build.")
         }
-        if directSymlink(source: source) { return .installed(path: CLIInstall.installPath) }
-        return elevatedSymlink(source: source)
+        guard let agx = bundledAgx?.path else {
+            return .failed("\(CLIInstall.agxName) is not bundled in this build.")
+        }
+        let links = [
+            CLIInstall.Link(source: tool, name: CLIInstall.toolName),
+            CLIInstall.Link(source: agx, name: CLIInstall.agxName),
+        ]
+        if links.allSatisfy(directSymlink) { return .installed(links: links) }
+        return elevatedSymlink(links: links)
     }
 
     /// Replace any existing link and symlink the bundled tool into place. Succeeds only when the target
     /// directory is user-writable; any error (typically a root-owned dir) returns false so the caller
     /// escalates.
-    private static func directSymlink(source: String) -> Bool {
+    private static func directSymlink(_ link: CLIInstall.Link) -> Bool {
         let fm = FileManager.default
-        try? fm.removeItem(atPath: CLIInstall.installPath)
+        try? fm.removeItem(atPath: link.installPath)
         do {
-            try fm.createSymbolicLink(atPath: CLIInstall.installPath, withDestinationPath: source)
+            try fm.createSymbolicLink(atPath: link.installPath, withDestinationPath: link.source)
             return true
         } catch {
             return false
         }
     }
 
-    /// Create the symlink through a single GUI admin prompt. Returns `.cancelled` when the user dismisses
+    /// Create every symlink through a single GUI admin prompt. Returns `.cancelled` when the user dismisses
     /// the authorization dialog (AppleScript error -128).
-    private static func elevatedSymlink(source: String) -> InstallResult {
-        let command = CLIInstall.privilegedInstallCommand(source: source)
+    private static func elevatedSymlink(links: [CLIInstall.Link]) -> InstallResult {
+        let command = CLIInstall.privilegedInstallCommand(links: links)
         let apple = "do shell script \(appleScriptString(command)) with administrator privileges"
         guard let script = NSAppleScript(source: apple) else {
             return .failed("Could not build the install script.")
         }
         var err: NSDictionary?
         script.executeAndReturnError(&err)
-        guard let err else { return .installed(path: CLIInstall.installPath) }
+        guard let err else { return .installed(links: links) }
         if (err[NSAppleScript.errorNumber] as? Int) == -128 { return .cancelled } // user dismissed the prompt
         return .failed((err[NSAppleScript.errorMessage] as? String) ?? "Authorization failed.")
     }
