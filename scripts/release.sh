@@ -213,7 +213,10 @@ gh release upload "$TAG" "$DMG" --clobber
 
 SHA="$(shasum -a 256 "$DMG" | awk '{print $1}')"
 TAP_DIR="$(mktemp -d)"
-gh repo clone "$TAP_REPO" "$TAP_DIR" -- --depth=1 >/dev/null
+if ! gh repo clone "$TAP_REPO" "$TAP_DIR" -- --depth=1 >/dev/null 2>&1; then
+  echo "==> tap $TAP_REPO not reachable — release is up, cask NOT bumped (create the tap and re-run)" >&2
+  exit 0
+fi
 CASK="$TAP_DIR/Casks/agx.rb"
 if [ ! -f "$CASK" ]; then
   mkdir -p "$TAP_DIR/Casks"
