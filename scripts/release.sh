@@ -158,6 +158,9 @@ xcodebuild -project agterm.xcodeproj -scheme agterm -configuration Release \
 if [ "$SIGNED" = "1" ]; then
   echo "==> signing Developer ID (timestamped)"
   codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$APP/Contents/MacOS/agtermctl"
+  # the vendored abduco session server is a nested Mach-O too (durable panes, FORK.md): the notary
+  # service rejects the archive unless it carries the same Developer ID + hardened runtime + timestamp.
+  codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$APP/Contents/Resources/abduco/abduco"
   codesign --force --options runtime --timestamp \
     --entitlements "$ROOT/agterm/agterm.entitlements" --sign "$SIGN_ID" "$APP"
   codesign --verify --deep --strict "$APP"
