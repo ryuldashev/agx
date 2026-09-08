@@ -67,14 +67,14 @@ Releases are signed with a Developer ID certificate and notarized by Apple, so m
 Homebrew:
 
 ```sh
-brew install --cask umputun/apps/agterm
+brew install --cask ryuldashev/agx/agx
 ```
 
 Direct download:
 
-Download the latest `.dmg` from the [releases page](https://github.com/umputun/agterm/releases), open it, and drag `agterm.app` into `/Applications`.
+Download the latest `.dmg` from the [releases page](https://github.com/ryuldashev/agx/releases), open it, and drag `agx.app` into `/Applications`.
 
-The Homebrew cask already installs the `agtermctl` command-line tool; from the DMG, put it on your `PATH` with **Help ▸ Install Command Line Tool…**. The same **Help** menu also installs the agent status hooks and the agent skill, both optional and safe to rerun.
+Then put the two command-line tools on your `PATH` with **Help ▸ Install Command Line Tool…**: it links both `agtermctl` (the control CLI) and `agx` (the agent-facing CLI: `agx context`, `agx spawn`, `agx schedule`) into `/usr/local/bin`, with one administrator prompt when that directory is root-owned. **Help ▸ Install Agent Status Hooks…** installs the agent status hooks and, for Claude Code, two `SessionStart` hooks that only act inside an agx pane: one hands the new session `agx context`, the other pins `claude --resume <id>` as the pane's restore command. **Help ▸ Install Agent Skill…** installs the skill. All three are optional and safe to rerun.
 
 The skill is also published as a plugin from this repository, which puts it wherever your agent looks for one:
 

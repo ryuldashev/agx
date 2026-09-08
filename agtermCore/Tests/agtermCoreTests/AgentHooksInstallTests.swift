@@ -106,13 +106,54 @@ struct AgentHooksInstallTests {
         // a whitespace-only file has no content to lose, so it starts fresh like an empty file
         let result = try AgentHooksInstall.mergeClaudeSettings(existing: "   \n\t\n", scriptDir: scriptDir)
         #expect(result.changed)
-        #expect(events(result.json).count == 4)
+        #expect(events(result.json).count == 5)
     }
 
     @Test func mergeHandlesEmptyExisting() throws {
         let result = try AgentHooksInstall.mergeClaudeSettings(existing: "", scriptDir: scriptDir)
         #expect(result.changed)
-        #expect(events(result.json).count == 4)
+        #expect(events(result.json).count == 5)
+    }
+
+    @Test func mergeAddsBothSessionStartHooksRestoreFirst() throws {
+        let result = try AgentHooksInstall.mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
+        let start = try #require(events(result.json)["SessionStart"])
+        #expect(start.count == 2)
+        #expect(command(start[0]) == "'\(scriptDir)/agx-session-restore.sh'")
+        #expect(command(start[1]) == "'\(scriptDir)/agx-session-context.sh'")
+        #expect(start[0]["matcher"] == nil)
+        #expect(start[1]["matcher"] == nil)
+    }
+
+    @Test func mergeAddsOnlyTheMissingSessionStartHook() throws {
+        // an older install carries the restore hook alone: a re-run appends context and keeps restore's entry
+        let existing = """
+        {"hooks": {"SessionStart": [
+          {"hooks": [{"type": "command", "command": "/usr/bin/other-start.sh"}]},
+          {"hooks": [{"type": "command", "command": "'\(scriptDir)/agx-session-restore.sh'"}]}
+        ]}}
+        """
+        let result = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
+        #expect(result.changed)
+        let commands = try #require(events(result.json)["SessionStart"]).compactMap { command($0) }
+        #expect(commands == [
+            "/usr/bin/other-start.sh",
+            "'\(scriptDir)/agx-session-restore.sh'",
+            "'\(scriptDir)/agx-session-context.sh'",
+        ])
+        let again = try AgentHooksInstall.mergeClaudeSettings(existing: result.json, scriptDir: scriptDir)
+        #expect(!again.changed)
+    }
+
+    @Test func mergeSessionStartProbeIsPerScriptNotPerDirectory() throws {
+        // a foreign SessionStart hook living in the same directory must not satisfy the probe
+        let existing = """
+        {"hooks": {"SessionStart": [
+          {"hooks": [{"type": "command", "command": "'\(scriptDir)/something-else.sh'"}]}
+        ]}}
+        """
+        let result = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
+        #expect(try #require(events(result.json)["SessionStart"]).count == 3)
     }
 
     @Test func codexHooksBlockContainsAllSixEvents() {

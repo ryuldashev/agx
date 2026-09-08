@@ -103,6 +103,14 @@ targets:
       - path: plugins/agterm/skills/agterm
         type: folder
         buildPhase: resources
+      # The agent-facing `agx` CLI (a python3 script, see FORK.md). A Copy Files phase, not Copy Bundle
+      # Resources, so the executable bit survives the copy. Lands at Contents/Resources/agx — beside
+      # Contents/MacOS/agtermctl, which the script resolves as its sibling — and the in-app "Install
+      # Command Line Tool" symlinks it into PATH next to agtermctl.
+      - path: scripts/agx
+        buildPhase:
+          copyFiles:
+            destination: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: uz.marshub.agx
