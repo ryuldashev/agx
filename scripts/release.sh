@@ -210,7 +210,11 @@ if [ "$PUBLISH" != "1" ]; then
 fi
 
 # ── publish: GitHub release + cask bump ───────────────────────────────────────
-echo "==> publishing $TAG"
+# a fork carries an `upstream` remote and gh may resolve its default repo there — pin the
+# release to wherever origin points, never to upstream.
+GH_REPO="$(git remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##')"
+export GH_REPO
+echo "==> publishing $TAG to $GH_REPO"
 NOTES_FILE="$(mktemp)"
 release_notes >"$NOTES_FILE"
 if gh release view "$TAG" >/dev/null 2>&1; then
