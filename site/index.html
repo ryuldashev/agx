@@ -114,7 +114,7 @@
 <section id="install">
   <h2>Set up in five steps</h2>
   <ol class="steps">
-    <li>Open the DMG and drag <code>agx.app</code> into Applications. Homebrew does this for you.</li>
+    <li>Open the DMG and drag <code>agx.app</code> into Applications with the Finder. Don't launch it from the DMG: macOS then runs it from a random translocated path, and the paths the installers below bake in go dead on the next launch. Homebrew does this for you.</li>
     <li><kbd>Help ▸ Install Command Line Tool…</kbd><span>Puts <code>agtermctl</code> and <code>agx</code> on your PATH. One admin prompt.</span></li>
     <li><kbd>Help ▸ Install Agent Status Hooks…</kbd><span>Claude Code reports active / blocked / done onto its session row, and every session opened inside agx starts with a description of the UI in its context.</span></li>
     <li><kbd>Settings ▸ Agents ▸ Connect</kbd><span>The list probes your Mac for Claude Code, Codex, Gemini and the rest. One click connects the one you use.</span></li>
