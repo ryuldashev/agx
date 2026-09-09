@@ -7,6 +7,17 @@ public enum AgentStatus: String, Codable, Sendable, CaseIterable {
     /// through: a `blocked` prompt or a `completed` run, not `active` (still working) or `idle` (no glyph).
     public var needsAttention: Bool { self == .blocked || self == .completed }
 
+    /// Precedence when several sessions fold into one glyph (a collapsed workspace row): the state that most
+    /// wants the user wins — a waiting prompt, then a finished run, then still-working, then nothing.
+    public var rollupRank: Int {
+        switch self {
+        case .blocked: return 3
+        case .completed: return 2
+        case .active: return 1
+        case .idle: return 0
+        }
+    }
+
     /// Whether a keystroke in the session's terminal should clear this glyph back to idle. `blocked` and
     /// `completed` clear on ANY key (you've engaged with the prompt / the finished result); `active` clears ONLY
     /// on an interrupt (Escape or Ctrl-C), so typing while the agent works keeps the "working" glyph. That

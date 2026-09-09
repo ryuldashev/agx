@@ -372,6 +372,9 @@ struct WorkspaceSidebar: NSViewRepresentable {
             /// independent of `focusEnabled`, so marking re-renders just that row even while the filter is
             /// off (with it on the shape changes too and the rebuild branch takes over). False for sessions.
             let focusMember: Bool
+            /// A COLLAPSED workspace's session count (0 when expanded, and for sessions), so folding or a
+            /// session add/close inside a folded row re-renders it. `indicator` carries the roll-up.
+            let sessionCount: Int
         }
 
         /// The session's own agent-status indicator (`.idle` for an unknown id / workspace row). Shown
@@ -386,6 +389,21 @@ struct WorkspaceSidebar: NSViewRepresentable {
         /// glyph is NOT gated by this.
         func effectiveUnseen(_ count: Int) -> Int {
             GhosttyApp.shared.notificationBadgeEnabled ? count : 0
+        }
+
+        /// The indicator a COLLAPSED workspace row shows for the sessions folded under it: the one that most
+        /// wants the user — `blocked` (a prompt waits) over `completed` (a result waits) over `active` (still
+        /// working) — with a blinking one winning a tie, and the first such session's color/shape overrides
+        /// riding along. `.idle` when nothing inside has a status, or when no workspace resolves.
+        func collapsedRollup(for workspace: Workspace?) -> AgentIndicator {
+            var best = AgentIndicator()
+            for indicator in workspace?.sessions.map(\.agentIndicator) ?? [] {
+                let rank = indicator.status.rollupRank
+                if rank > best.status.rollupRank || (rank == best.status.rollupRank && indicator.blink && !best.blink) {
+                    best = indicator
+                }
+            }
+            return best
         }
 
         /// Decides between a full rebuild (a SHAPE change: add/move/close/reorder) and a targeted per-row
@@ -450,10 +468,14 @@ struct WorkspaceSidebar: NSViewRepresentable {
         /// The visible content of a workspace row. One builder shared by `reloadChangedContentRows` and
         /// `snapshotRowContent` so the snapshot and the diff can't drift.
         private func rowContent(forWorkspace workspace: Workspace) -> RowContent {
-            RowContent(label: workspace.name, hasSplit: false, splitAxis: .leftRight,
-                       unseen: effectiveUnseen(workspace.unseenCount),
-                       indicator: AgentIndicator(), flagged: false,
-                       focusMember: store.focusedWorkspaceIDs.contains(workspace.id))
+            // tracked expansion, not `Workspace.isExpanded`: a suppressed reveal opens a row on screen without
+            // persisting, and the roll-up must follow what the row actually shows.
+            let collapsed = !expandedWorkspaceIDs.contains(workspace.id)
+            return RowContent(label: workspace.name, hasSplit: false, splitAxis: .leftRight,
+                              unseen: effectiveUnseen(workspace.unseenCount),
+                              indicator: collapsed ? collapsedRollup(for: workspace) : AgentIndicator(), flagged: false,
+                              focusMember: store.focusedWorkspaceIDs.contains(workspace.id),
+                              sessionCount: collapsed ? workspace.sessions.count : 0)
         }
 
         /// The visible content of a session row. One builder shared by `reloadChangedContentRows` and
@@ -464,7 +486,7 @@ struct WorkspaceSidebar: NSViewRepresentable {
                        splitAxis: session.splitAxis,
                        unseen: effectiveUnseen(session.unseenCount),
                        indicator: effectiveIndicator(forSession: session.id), flagged: session.flagged,
-                       focusMember: false)
+                       focusMember: false, sessionCount: 0)
         }
 
         /// Rebuilds `roots` from the store, reusing cached node instances by id so NSOutlineView item
@@ -606,6 +628,17 @@ struct WorkspaceSidebar: NSViewRepresentable {
             // persist ONLY a genuine user expand: a programmatic reveal or rebuild re-apply sets
             // suppressExpansionPersist, updating the visual set above without burning the persisted intent.
             if !suppressExpansionPersist { store.setWorkspaceExpanded(node.id, expanded: true) }
+            reloadRollupRow(node)
+        }
+
+        /// Re-renders a workspace row after its fold flips, so the collapsed roll-up (session count + status)
+        /// appears or clears with the disclosure; the snapshot is refreshed so the next reconcile doesn't
+        /// reload it again. Skipped mid-rename like the content diff.
+        private func reloadRollupRow(_ node: SidebarNode) {
+            guard let outline = outlineView, !renameController.isEditing, !renameController.isCommitting,
+                  let workspace = store.workspaces.first(where: { $0.id == node.id }) else { return }
+            lastRowContent[node.id] = rowContent(forWorkspace: workspace)
+            outline.reloadItem(node)
         }
 
         func outlineViewItemDidCollapse(_ notification: Notification) {
@@ -614,6 +647,7 @@ struct WorkspaceSidebar: NSViewRepresentable {
             expandedWorkspaceIDs.remove(node.id)
             // persist only a genuine user collapse; programmatic collapses are suppressed (see didExpand).
             if !suppressExpansionPersist { store.setWorkspaceExpanded(node.id, expanded: false) }
+            reloadRollupRow(node)
         }
 
         private func node(for id: UUID, kind: SidebarNode.Kind) -> SidebarNode {

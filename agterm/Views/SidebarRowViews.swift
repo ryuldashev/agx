@@ -8,8 +8,13 @@ final class SidebarCellView: NSTableCellView {
     /// Trailing unseen-notification count — a session's `unseenCount` or a collapsed workspace's roll-up; 0 hides.
     let badge = BadgeView()
 
-    /// Agent-status glyph fed from the session's `agentIndicator`; hidden on `.idle` (workspace rows always idle).
+    /// Agent-status glyph fed from the session's `agentIndicator`; hidden on `.idle`. A workspace row shows
+    /// it only while COLLAPSED, as the roll-up of its sessions' indicators (`collapsedRollup(for:)`).
     let statusIcon = StatusIconView()
+
+    /// Muted session count shown on a COLLAPSED workspace row, right after the name; 0 hides. Added as a
+    /// subview for workspace cells only (a session cell keeps it detached at count 0).
+    let sessionCount = SessionCountView()
 
     /// Inline "+" button between the name and the status icon, workspace cells only (nil for session cells).
     /// Set by the cell builder; `handleSingleClick` reads it to avoid toggling expansion on a click on it.
@@ -73,6 +78,56 @@ final class SidebarCellView: NSTableCellView {
         let iconAlpha: CGFloat = selected ? 0.85 : 0.6
         imageView?.contentTintColor = color.withAlphaComponent(iconAlpha)
         addButton?.contentTintColor = color.withAlphaComponent(iconAlpha)
+        // quieter than the icons: a count is context, not a call to action.
+        sessionCount.textColor = color.withAlphaComponent(0.45)
+    }
+}
+
+/// A muted numeral for a collapsed workspace's session count — custom-drawn like `BadgeView` so it centers on
+/// the row and collapses to zero width at 0 (an empty `NSTextField` would still reserve a slot). No capsule,
+/// small size, low-alpha tint: it should read only when you look for it. Exposed to accessibility as a
+/// `session-count` static text.
+final class SessionCountView: NSView {
+    var count = 0 {
+        didSet {
+            guard count != oldValue else { return }
+            invalidateIntrinsicContentSize()
+            needsDisplay = true
+            setAccessibilityValue(String(count))
+        }
+    }
+
+    /// Set by `SidebarCellView.setColors`, so the numeral follows the row's selection/theme tint.
+    var textColor: NSColor = .tertiaryLabelColor {
+        didSet { needsDisplay = true }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+        setAccessibilityIdentifier("session-count")
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private static let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
+    private static let leadingGap: CGFloat = 6
+    private var textAttributes: [NSAttributedString.Key: Any] { [.font: Self.font, .foregroundColor: textColor] }
+
+    override var intrinsicContentSize: NSSize {
+        let height: CGFloat = 16
+        guard count > 0 else { return NSSize(width: 0, height: height) }
+        let width = (String(count) as NSString).size(withAttributes: textAttributes).width
+        return NSSize(width: ceil(width) + Self.leadingGap, height: height)
+    }
+
+    override func draw(_: NSRect) {
+        guard count > 0 else { return }
+        let text = String(count) as NSString
+        let size = text.size(withAttributes: textAttributes)
+        text.draw(at: NSPoint(x: Self.leadingGap, y: (bounds.height - size.height) / 2), withAttributes: textAttributes)
     }
 }
 

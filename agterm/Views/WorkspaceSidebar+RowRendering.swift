@@ -40,11 +40,16 @@ extension WorkspaceSidebar.Coordinator {
         // glyph: each branch assigns it in full, and an idle round-trip restarts the blink on reload.
         applyBadge(toCell: cell, count: 0)
         cell.setAddButtonVisible(false)
+        cell.sessionCount.count = 0
         switch node.kind {
         case .workspace:
             let workspace = store.workspaces.first(where: { $0.id == node.id })
-            // workspaces carry no agent status; the idle apply collapses the glyph slot
-            cell.statusIcon.apply(AgentIndicator())
+            // an expanded workspace shows its sessions, so its row stays quiet (the idle apply collapses the
+            // glyph slot); a collapsed one rolls them up — a muted count after the name plus the most
+            // attention-worthy session indicator — so a folded row still tells whether anything waits inside.
+            let collapsed = !outlineView.isItemExpanded(item)
+            cell.sessionCount.count = collapsed ? (workspace?.sessions.count ?? 0) : 0
+            cell.statusIcon.apply(collapsed ? collapsedRollup(for: workspace) : AgentIndicator())
             field.stringValue = workspace?.name ?? ""
             field.font = .systemFont(ofSize: GhosttyApp.shared.sidebarFontSize, weight: .medium)
             field.setAccessibilityIdentifier("workspace-row")
@@ -152,6 +157,11 @@ extension WorkspaceSidebar.Coordinator {
         badge.setContentCompressionResistancePriority(.required, for: .horizontal)
         cell.addSubview(badge)
 
+        let sessionCount = cell.sessionCount
+        sessionCount.translatesAutoresizingMaskIntoConstraints = false
+        sessionCount.setContentHuggingPriority(.required, for: .horizontal)
+        sessionCount.setContentCompressionResistancePriority(.required, for: .horizontal)
+
         var constraints: [NSLayoutConstraint] = [
             icon.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
             icon.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
@@ -171,6 +181,8 @@ extension WorkspaceSidebar.Coordinator {
         ]
 
         if isWorkspace {
+            // chain: name | session count (collapsed only, 0-width otherwise) | + | status | badge
+            cell.addSubview(sessionCount)
             let addBtn = makeAddSessionButton()
             cell.addSubview(addBtn)
             cell.addButton = addBtn
@@ -181,7 +193,10 @@ extension WorkspaceSidebar.Coordinator {
             cell.addButtonWidthConstraint = width
             addBtn.isHidden = true
             constraints += [
-                field.trailingAnchor.constraint(equalTo: addBtn.leadingAnchor, constant: -6),
+                field.trailingAnchor.constraint(equalTo: sessionCount.leadingAnchor),
+                sessionCount.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                sessionCount.heightAnchor.constraint(equalToConstant: 16),
+                sessionCount.trailingAnchor.constraint(equalTo: addBtn.leadingAnchor, constant: -6),
                 addBtn.trailingAnchor.constraint(equalTo: statusIcon.leadingAnchor),
                 addBtn.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
                 width,
