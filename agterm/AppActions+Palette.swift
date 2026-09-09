@@ -59,6 +59,7 @@ extension AppActions {
     /// cannot run a disabled action.
     private func runPaletteCommand(_ command: PaletteCommand) {
         guard command.isEnabled(in: paletteContext) else { return }
+        ActionJournal.shared.log("action", ["source": "palette", "action": String(describing: command)])
         dispatch(command)
     }
 
@@ -124,6 +125,7 @@ extension AppActions {
     /// `isEnabled(in:)`, the predicate the menu item spells as its `.disabled(…)`. The rest go through
     /// `paletteLessHandler(for:)`, whose entry points carry their gate themselves.
     func perform(_ action: BuiltinAction, in window: NSWindow?) {
+        ActionJournal.shared.log("action", ["source": "keymap", "action": action.rawValue])
         if let command = PaletteCommand.allCases.first(where: { $0.builtinAction == action }) {
             guard command.isEnabled(in: paletteContext) else { return }
             // the MENU's close rung, not the palette's: with no cover and no session left to close, ⌘W closes

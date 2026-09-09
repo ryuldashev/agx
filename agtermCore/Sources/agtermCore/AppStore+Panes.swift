@@ -35,6 +35,9 @@ extension AppStore {
     }
 
     private func setSplitVisibility(_ session: Session, shown: Bool) {
+        if session.isSplit != shown {
+            ActionJournal.shared.log("state", ["split": shown ? "on" : "off", "session": session.id.uuidString])
+        }
         session.isSplit = shown
         // a NEW split focuses the new (right) pane; RE-showing a hidden one keeps the pane focused before
         // hiding, so a hide/show round-trip (the tmux-style zoom script) doesn't jerk focus right. hiding
@@ -338,6 +341,7 @@ extension AppStore {
     public func toggleScratch(_ sessionID: UUID) {
         guard let session = session(withID: sessionID) else { return }
         session.scratchActive.toggle()
+        ActionJournal.shared.log("state", ["scratch": session.scratchActive ? "on" : "off", "session": sessionID.uuidString])
     }
 
     /// Closes the scratch terminal: hides it AND tears down its surface, so a later show starts a fresh

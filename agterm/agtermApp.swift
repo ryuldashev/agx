@@ -52,6 +52,7 @@ struct agtermApp: App {
         // FIRST, before anything reads or writes the state directory: `WindowLibrary`'s bootstrap seeds a
         // window and saves it, which a later read would see as evidence of an earlier launch.
         let hadPriorState = FirstRunWelcome.hasPriorState(in: stateDirectory)
+        ActionJournal.shared.configure(directory: stateDirectory)
         let library = agtermApp.restoredLibrary()
         _library = State(initialValue: library)
         let actions = AppActions(library: library)

@@ -45,7 +45,9 @@ final class CustomCommandRunner {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             // returning nil consumes the event (it never reaches the terminal); event passes it through.
-            return self.handleKeyDown(event) ? nil : event
+            let consumed = self.handleKeyDown(event)
+            self.journal(event, consumed: consumed)
+            return consumed ? nil : event
         }
         keymapObserver = NotificationCenter.default.addObserver(
             forName: .agtermKeymapChanged, object: nil, queue: .main
@@ -170,6 +172,30 @@ final class CustomCommandRunner {
     /// Map an `NSEvent` key-down to an agtermCore `Chord`, or nil when it carries no usable base key. The base
     /// key is the named special key, else what `chordKey` resolves — the unmodified character on a layout that
     /// can type ASCII, the physical position on one that cannot.
+    /// Journal a ⌘/⌃ chord (never plain typing): the chord as the keymap spells it, the character the
+    /// layout produced, the layout's ASCII-capability, and what had focus — enough to tell "⌘J on a
+    /// Cyrillic layout while typing «о»" from a deliberate toggle, after the fact. `consumed` is the
+    /// monitor's own verdict; a chord it passed through may still fire a MENU key equivalent, which shows up
+    /// as the following `action`/`state` record.
+    private func journal(_ event: NSEvent, consumed: Bool) {
+        let flags = event.modifierFlags
+        guard flags.contains(.command) || flags.contains(.control), !event.isARepeat else { return }
+        var fields: [String: String] = [
+            "keyCode": String(event.keyCode),
+            "produced": event.charactersIgnoringModifiers ?? "",
+            "asciiLayout": KeyboardLayout.isASCIICapable ? "1" : "0",
+            "consumed": consumed ? "1" : "0",
+        ]
+        if let chord = chord(from: event) { fields["chord"] = chord.displayString }
+        let responder = NSApp.keyWindow?.firstResponder
+        fields["focus"] = responder is GhosttySurfaceView ? "surface" : responder is NSText ? "text" : "other"
+        if let session = actions.store?.activeSession {
+            fields["session"] = session.id.uuidString
+            fields["scratch"] = session.scratchActive ? "1" : "0"
+        }
+        ActionJournal.shared.log("key", fields)
+    }
+
     private func chord(from event: NSEvent) -> Chord? {
         var mods: Modifier = []
         let flags = event.modifierFlags

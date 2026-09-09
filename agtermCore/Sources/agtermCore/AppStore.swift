@@ -386,6 +386,7 @@ public final class AppStore {
     /// surviving session in scope (`closeReselectionTarget(after:)`), falling back to the positional neighbor.
     public func closeSession(_ sessionID: UUID) {
         guard let location = location(ofSession: sessionID) else { return }
+        ActionJournal.shared.log("state", ["session": sessionID.uuidString, "closed": "1"])
         let wasActive = selectedSessionID == sessionID
         let workspace = workspaces[location.workspaceIndex]
         let removed = workspaces[location.workspaceIndex].sessions.remove(at: location.sessionIndex)

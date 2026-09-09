@@ -141,6 +141,16 @@ C-boundary concurrency before changing the bridge.
   surface env from a login shell, and `SurfaceCommand.checked` falls back to a shell that PRINTS the reason
   rather than letting a pane die silently. Keep both: a spawn failure must always leave something on screen.
 - Unix socket paths cap near 104 bytes. A long scratch path lets the app launch while control bind fails.
+- "What drove the UI?" is answered by the action journal, not reconstructed: `<state dir>/journal.jsonl`
+  (`ActionJournal`) records every ⌘/⌃ chord the key monitor saw (chord, produced char, layout, focus,
+  consumed), every built-in action with its origin (keymap / palette), every mutating control request, and
+  the scratch/split/close state flips all routes funnel through. Plain typing is never recorded. Rotates
+  once at 8 MB. `tail -f ~/Library/Application\ Support/agx/journal.jsonl` while reproducing.
+- An isolated `open -n --env AGTERM_STATE_DIR=<dir>` Debug instance never binds its socket until the
+  first-run Welcome and Permissions modals are dismissed by hand — they run before the scene's `.task`
+  that calls `controlServer.start()`. Add `--env AGTERM_UITEST_FORCE_SIDEBAR_VISIBLE=1` (the UI-test
+  sentinel) to suppress both; the window then pops in front of the user, so stop it (SIGTERM its PID)
+  as soon as the probe is done.
 - Use absolute repo-root paths for existence checks. Tool cwd persists across calls and often drifts into
   `agtermCore`.
 - CI and release mechanics live in `.claude/rules/ci.md` and `release.md`. `CHANGELOG.md` is release-only;

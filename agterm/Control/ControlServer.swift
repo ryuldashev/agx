@@ -404,6 +404,20 @@ final class ControlServer {
         var value: T?
     }
 
+    /// Journal a control request as it arrives: which command, aimed at what. Reads (`tree`, `events.read`,
+    /// `window.list`, `session.text`) are skipped — agents poll them constantly and they change nothing.
+    private func journal(_ request: ControlRequest) {
+        switch request.cmd {
+        case .tree, .eventsRead, .windowList, .sessionText: return
+        default: break
+        }
+        var fields = ["cmd": request.cmd.rawValue]
+        if let target = request.target { fields["target"] = target }
+        if let mode = request.args?.mode { fields["mode"] = mode }
+        if let name = request.args?.name { fields["name"] = name }
+        ActionJournal.shared.log("control", fields)
+    }
+
     // MARK: - Dispatch
 
     /// Execute a request against the store/actions seam. Never throws across the socket: any failure is a
@@ -412,6 +426,7 @@ final class ControlServer {
         // refresh the read cache in this same main-actor execution, so the background fast path sees the new
         // state without a separate, stallable hop.
         defer { refreshWindowCache() }
+        journal(request)
         if let response = await ControlDispatcher(actions: self).dispatch(request) {
             return response
         }
