@@ -163,6 +163,12 @@ struct WorkspaceSidebar: NSViewRepresentable {
         /// A workspace opened by spring-loading during the current drag. Finder-style spring navigation is
         /// transient: leaving/cancelling collapses this row back to its pre-drag state.
         var springLoadedWorkspaceID: UUID?
+        /// Scheduled spring-loaded session activation while a Finder drag hovers a session row, so a file can
+        /// be dropped into a pane other than the current one without a click first. Not transient like the
+        /// expand: the switch IS the navigation, so leave/cancel keep it.
+        nonisolated(unsafe) var pendingSpringLoadedSelection: (sessionID: UUID, workItem: DispatchWorkItem)?
+        /// Hover dwell before a spring-load fires; tests shorten it.
+        var springLoadDelay: TimeInterval = 0.65
         /// Finder file URLs resolved for the current AppKit dragging sequence. Validation runs on every
         /// mouse move, so caching keeps network-volume metadata checks out of the hot path.
         var cachedDirectoryDrop: (sequenceNumber: Int, urls: [URL], exceedsLimit: Bool)?
@@ -227,6 +233,7 @@ struct WorkspaceSidebar: NSViewRepresentable {
 
         deinit {
             pendingSpringLoadedExpansion?.workItem.cancel()
+            pendingSpringLoadedSelection?.workItem.cancel()
             NotificationCenter.default.removeObserver(self)
         }
 

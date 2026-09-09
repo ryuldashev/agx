@@ -32,12 +32,14 @@ extension WorkspaceSidebar.Coordinator {
                      proposedChildIndex index: Int) -> NSDragOperation {
         if draggedWorkspaceID(from: info) != nil {
             cancelSpringLoadedExpansion()
+            cancelSpringLoadedSelection()
             guard let move = resolveWorkspaceMove(from: info, in: outlineView) else { return [] }
             // workspace reorder lives at the top level: highlight a between-rows slot under the root.
             outlineView.setDropItem(nil, dropChildIndex: move.dropChildIndex)
             return .move
         }
         if !draggedSessionIDs(from: info).isEmpty {
+            cancelSpringLoadedSelection()
             guard let move = resolveSessionMove(from: info, item: item, childIndex: index) else {
                 cancelSpringLoadedExpansion()
                 return []
@@ -46,8 +48,15 @@ extension WorkspaceSidebar.Coordinator {
             scheduleSpringLoadedExpansion(of: move.workspace, in: outlineView)
             return .move
         }
+        // a Finder drag. Files and folders both spring-navigate — a collapsed workspace opens and a hovered
+        // session becomes current, so a file can then be dropped into that pane — but only folders drop here.
+        scheduleSpringLoadedSelection(over: item)
         guard let drop = resolveDirectoryDrop(from: info, item: item) else {
-            cancelSpringLoadedExpansion()
+            if let workspaceID = rowWorkspaceID(for: item) {
+                scheduleSpringLoadedExpansion(of: workspaceID, in: outlineView)
+            } else {
+                cancelSpringLoadedExpansion()
+            }
             return []
         }
         outlineView.setDropItem(workspaceNode(forID: drop.workspaceID), dropChildIndex: SidebarDrop.onItemIndex)
@@ -228,6 +237,30 @@ extension WorkspaceSidebar.Coordinator {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.65, execute: workItem)
     }
 
+    func scheduleSpringLoadedSelection(over item: Any?) {
+        guard let node = item as? SidebarNode, node.kind == .session, node.id != store.selectedSessionID else {
+            cancelSpringLoadedSelection()
+            return
+        }
+        if pendingSpringLoadedSelection?.sessionID == node.id { return }
+        cancelSpringLoadedSelection()
+        let sessionID = node.id
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingSpringLoadedSelection = nil
+            guard self.store.session(withID: sessionID) != nil else { return }
+            self.store.noteUserActivity()
+            self.store.selectSession(sessionID)
+        }
+        pendingSpringLoadedSelection = (sessionID, workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + springLoadDelay, execute: workItem)
+    }
+
+    func cancelSpringLoadedSelection() {
+        pendingSpringLoadedSelection?.workItem.cancel()
+        pendingSpringLoadedSelection = nil
+    }
+
     func cancelSpringLoadedExpansion() {
         let workspaceID = springLoadedWorkspaceID
         clearSpringLoadedTracking()
@@ -252,6 +285,7 @@ extension WorkspaceSidebar.Coordinator {
     /// spring-load contract) or keeps it open (a successful drop, so the result stays visible).
     func finishDraggingSequence(collapseSpringLoaded: Bool = true) {
         cachedDirectoryDrop = nil
+        cancelSpringLoadedSelection()
         if collapseSpringLoaded {
             cancelSpringLoadedExpansion()
         } else {
