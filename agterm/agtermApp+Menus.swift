@@ -397,8 +397,13 @@ extension agtermApp {
                 .disabled(!PaletteCommand.focusRightPane.isEnabled(in: context))
             }
             CommandGroup(replacing: .help) {
-                Button("Developer Documentation…") {
-                    if let url = URL(string: "https://agterm.com/docs#agtermctl") {
+                Button("\(Brand.productName) on GitHub…") {
+                    if let url = URL(string: Brand.homepage) {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                Button("Developer Documentation (\(Brand.upstreamName))…") {
+                    if let url = URL(string: Brand.upstreamDocs + "#agtermctl") {
                         NSWorkspace.shared.open(url)
                     }
                 }
@@ -411,17 +416,26 @@ extension agtermApp {
             }
     }
 
-    /// Opens the standard About panel with a clickable agterm.com link and, on release builds where
-    /// `GIT_COMMIT` is baked into the bundle, the short commit in the version's parenthetical.
+    /// Opens the standard About panel with a clickable link to this fork's repository, a one-line
+    /// credit to the upstream project it was forked from, and, on release builds where `GIT_COMMIT`
+    /// is baked into the bundle, the short commit in the version's parenthetical.
     private func showAboutPanel() {
         var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
-        let website = "https://agterm.com"
-        if let url = URL(string: website) {
-            options[.credits] = NSAttributedString(string: website, attributes: [
-                .link: url,
-                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-            ])
+        let small = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let credits = NSMutableAttributedString()
+        if let url = URL(string: Brand.homepage) {
+            credits.append(NSAttributedString(string: Brand.homepage, attributes: [.link: url, .font: small]))
         }
+        let muted: [NSAttributedString.Key: Any] = [.font: small, .foregroundColor: NSColor.secondaryLabelColor]
+        credits.append(NSAttributedString(string: "\n\nA fork of ", attributes: muted))
+        if let url = URL(string: Brand.upstreamHomepage) {
+            credits.append(NSAttributedString(string: Brand.upstreamName, attributes: [.link: url, .font: small]))
+        }
+        credits.append(NSAttributedString(string: " by \(Brand.upstreamAuthor), MIT", attributes: muted))
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        credits.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: credits.length))
+        options[.credits] = credits
         if let commit = Bundle.main.infoDictionary?["GitCommit"] as? String, !commit.isEmpty, commit != "unknown" {
             options[.version] = commit
         }

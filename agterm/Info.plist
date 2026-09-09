@@ -33,7 +33,7 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.developer-tools</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>© 2026 Umputun</string>
+	<string>© 2026 Ruslan Yuldashev</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Command-line tools you run inside agx (for example, an osascript one-liner or a build script) request permission to control other apps through agx.</string>
 	<key>NSAppleMusicUsageDescription</key>

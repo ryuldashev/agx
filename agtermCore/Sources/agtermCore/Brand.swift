@@ -24,4 +24,14 @@ public enum Brand {
     /// Upstream agterm's config directory, seeded ON FIRST RUN when this fork has none of its own — a
     /// fork of a tool you already use should start with the keymap you already wrote.
     public static let legacyConfigDirectoryName = "agterm"
+
+    /// What the About panel and the Help menu say about this build.
+    public static let productName = "agx"
+    public static let homepage = "https://github.com/ryuldashev/agx"
+    public static let copyright = "© 2026 Ruslan Yuldashev"
+    /// The project this is a fork of. MIT asks that the origin stays visible, and it should anyway.
+    public static let upstreamName = "agterm"
+    public static let upstreamAuthor = "Umputun"
+    public static let upstreamHomepage = "https://agterm.com"
+    public static let upstreamDocs = "https://agterm.com/docs"
 }

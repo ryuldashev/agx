@@ -104,6 +104,8 @@ renaming the product is a change to that file and the build settings that carry 
 | control socket | `<state>/agterm.sock` | `<state>/agx.sock` |
 | log subsystem | `com.umputun.agterm` | `uz.marshub.agx` |
 | Swift module | `agterm` | `agterm` (`PRODUCT_MODULE_NAME`) |
+| About panel | agterm.com, © Umputun | github.com/ryuldashev/agx, © Ruslan Yuldashev, credit line "A fork of agterm by Umputun, MIT" |
+| Help menu | Developer Documentation → agterm.com | "agx on GitHub…" + upstream docs, labelled as agterm's |
 
 Two things deliberately keep upstream's names:
 
