@@ -147,6 +147,11 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
   read another session       agtermctl session text --target <id|prefix> [--all] [--lines N]
   focus / bring to front     agtermctl session select --target <id> | agtermctl workspace select <id>
   passive panel (HUD)        agtermctl session hud open "<message>" --target <id> [--detail ..] [--spinner]
+  SHOW A DOCUMENT to the user agx reader <path.md>   renders the markdown in YOUR session's right pane, live-reloading
+    ^ a plan, a report, a review: write the .md, open it once, keep editing the file — the pane follows.
+      Do not paste long markdown into the chat when the user should read it rendered. agx reader close gives
+      the pane back; the user's "Open in Reader" button moves it to a window. (agtermctl session reader --target <id>
+      for someone else's session.)
   ephemeral term on a session agtermctl session overlay open --target <id> -- <cmd>   (read: overlay text --target <id>)
   set my own status glyph    agtermctl session status active|completed|blocked|idle [--blink]
   desktop notification       agtermctl notify "<body>" [--title "..."]     native picker: agtermctl pick ...
