@@ -53,6 +53,7 @@ targets:
           - "Resources/terminfo"
           - "Resources/agent-status"
           - "Resources/hud"
+          - "Resources/reader"
           - "Resources/abduco"
           # committed SOURCE for agterm's own bundled theme(s); setup.sh stages it
           # into Resources/ghostty/themes (above), so the source dir itself must not
@@ -87,6 +88,12 @@ targets:
       # exec bit. Lands at Contents/Resources/hud — ControlServer.helperCommand() resolves it there and
       # shell-escapes it into the overlay command.
       - path: agterm/Resources/hud
+        type: folder
+        buildPhase: resources
+      # The session.reader panel's page (markdown-it + vendored libs), mirrored from ~/mmee/reader/web
+      # (see its SOURCE.md). Folder reference so it lands whole at Contents/Resources/reader —
+      # MarkdownReaderView.webDir() resolves index.html there.
+      - path: agterm/Resources/reader
         type: folder
         buildPhase: resources
       # The abduco client/server behind durable panes (ADR 0001), built from vendor/abduco by setup.sh.

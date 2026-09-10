@@ -49,6 +49,8 @@ public enum Command: String, Codable, Sendable {
     case sessionHudOpen = "session.hud.open"
     case sessionHudUpdate = "session.hud.update"
     case sessionHudClose = "session.hud.close"
+    case sessionReaderOpen = "session.reader.open"
+    case sessionReaderClose = "session.reader.close"
     case quick
     case quickType = "quick.type"
     case quickText = "quick.text"
@@ -147,7 +149,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// Optional divider direction for `session.split`: `vertical` (left/right) or `horizontal` (top/bottom).
     /// Omitted preserves the original axis-agnostic show/hide behavior.
     public var axis: String?
-    /// The image file path for `session.background` mode `image` (PNG or JPEG).
+    /// The image file path for `session.background` mode `image` (PNG or JPEG), and the markdown file for
+    /// `session.reader.open` (absolute; the CLI resolves it against the caller's cwd).
     public var path: String?
     /// The `#rrggbb` color for `session.background`: the mode-`text` tint (nil = terminal foreground) or the
     /// mode-`color` solid background (required, no opacity — it honors the Settings window translucency).

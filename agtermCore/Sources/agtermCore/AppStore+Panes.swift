@@ -299,6 +299,25 @@ extension AppStore {
         return closeOverlay(sessionID)
     }
 
+    /// Shows a markdown file over the session in the reader slot, replacing a live reader in place. The
+    /// width is bounded by `ReaderLayout.clampSizePercent`, so no caller can turn the panel into a cover.
+    /// False for an unknown session; the file's readability is the host's to check. NOT persisted.
+    @discardableResult public func openReader(_ sessionID: UUID, spec: ReaderSpec) -> Bool {
+        guard let session = session(withID: sessionID) else { return false }
+        var bounded = spec
+        bounded.sizePercent = ReaderLayout.clampSizePercent(spec.sizePercent)
+        session.readerSlotGeneration += 1
+        session.readerSpec = bounded
+        return true
+    }
+
+    /// Takes the reader down; the deck frees its web view when the state clears. False with none up.
+    @discardableResult public func closeReader(_ sessionID: UUID) -> Bool {
+        guard let session = session(withID: sessionID), session.readerActive else { return false }
+        session.readerSpec = nil
+        return true
+    }
+
     /// Opens a pane-scoped overlay covering `pane` only, leaving the sibling pane live and interactive.
     /// Behaves like `openOverlay` in every respect but geometry and scope: the surface is created lazily by
     /// the pane, `wait` holds it after the command exits, and `backgroundColor`/`cwd` are per-overlay, so

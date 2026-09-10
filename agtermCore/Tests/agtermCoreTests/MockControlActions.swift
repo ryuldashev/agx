@@ -72,6 +72,8 @@ final class MockControlActions: ControlActions {
         case hudOpen(target: String?, window: String?, HudSpec)
         case hudUpdate(target: String?, window: String?, HudSpec)
         case hudClose(target: String?, window: String?)
+        case readerOpen(target: String?, window: String?, ReaderSpec)
+        case readerClose(target: String?, window: String?)
         case sessionBackground(target: String?, window: String?, ControlSessionBackgroundOptions)
         case sessionText(target: String?, window: String?, ControlSessionTextOptions)
         case windowNew(String?, minimized: Bool)
@@ -143,6 +145,8 @@ final class MockControlActions: ControlActions {
     var nextHudOpenResponse = ControlResponse(ok: true)
     var nextHudUpdateResponse = ControlResponse(ok: true)
     var nextHudCloseResponse = ControlResponse(ok: true)
+    var nextReaderOpenResponse = ControlResponse(ok: true)
+    var nextReaderCloseResponse = ControlResponse(ok: true)
     var nextSessionBackgroundResponse = ControlResponse(ok: true)
     var nextSessionTextResponse = ControlResponse(ok: true)
     var nextSurfaceZoomResponse = ControlResponse(ok: true)
@@ -500,6 +504,16 @@ final class MockControlActions: ControlActions {
     func closeHud(_ target: String?, window: String?) -> ControlResponse {
         calls.append(.hudClose(target: target, window: window))
         return nextHudCloseResponse
+    }
+
+    func openReader(_ target: String?, window: String?, spec: ReaderSpec) -> ControlResponse {
+        calls.append(.readerOpen(target: target, window: window, spec))
+        return nextReaderOpenResponse
+    }
+
+    func closeReader(_ target: String?, window: String?) -> ControlResponse {
+        calls.append(.readerClose(target: target, window: window))
+        return nextReaderCloseResponse
     }
 
     func setSessionBackground(_ target: String?, window: String?,

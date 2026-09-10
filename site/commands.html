@@ -191,6 +191,7 @@
             <a href="#session" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session</a>
             <a href="#overlay" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session overlay</a>
             <a href="#hud" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session hud</a>
+            <a href="#reader" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session reader</a>
             <a href="#schedule" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">schedule</a>
             <a href="#window" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">window</a>
             <a href="#surface" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">surface zoom</a>
@@ -1756,6 +1757,76 @@
                 program covering this session" cannot mistake a message for one, and
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">surface zoom</span> will not
                 address the panel. HUD state is poll-only; no event announces it.
+              </p>
+            </div>
+          </section>
+
+          <!-- READER -->
+          <section id="reader" style="scroll-margin-top: 88px; padding-top: 56px">
+            <h2
+              style="
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+                font-weight: 700;
+                font-size: 28px;
+                letter-spacing: -0.02em;
+                margin: 0 0 16px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              "
+            >
+              session reader
+            </h2>
+            <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0 0 16px">
+              A rendered markdown panel over the session that re-renders as the file changes on disk — an agent writes a plan
+              or a report and the user reads it beside the pane it came from, scroll position kept across every rewrite. It has
+              its own slot, so it stays up beside a HUD and under a program overlay.
+            </p>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl session reader [open] &lt;path.md&gt; [--position P] [--size-percent N] [--target T] [--window W]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.reader.open</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Show the file. <strong style="color: #bfbab0">Returns</strong> the session's
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span>.
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">open</span> is the group's default subcommand, so
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">session reader plan.md</span> shows one; a file literally
+                named <span style="font-family: &quot;JetBrains Mono&quot;, monospace">close</span> needs the explicit
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reader open</span> verb. The path is resolved by the CLI against the caller's
+                directory (<span style="font-family: &quot;JetBrains Mono&quot;, monospace">~</span> expanded), so the socket always carries an absolute one;
+                a raw-socket relative path is refused, and a file that cannot be read errors
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">cannot read file: &lt;path&gt;</span> and opens nothing.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--position</span> takes the same nine anchors
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">session hud</span> does, defaulting to
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">center-right</span>; the panel runs nearly the pane's full height, so only the
+                column matters. <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">--size-percent N</span> (1–100) sets the
+                WIDTH, bounded to 20–80% of the pane so the document stays readable and never covers the session.
+                A second <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reader</span> replaces the first in place. The session keeps first
+                responder when the panel opens; clicking the document focuses it for scrolling and selection, and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">http</span> links open in the browser. The page follows the system appearance and
+                renders task lists, tables, footnotes, highlighted code and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">mermaid</span> blocks;
+                images resolve relative to the file.
+              </p>
+            </div>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl session reader close [--target T] [--window W]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.reader.close</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Take the panel down. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no reader</span> when none is up, so it is not
+                idempotent. Closing the session takes it down too; nothing else does.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                Read the panel back from the session node's
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reader</span> object — <span style="font-family: &quot;JetBrains Mono&quot;, monospace">path</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">position</span> and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">sizePercent</span>, always the
+                effective values — omitted when none is up. Reader state is poll-only; no event announces it, and it is never
+                persisted across a relaunch.
               </p>
             </div>
           </section>

@@ -1124,6 +1124,43 @@ struct CommandsTests {
         #expect(throws: (any Error).self) { try Agtermctl.parseAsRoot(["session", "hud", "open"]) }
     }
 
+    @Test func sessionReaderOpenIsTheDefaultVerbAndCarriesAnAbsolutePath() throws {
+        let expected = ControlRequest(cmd: .sessionReaderOpen, target: "active",
+                                      args: ControlArgs(path: "/repo/docs/plan.md"))
+        #expect(try request(["session", "reader", "/repo/docs/plan.md"]) == expected)
+        #expect(try request(["session", "reader", "open", "/repo/docs/plan.md"]) == expected)
+    }
+
+    @Test func sessionReaderOpenResolvesRelativeAndTildePathsLocally() throws {
+        let cwd = FileManager.default.currentDirectoryPath
+        let relative = try request(["session", "reader", "docs/../plan.md"])
+        #expect(relative.args?.path == (cwd as NSString).appendingPathComponent("plan.md"))
+
+        let home = NSHomeDirectory()
+        let tilde = try request(["session", "reader", "~/plan.md"])
+        #expect(tilde.args?.path == (home as NSString).appendingPathComponent("plan.md"))
+    }
+
+    @Test func sessionReaderOpenWithPositionSizeAndTarget() throws {
+        let expected = ControlRequest(cmd: .sessionReaderOpen, target: "9f3c",
+                                      args: ControlArgs(sizePercent: 60, path: "/repo/plan.md", position: "center-left"))
+        #expect(try request(["session", "reader", "/repo/plan.md", "--position", "center-left",
+                             "--size-percent", "60", "--target", "9f3c"]) == expected)
+    }
+
+    @Test func sessionReaderOpenRejectsABadPositionOrPercentLocally() throws {
+        #expect(validationMessage(["session", "reader", "/repo/plan.md", "--position", "sideways"])?
+            .contains("position must be one of") == true)
+        #expect(validationMessage(["session", "reader", "/repo/plan.md", "--size-percent", "0"])?
+            .contains("--size-percent must be between 1 and 100") == true)
+        #expect(throws: (any Error).self) { try Agtermctl.parseAsRoot(["session", "reader", "open"]) }
+    }
+
+    @Test func sessionReaderClose() throws {
+        #expect(try request(["session", "reader", "close", "--target", "9f3c"])
+            == ControlRequest(cmd: .sessionReaderClose, target: "9f3c"))
+    }
+
     @Test func sessionHudUpdate() throws {
         let expected = ControlRequest(cmd: .sessionHudUpdate, target: "9f3c",
                                       args: ControlArgs(message: "ready", detail: "12 repos", position: "bottom"))

@@ -5,7 +5,7 @@ INSTALL_DIR := /Applications
 RELEASE_APP := build/DerivedData/Build/Products/Release/agx.app
 
 .DEFAULT_GOAL := help
-.PHONY: help prep generate build run release deploy test test-app lint dist clean
+.PHONY: help prep generate build run release deploy test test-app lint dist clean sync-reader
 
 help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -46,6 +46,9 @@ lint: ## swiftlint over the tree (strict — warnings fail too)
 dist: ## signed + notarized DMG — usage: make dist VERSION=x.y.z [PUBLISH=1]
 	@test -n "$(VERSION)" || { echo "usage: make dist VERSION=x.y.z [PUBLISH=1]" >&2; exit 1; }
 	./scripts/release.sh $(VERSION) $(if $(PUBLISH),--publish,)
+
+sync-reader: ## copy the reader page from ~/mmee/reader/web into agterm/Resources/reader
+	cp ~/mmee/reader/web/index.html ~/mmee/reader/web/app.js ~/mmee/reader/web/reader.css ~/mmee/reader/web/*.min.js agterm/Resources/reader/
 
 clean: ## remove build artifacts (build/)
 	rm -rf build

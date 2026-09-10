@@ -450,6 +450,29 @@ def cmd_run(argv):
     return rc
 
 
+def cmd_reader(argv):
+    """Show a markdown file in a live-reloading panel over THIS session (or --target's); `agx reader close`
+    takes it down. Sugar over `agtermctl session reader`: an in-pane agent's own session is the default
+    target, since the document is for the user watching this pane."""
+    a = list(argv[2:])
+    target = os.environ.get("AGTERM_SESSION_ID")
+    passthrough = []
+    i = 0
+    while i < len(a):
+        if a[i] == "--target":
+            if i + 1 >= len(a): print("agx reader: --target needs a value", file=sys.stderr); return 2
+            target = a[i + 1]; i += 2
+        else:
+            passthrough.append(a[i]); i += 1
+    if not passthrough:
+        print("agx reader: need a path, e.g. agx reader docs/plan.md   (or: agx reader close)", file=sys.stderr); return 2
+    verb = ["close"] if passthrough == ["close"] else ["open", *passthrough]
+    ctl_args = [CTL, "session", "reader", *verb]
+    if target:
+        ctl_args += ["--target", target]
+    return subprocess.call(ctl_args)
+
+
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else "context"
     if cmd in ("-h", "--help", "help"):
@@ -457,6 +480,8 @@ def main(argv):
               "  agx context [--json]           self-description of the AGX UI for an in-pane agent\n"
               "  agx usage [--json]             accurate cross-session model/context/cost + account pools\n"
               "  agx run \"<shell cmd>\" [--pane split]  run a FINITE command in THIS session's side pane, return output+exit\n"
+              "  agx reader <path.md> [--target ID]   show a markdown file in a live-reloading panel over THIS session\n"
+              "  agx reader close [--target ID]      take that panel down\n"
               "  agx spawn --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID]\n"
               "            [--cwd PATH] [--agent claude] [--foreground] [--json]\n"
               "            create an agent session AND seed it with the brief as its first message\n"
@@ -472,6 +497,8 @@ def main(argv):
         return cmd_usage(argv)
     if cmd == "run":
         return cmd_run(argv)
+    if cmd == "reader":
+        return cmd_reader(argv)
     if cmd != "context":
         print(f"agx: unknown command '{cmd}'", file=sys.stderr)
         return 2

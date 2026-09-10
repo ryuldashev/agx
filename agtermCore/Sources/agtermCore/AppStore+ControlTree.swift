@@ -54,6 +54,7 @@ extension AppStore {
                                               ? session.overlaySizePercent : nil,
                                           paneOverlays: paneOverlays(session),
                                           hud: hudNode(session),
+                                          reader: readerNode(session),
                                           scratch: session.scratchActive, flagged: session.flagged,
                                           commandWait: (session.initialCommand != nil && session.commandWait) ? true : nil,
                                           durable: session.durable ? true : nil,
@@ -104,6 +105,13 @@ extension AppStore {
     private func paneOverlays(_ session: Session) -> [String]? {
         let panes = session.openPaneOverlays.map(\.rawValue)
         return panes.isEmpty ? nil : panes
+    }
+
+    /// The tree's `reader`: the live panel's spec with its effective anchor and bounded width, omitted
+    /// when no reader is up.
+    private func readerNode(_ session: Session) -> ControlReaderNode? {
+        guard let spec = session.readerSpec else { return nil }
+        return ControlReaderNode(path: spec.path, position: spec.position.rawValue, sizePercent: spec.sizePercent)
     }
 
     /// The tree's `hud`: the live panel's spec carrying the slot's EFFECTIVE size on BOTH axes and the

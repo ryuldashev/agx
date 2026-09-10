@@ -456,6 +456,8 @@ final class ControlServer {
             preconditionFailure("pick command returned nil from ControlDispatcher")
         case .sessionHudOpen, .sessionHudUpdate, .sessionHudClose:
             preconditionFailure("hud command returned nil from ControlDispatcher")
+        case .sessionReaderOpen, .sessionReaderClose:
+            preconditionFailure("reader command returned nil from ControlDispatcher")
         }
     }
 

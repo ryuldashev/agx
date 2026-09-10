@@ -125,7 +125,8 @@ renumbering. Do not reintroduce a count anywhere.
   `.split.close`,
   `.scratch`, `.focus`, `.resize`, `.go`, `.copy`, `.paste`, `.selectall`, `.text`, `.search`, `.status`,
   `.flag`, `.seen`, `.restore`, `.background`, `.overlay.open`, `.overlay.close`, `.overlay.resize`,
-  `.overlay.result`, `.overlay.copy`, `.overlay.text`, `.hud.open`, `.hud.update`, `.hud.close`
+  `.overlay.result`, `.overlay.copy`, `.overlay.text`, `.hud.open`, `.hud.update`, `.hud.close`,
+  `.reader.open`, `.reader.close`
 - `surface.zoom`, `dashboard`, `pick.open`, `pick.result`, `pick.cancel`
 - `quick`, `quick.type`, `quick.text`
 - `sidebar`, `sidebar.mode`, `sidebar.expand`, `sidebar.collapse`, `notify`
@@ -499,6 +500,43 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 - CLI reads JSON array when stdin begins `[`, otherwise nonblank lines become ID=label. Blocking poll is
   100ms for one second, then 500ms; print bare result JSON; exit 0 picked/custom, 2 cancelled, 1 failure.
   `--no-block` prints picker ID JSON; result/cancel are one-shot commands.
+
+## Markdown reader
+
+- `session.reader.open <path> [--position P] [--size-percent N]` shows a markdown file in a live-reloading
+  `WKWebView` panel over the session; `session.reader.close` takes it down. Control-native like
+  `session.hud.*`: no menu, chord or palette entry. The panel is the in-app twin of the standalone
+  `~/mmee/reader` app, and `agterm/Reader/` ports its `WebPane`/`FileWatcher` under close names so a fix
+  in one is mirrored in the other; the page under `Resources/reader/` is a copy of that repo's `web/`
+  (`make sync-reader`, see its `SOURCE.md`).
+- Its OWN slot, `Session.readerSpec` + `readerSlotGeneration`, NOT the overlay's: it never sets
+  `overlayActive`, so every predicate reading `hudActive`/`programOverlayActive`, the ⌘W ladder,
+  `overlay.*` refusals and zoom addressing are untouched, and a reader stays up beside a HUD or under a
+  program overlay. The deck's `readerPanel` is one always-present sibling at z2 (above the scratch, below
+  `overlayPanel`), hidden under a FULL overlay like the scratch is; `OverlayPanelStyle.reader` reuses the
+  HUD's chrome and the nine-anchor offset math, `interactive` true and `backdrop` false. Opening moves no
+  first responder and there is no click catcher: the session keeps typing until the user clicks the
+  document, and the deck's focus routing never names the panel.
+- The dispatcher validates the path's TEXT only — non-blank, absolute, no control characters — plus the
+  percent (1...100) and `HudPosition.parse`; `ControlServer+Reader` refuses an unreadable file with
+  `ReaderError.unreadable` before the store is touched. The CLI resolves `~` and relative paths against
+  the caller's cwd (`Reader.absolutePath`), so the socket only ever carries an absolute path and the app
+  never guesses a base. Width is bounded by `ReaderLayout.clampSizePercent` (20...80) in the store;
+  height is the fixed `ReaderLayout.heightPercent`, no caller override.
+- A second open REPLACES in place and bumps `readerSlotGeneration`, which keys the panel's `.id`, so the
+  web view is rebuilt over the new file's folder (`setBase`) rather than re-pointed. Close is not
+  idempotent (`ReaderError.noReader`). State dies with the session and is never persisted.
+- Read back `ControlSessionNode.reader` — `path`, effective `position` (aliases normalized) and
+  bounded `sizePercent` — omitted when none is up; `overlay`/`hud` report independently beside it.
+  Poll-only, no event.
+- Web-view contract, verbatim from MmeeReader: evals queue until the page posts `ready`;
+  `loadFileURL(index.html, allowingReadAccessTo: "/")` because the page's `<base>` is retargeted to the
+  document's folder for relative images; the navigation policy allows only the bundled page itself,
+  hands http/https/mailto to the browser and any other file to `NSWorkspace`. The message handlers hold
+  the bridge strongly, so `teardown` removes them or the panel leaks past its session.
+- `ReaderFileWatcher` re-arms on the PATH after `.rename`/`.delete` (atomic saves), debounces 120 ms,
+  reports a missing file after four misses and again when it returns. All its state lives on its own
+  queue; callbacks hop to the main actor.
 
 ## Status, notifications, and flags
 

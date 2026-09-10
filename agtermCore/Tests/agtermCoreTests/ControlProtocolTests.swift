@@ -205,6 +205,39 @@ struct ControlProtocolTests {
         }
     }
 
+    @Test func sessionReaderRawStringsMapToCommands() throws {
+        #expect(Command(rawValue: "session.reader.open") == .sessionReaderOpen)
+        #expect(Command(rawValue: "session.reader.close") == .sessionReaderClose)
+    }
+
+    @Test func sessionReaderRequestsRoundTrip() throws {
+        let cases = [
+            ControlRequest(cmd: .sessionReaderOpen, target: "9f3c", args: ControlArgs(path: "/repo/plan.md")),
+            ControlRequest(cmd: .sessionReaderOpen, args: ControlArgs(sizePercent: 60, path: "/repo/plan.md",
+                                                                      position: "center-left")),
+            ControlRequest(cmd: .sessionReaderClose, target: "9f3c"),
+        ]
+        for request in cases {
+            #expect(try roundTrip(request) == request)
+        }
+    }
+
+    @Test func treeSessionNodeRoundTripsWithReaderAndOmitsItWhenNil() throws {
+        let reader = ControlReaderNode(path: "/repo/plan.md", position: "center-right", sizePercent: 45)
+        let session = ControlSessionNode(id: "s1", name: "shell", cwd: "/tmp", active: true, split: false,
+                                         reader: reader)
+        let response = ControlResponse(ok: true, result: ControlResult(tree: ControlTree(
+            workspaces: [ControlWorkspaceNode(id: "w1", name: "work", active: true, sessions: [session])])))
+        let decoded = try roundTrip(response)
+        #expect(decoded == response)
+        #expect(decoded.result?.tree?.workspaces.first?.sessions.first?.reader == reader)
+
+        let bare = ControlSessionNode(id: "s1", name: "shell", cwd: "/tmp", active: true, split: false)
+        let json = String(decoding: try JSONEncoder().encode(bare), as: UTF8.self)
+        #expect(!json.contains("reader"), "no reader must be omitted from the JSON; got \(json)")
+        #expect(try JSONDecoder().decode(ControlSessionNode.self, from: Data(json.utf8)).reader == nil)
+    }
+
     @Test func sessionHudRawStringsMapToCommands() throws {
         #expect(Command(rawValue: "session.hud.open") == .sessionHudOpen)
         #expect(Command(rawValue: "session.hud.update") == .sessionHudUpdate)

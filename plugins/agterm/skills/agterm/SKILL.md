@@ -6,6 +6,7 @@ description: >
   create, rename, close, select, or reorder sessions and workspaces; split panes; toggle the
   per-session scratch terminal; open or close overlay terminals and read their exit status; post a
   passive HUD message panel over a session while the user keeps typing;
+  show a markdown file in a live-reloading reader panel beside a session;
   display the native fuzzy picker with caller-supplied choices and poll or cancel it; display
   an image inline via a bundled helper script; type
   into a session, copy its selection, or search its scrollback; post desktop notifications; manage windows (new, list,
@@ -20,7 +21,7 @@ when_to_use: >
   Trigger on: agterm, agtermctl, agterm control socket, session.new, session.close, session.type,
   session.split, session.split.close, session.scratch, session.focus, session.resize, surface.zoom, dashboard, pick, pick.open, pick.result, pick.cancel, native picker, session.go, session.copy, session.paste, session.selectall, session.text, session.search, session.status,
   session.flag, session.seen, session.reveal, session.duplicate, session.background, session.overlay,
-  session.hud, hud panel, show a message over a session, schedule.add, schedule.list, schedule.cancel,
+  session.hud, hud panel, show a message over a session, session.reader, reader panel, show a markdown file beside a session, render markdown in the terminal, schedule.add, schedule.list, schedule.cancel,
   schedule.run, scheduled session, run this later, remind me tomorrow, continue at 09:00,
   workspace.new, workspace.select, workspace.go, workspace.move, workspace.focus, workspace.filter, window.new, window.list,
   window.select, window.resize, window.move, window.zoom, window.fullscreen, window.minimize, quick terminal, sidebar, sidebar.mode, sidebar.expand, sidebar.collapse, flagged, notify, font.inc, keymap.reload, keymap.list, config.reload,

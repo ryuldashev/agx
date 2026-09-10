@@ -112,6 +112,9 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
     /// The HUD panel occupying the session-wide overlay slot; nil/omitted when none is up. Mutually exclusive
     /// with `overlay` — one slot, and whichever holds it is the one that reports.
     public let hud: ControlHudNode?
+    /// The markdown reader panel over the session; nil/omitted when none is up. Its own slot, so it can
+    /// report beside `hud` or `overlay`.
+    public let reader: ControlReaderNode?
     public let scratch: Bool
     public let flagged: Bool
     /// For a `--command` session, whether it HOLDS its surface after the command exits (`session.new
@@ -190,7 +193,8 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
                 hasSplit: Bool? = nil, splitAxis: String? = nil,
                 splitRatio: Double? = nil, splitFocused: Bool? = nil,
                 overlay: Bool = false, overlaySizePercent: Int? = nil, paneOverlays: [String]? = nil,
-                hud: ControlHudNode? = nil, scratch: Bool = false, flagged: Bool = false,
+                hud: ControlHudNode? = nil, reader: ControlReaderNode? = nil,
+                scratch: Bool = false, flagged: Bool = false,
                 commandWait: Bool? = nil, durable: Bool? = nil, attached: Bool? = nil,
                 foreground: [String]? = nil, splitForeground: [String]? = nil,
                 restoreCommand: String? = nil, splitRestoreCommand: String? = nil, status: String? = nil,
@@ -213,6 +217,7 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
         self.overlaySizePercent = overlaySizePercent
         self.paneOverlays = paneOverlays
         self.hud = hud
+        self.reader = reader
         self.scratch = scratch
         self.flagged = flagged
         self.commandWait = commandWait
