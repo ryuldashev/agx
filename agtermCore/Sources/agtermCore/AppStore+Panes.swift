@@ -39,6 +39,9 @@ extension AppStore {
             ActionJournal.shared.log("state", ["split": shown ? "on" : "off", "session": session.id.uuidString])
         }
         session.isSplit = shown
+        // hiding the split un-renders the pane the reader lives in, so it goes with it; the `closeReader`
+        // that would have restored the split has nothing left to restore.
+        if !shown { session.readerSpec = nil; session.readerShowedSplit = false }
         // a NEW split focuses the new (right) pane; RE-showing a hidden one keeps the pane focused before
         // hiding, so a hide/show round-trip (the tmux-style zoom script) doesn't jerk focus right. hiding
         // leaves `hasSplit`/`splitFocused` set — indicators persist, the focused pane shows maximized — and
@@ -85,6 +88,8 @@ extension AppStore {
         session.hasSplit = false
         session.splitFocused = false
         session.splitAxis = .leftRight
+        session.readerSpec = nil
+        session.readerShowedSplit = false
         session.splitSurface?.teardown()
         session.splitSurface = nil
         session.splitCwd = nil
@@ -299,22 +304,45 @@ extension AppStore {
         return closeOverlay(sessionID)
     }
 
-    /// Shows a markdown file over the session in the reader slot, replacing a live reader in place. The
-    /// width is bounded by `ReaderLayout.clampSizePercent`, so no caller can turn the panel into a cover.
-    /// False for an unknown session; the file's readability is the host's to check. NOT persisted.
+    /// Shows a markdown file in the session's split pane, replacing a live reader in place. A hidden or
+    /// absent split is shown (and remembered as the reader's doing, so `closeReader` restores it); focus
+    /// goes to the primary pane, the document having no prompt to type into. `spec.sizePercent`, or the
+    /// default for a split the reader showed, sets the divider through `applySplitRatio`; moving the LIVE
+    /// divider is the host's job, as for `session.resize`. False for an unknown session; the file's
+    /// readability is the host's to check. NOT persisted.
     @discardableResult public func openReader(_ sessionID: UUID, spec: ReaderSpec) -> Bool {
         guard let session = session(withID: sessionID) else { return false }
-        var bounded = spec
-        bounded.sizePercent = ReaderLayout.clampSizePercent(spec.sizePercent)
+        let replacing = session.readerActive
+        if !replacing, !session.isSplit {
+            session.readerShowedSplit = true
+            setSplitVisibility(session, shown: true)
+        }
+        session.splitFocused = false
+        if let percent = spec.sizePercent {
+            applySplitRatio(ReaderLayout.splitRatio(forSizePercent: percent), forSession: sessionID)
+        } else if session.readerShowedSplit, !replacing, session.splitRatio == nil {
+            applySplitRatio(ReaderLayout.splitRatio(forSizePercent: ReaderLayout.defaultSizePercent),
+                            forSession: sessionID)
+        }
         session.readerSlotGeneration += 1
-        session.readerSpec = bounded
+        session.readerSpec = spec
         return true
     }
 
-    /// Takes the reader down; the deck frees its web view when the state clears. False with none up.
+    /// Takes the reader down and gives the split pane back: a split the reader showed is hidden again, or
+    /// closed outright when no shell ever ran in it, so the user is not left with a shell they never asked
+    /// for. False with none up.
     @discardableResult public func closeReader(_ sessionID: UUID) -> Bool {
         guard let session = session(withID: sessionID), session.readerActive else { return false }
         session.readerSpec = nil
+        if session.readerShowedSplit {
+            session.readerShowedSplit = false
+            if session.splitSurface == nil {
+                closeSplit(sessionID)
+            } else {
+                setSplitVisibility(session, shown: false)
+            }
+        }
         return true
     }
 

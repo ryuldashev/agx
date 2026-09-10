@@ -451,8 +451,8 @@ def cmd_run(argv):
 
 
 def cmd_reader(argv):
-    """Show a markdown file in a live-reloading panel over THIS session (or --target's); `agx reader close`
-    takes it down. Sugar over `agtermctl session reader`: an in-pane agent's own session is the default
+    """Show a markdown file, rendered and live-reloading, in THIS session's right split pane (or --target's);
+    `agx reader close` gives the pane back. Sugar over `agtermctl session reader`: an in-pane agent's own session is the default
     target, since the document is for the user watching this pane."""
     a = list(argv[2:])
     target = os.environ.get("AGTERM_SESSION_ID")
@@ -480,8 +480,8 @@ def main(argv):
               "  agx context [--json]           self-description of the AGX UI for an in-pane agent\n"
               "  agx usage [--json]             accurate cross-session model/context/cost + account pools\n"
               "  agx run \"<shell cmd>\" [--pane split]  run a FINITE command in THIS session's side pane, return output+exit\n"
-              "  agx reader <path.md> [--target ID]   show a markdown file in a live-reloading panel over THIS session\n"
-              "  agx reader close [--target ID]      take that panel down\n"
+              "  agx reader <path.md> [--target ID]   show a markdown file, live-reloading, in THIS session's right pane\n"
+              "  agx reader close [--target ID]      give the pane back\n"
               "  agx spawn --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID]\n"
               "            [--cwd PATH] [--agent claude] [--foreground] [--json]\n"
               "            create an agent session AND seed it with the brief as its first message\n"

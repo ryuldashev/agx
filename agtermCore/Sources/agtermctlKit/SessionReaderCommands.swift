@@ -30,33 +30,25 @@ extension Session {
 
         struct Open: RequestCommand {
             static let configuration = CommandConfiguration(
-                abstract: "Show a markdown file beside the session; it re-renders as the file changes on disk.")
+                abstract: "Show a markdown file in the session's split pane; it re-renders as the file changes on disk.")
             @Argument(help: "Path to the .md file, relative to the current directory.") var path: String
             @Option(name: .long, help: """
-                Placement in the pane: \(HudPosition.acceptedNamesPhrase) \
-                (default: \(ReaderLayout.defaultPosition.rawValue)); only the column matters, the panel runs \
-                nearly the pane's full height.
-                """)
-            var position: String?
-            @Option(name: .long, help: """
-                Panel WIDTH as a percent of the pane (default: \(ReaderLayout.defaultSizePercent)); bounded to \
-                \(ReaderLayout.minSizePercent)-\(ReaderLayout.maxSizePercent), so it stays readable and never \
-                covers the session.
+                The reader's WIDTH as a percent of the pane, applied to the split divider; omit to keep the \
+                split's own ratio (\(ReaderLayout.defaultSizePercent) for a split the reader has to show). \
+                Bounded to \(ReaderLayout.minSizePercent)-\(ReaderLayout.maxSizePercent).
                 """)
             var sizePercent: Int?
             @OptionGroup var target: TargetOptions
             @OptionGroup var options: ClientOptions
 
             func validate() throws {
-                try Hud.validatePosition(position)
                 try Hud.validateSizePercent(sizePercent)
             }
 
             func makeRequest() throws -> ControlRequest {
                 ControlRequest(cmd: .sessionReaderOpen, target: target.target,
                                args: options.withWindow(ControlArgs(sizePercent: sizePercent,
-                                                                    path: Reader.absolutePath(path),
-                                                                    position: position)))
+                                                                    path: Reader.absolutePath(path))))
             }
         }
 

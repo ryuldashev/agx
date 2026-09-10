@@ -1777,14 +1777,15 @@
               session reader
             </h2>
             <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0 0 16px">
-              A rendered markdown panel over the session that re-renders as the file changes on disk — an agent writes a plan
-              or a report and the user reads it beside the pane it came from, scroll position kept across every rewrite. It has
-              its own slot, so it stays up beside a HUD and under a program overlay.
+              A rendered markdown document in the split's right pane that re-renders as the file changes on disk — an agent
+              writes a plan or a report and the user reads it beside the shell it came from, scroll position kept across every
+              rewrite. It borrows the split rather than floating over the session, so it stays up beside a HUD and under a
+              program overlay and resizes with the divider.
             </p>
 
             <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
               <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
-                agtermctl session reader [open] &lt;path.md&gt; [--position P] [--size-percent N] [--target T] [--window W]
+                agtermctl session reader [open] &lt;path.md&gt; [--size-percent N] [--target T] [--window W]
               </div>
               <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.reader.open</div>
               <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
@@ -1799,16 +1800,17 @@
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">cannot read file: &lt;path&gt;</span> and opens nothing.
               </p>
               <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--position</span> takes the same nine anchors
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">session hud</span> does, defaulting to
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">center-right</span>; the panel runs nearly the pane's full height, so only the
-                column matters. <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">--size-percent N</span> (1–100) sets the
-                WIDTH, bounded to 20–80% of the pane so the document stays readable and never covers the session.
-                A second <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reader</span> replaces the first in place. The session keeps first
-                responder when the panel opens; clicking the document focuses it for scrolling and selection, and
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">http</span> links open in the browser. The page follows the system appearance and
-                renders task lists, tables, footnotes, highlighted code and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">mermaid</span> blocks;
-                images resolve relative to the file.
+                An unsplit session is split left-right for the reader, 45% of the width by default; a session already split
+                lends its right pane and keeps its width. <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">--size-percent N</span>
+                (1–100) sets the reader's WIDTH, bounded to 20–80% so the shell is never squeezed out, and moves the live
+                divider. A second <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reader</span> replaces the first in place. The shell keeps
+                first responder when the reader opens; clicking the document focuses that pane for scrolling, selection and
+                ⌘+ / ⌘− / ⌘0 (the reader's own zoom), and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">http</span> links open in the browser. The
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">Open in Reader</span> button in the pane's corner hands the file to the
+                standalone Reader app in its own window and closes the reader here. The page takes the terminal's background
+                and renders task lists, tables, footnotes, highlighted code and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">mermaid</span>
+                blocks; images resolve relative to the file.
               </p>
             </div>
 
@@ -1818,15 +1820,16 @@
               </div>
               <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.reader.close</div>
               <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
-                Take the panel down. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no reader</span> when none is up, so it is not
-                idempotent. Closing the session takes it down too; nothing else does.
+                Give the pane back. A split the reader showed is taken down with it; a split that was there before stays, its
+                shell back in the right pane. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no reader</span> when none is up, so it
+                is not idempotent. Hiding or closing the split by any other route (⌘D,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session split close</span>) and closing the session close the reader too.
               </p>
               <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
                 Read the panel back from the session node's
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reader</span> object — <span style="font-family: &quot;JetBrains Mono&quot;, monospace">path</span>,
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">position</span> and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">sizePercent</span>, always the
-                effective values — omitted when none is up. Reader state is poll-only; no event announces it, and it is never
-                persisted across a relaunch.
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reader</span> object (<span style="font-family: &quot;JetBrains Mono&quot;, monospace">path</span>),
+                omitted when none is up; its width is the node's <span style="font-family: &quot;JetBrains Mono&quot;, monospace">splitRatio</span>. Reader state is
+                poll-only; no event announces it, and it is never persisted across a relaunch.
               </p>
             </div>
           </section>

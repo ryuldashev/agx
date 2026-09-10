@@ -39,22 +39,22 @@ struct ControlDispatcherReaderTests {
         #expect(actions.calls.isEmpty)
     }
 
-    @Test func openRejectsAnInvalidPositionAndPercent() async {
+    @Test func openRejectsAnOutOfRangePercent() async {
         let actions = MockControlActions()
         let dispatcher = ControlDispatcher(actions: actions)
 
-        let position = await dispatcher.dispatch(ControlRequest(
-            cmd: .sessionReaderOpen, args: ControlArgs(path: "/tmp/a.md", position: "sideways")))
-        let percent = await dispatcher.dispatch(ControlRequest(
+        let zero = await dispatcher.dispatch(ControlRequest(
             cmd: .sessionReaderOpen, args: ControlArgs(sizePercent: 0, path: "/tmp/a.md")))
+        let over = await dispatcher.dispatch(ControlRequest(
+            cmd: .sessionReaderOpen, args: ControlArgs(sizePercent: 101, path: "/tmp/a.md")))
 
-        #expect(position == ControlResponse(
-            ok: false, error: "invalid position: sideways (\(HudPosition.acceptedNamesList))"))
-        #expect(percent == ControlResponse(ok: false, error: "session.reader.open: --size-percent must be 1...100"))
+        let expected = ControlResponse(ok: false, error: "session.reader.open: --size-percent must be 1...100")
+        #expect(zero == expected)
+        #expect(over == expected)
         #expect(actions.calls.isEmpty)
     }
 
-    @Test func openForwardsDefaultsWhenOnlyThePathIsGiven() async {
+    @Test func openForwardsThePathAloneLeavingTheWidthToTheStore() async {
         let actions = MockControlActions()
         let dispatcher = ControlDispatcher(actions: actions)
 
@@ -62,23 +62,19 @@ struct ControlDispatcherReaderTests {
                                                                 args: ControlArgs(path: "/repo/plan.md")))
 
         #expect(response?.ok == true)
-        #expect(actions.calls == [.readerOpen(target: "9f3c", window: nil,
-                                              ReaderSpec(path: "/repo/plan.md", position: .centerRight,
-                                                         sizePercent: 45))])
+        #expect(actions.calls == [.readerOpen(target: "9f3c", window: nil, ReaderSpec(path: "/repo/plan.md"))])
     }
 
-    @Test func openForwardsAnAliasedPositionAndTheCallersPercent() async {
+    @Test func openForwardsTheCallersPercentAndWindow() async {
         let actions = MockControlActions()
         let dispatcher = ControlDispatcher(actions: actions)
 
         let response = await dispatcher.dispatch(ControlRequest(
-            cmd: .sessionReaderOpen, args: ControlArgs(sizePercent: 60, window: "w1", path: "/repo/plan.md",
-                                                       position: "top")))
+            cmd: .sessionReaderOpen, args: ControlArgs(sizePercent: 60, window: "w1", path: "/repo/plan.md")))
 
         #expect(response?.ok == true)
         #expect(actions.calls == [.readerOpen(target: nil, window: "w1",
-                                              ReaderSpec(path: "/repo/plan.md", position: .topCenter,
-                                                         sizePercent: 60))])
+                                              ReaderSpec(path: "/repo/plan.md", sizePercent: 60))])
     }
 
     @Test func closeForwardsTargetAndWindow() async {

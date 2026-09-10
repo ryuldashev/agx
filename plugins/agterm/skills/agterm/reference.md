@@ -144,7 +144,7 @@ to restore the exact size),
 `paneOverlays` (the panes covered by their own pane-scoped overlay — `["left"]`, `["right"]` or
 `["left","right"]`, omitted when neither is; the read side of `session overlay open --pane`, reported
 independently of the session-wide `overlay` flag, which a pane overlay never sets),
-`reader` (the markdown panel — `path`, effective `position` and `sizePercent`; omitted when none is up),
+`reader` (the markdown document in the split's right pane — `path`; omitted when none is up),
 `hud` (the message panel occupying the session-wide overlay slot — the read side of `session hud`; omitted
 when none is up. A
 `{message, detail?, spinner, backgroundColor?, textColor?, sizePercent?, heightPercent?, position}`
@@ -748,17 +748,19 @@ error keeps those names for compatibility.
   `no hud` when none is up, so it is not idempotent. A program overlay in the same slot is left alone;
   `session overlay close`, ⌘W, and closing the session or its window also tear a HUD down and delete that
   file.
-- `session reader [open] <path.md> [--position P] [--size-percent N] [--target] [--window W]` — show a
-  markdown file in a rendered panel over the session and return its id. The panel re-renders as the file
-  changes on disk (scroll position kept), so write the document once and keep appending to it. It has its
-  OWN slot: it stays up beside a HUD and under a program overlay, and it never reads back as `overlay`.
-  The CLI resolves the path against your cwd (`~` expanded); a file that cannot be read errors
-  `cannot read file: <path>` and opens nothing. `--position` takes the nine anchors `session hud` does
-  (default `center-right`; the panel runs nearly the pane's full height, so only the column matters),
-  `--size-percent` sets the WIDTH, bounded to 20–80. A second `reader` replaces the first. Opening moves
-  no focus — the user keeps typing until they click the document. Read it back from the session node's
-  `reader` object (`path`, `position`, `sizePercent`, effective values); poll-only, never persisted.
-- `session reader close [--target] [--window W]` — take the panel down. Errors `no reader` when none is up.
+- `session reader [open] <path.md> [--size-percent N] [--target] [--window W]` — show a markdown file,
+  rendered, in the session's right split pane and return the session id. It re-renders as the file
+  changes on disk (scroll position kept), so write the document once and keep appending to it. An
+  unsplit session gets a left-right split for it (45% wide) and gets it back on close; a split session
+  lends its right pane and keeps its width. It stays up beside a HUD and under a program overlay and
+  never reads back as `overlay`. The CLI resolves the path against your cwd (`~` expanded); a file that
+  cannot be read errors `cannot read file: <path>` and opens nothing. `--size-percent` sets the WIDTH,
+  bounded to 20–80. A second `reader` replaces the first. Opening moves no focus — the user keeps typing
+  until they click the document, which then owns ⌘+/⌘−/⌘0 like a pane. The pane's "Open in Reader" button moves the file to the standalone
+  Reader app and closes the reader here. Read it back from the session node's `reader` object (`path`)
+  beside `split`/`splitRatio`; poll-only, never persisted.
+- `session reader close [--target] [--window W]` — give the pane back. Errors `no reader` when none is
+  up. ⌘D and `session split close` close the reader too.
 
 **Displaying an image inline.** This skill bundles `scripts/show-image.sh`. It opens an overlay (a
 real terminal surface) and renders the image there via the kitty graphics protocol, which ghostty —

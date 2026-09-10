@@ -1,8 +1,8 @@
 import XCTest
 
-/// End-to-end coverage for `session.reader.*` over the real control socket: the store takes the session's
-/// reader slot, the deck builds the web view over the file, and `tree` reports the panel through its own
-/// `reader` node beside — never instead of — `overlay` and `hud`.
+/// End-to-end coverage for `session.reader.*` over the real control socket: the reader takes the split's
+/// right pane, `tree` reports it through its own `reader` node beside — never instead of — `overlay` and
+/// `hud`, and closing gives the split back to whatever it was before.
 @MainActor
 final class ControlReaderUITests: ControlAPITestCase {
     private var file: URL!
@@ -19,21 +19,23 @@ final class ControlReaderUITests: ControlAPITestCase {
         try await super.tearDown()
     }
 
-    func testOpenReportsThePathWithEffectiveDefaultsAndCloseRemovesIt() throws {
+    func testOpenShowsTheSplitAtTheDefaultWidthAndCloseTakesItDownAgain() throws {
         let session = try activeSessionID()
+        XCTAssertEqual(try sessionNode(id: session)["split"] as? Bool, false, "the fixture session starts unsplit")
         let opened = try sendCommand(request(command: "session.reader.open", args: ["path": file.path]))
         XCTAssertEqual(opened["ok"] as? Bool, true, "open should succeed: \(opened)")
 
-        let reader = try XCTUnwrap(pollReader(session, path: file.path), "tree should expose the reader")
-        XCTAssertEqual(reader["position"] as? String, "center-right", "an omitted anchor reports its effective value")
-        XCTAssertEqual(reader["sizePercent"] as? Int, 45)
+        XCTAssertNotNil(pollReader(session, path: file.path), "tree should expose the reader")
         let node = try sessionNode(id: session)
+        XCTAssertEqual(node["split"] as? Bool, true, "the reader lives in the split's right pane")
+        XCTAssertEqual(node["splitRatio"] as? Double ?? -1, 0.55, accuracy: 0.001, "45% of the width by default")
         XCTAssertEqual(node["overlay"] as? Bool, false, "a reader is not a program overlay")
         XCTAssertNil(node["hud"])
 
         let closed = try sendCommand(request(command: "session.reader.close", target: session))
         XCTAssertEqual(closed["ok"] as? Bool, true)
         XCTAssertTrue(poll(until: readerNode(session) == nil, timeout: 5), "close should drop the node")
+        XCTAssertEqual(try sessionNode(id: session)["split"] as? Bool, false, "a split the reader showed goes with it")
 
         let again = try sendCommand(request(command: "session.reader.close", target: session))
         XCTAssertEqual(again["ok"] as? Bool, false)
@@ -49,12 +51,12 @@ final class ControlReaderUITests: ControlAPITestCase {
         try "# other\n".write(to: other, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: other) }
         let replaced = try sendCommand(request(command: "session.reader.open",
-                                               args: ["path": other.path, "position": "top", "sizePercent": 100]))
+                                               args: ["path": other.path, "sizePercent": 100]))
         XCTAssertEqual(replaced["ok"] as? Bool, true)
 
-        let reader = try XCTUnwrap(pollReader(session, path: other.path), "the second open should replace the first")
-        XCTAssertEqual(reader["position"] as? String, "top-center", "an alias reads back as its canonical anchor")
-        XCTAssertEqual(reader["sizePercent"] as? Int, 80, "the width is bounded so the panel never covers the session")
+        XCTAssertNotNil(pollReader(session, path: other.path), "the second open should replace the first")
+        XCTAssertEqual(try sessionNode(id: session)["splitRatio"] as? Double ?? -1, 0.2, accuracy: 0.001,
+                       "the width is bounded so the reader never squeezes the shell out")
     }
 
     func testAMissingFileIsRefusedAndLeavesNoReader() throws {

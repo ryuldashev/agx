@@ -1141,16 +1141,14 @@ struct CommandsTests {
         #expect(tilde.args?.path == (home as NSString).appendingPathComponent("plan.md"))
     }
 
-    @Test func sessionReaderOpenWithPositionSizeAndTarget() throws {
+    @Test func sessionReaderOpenWithSizeAndTarget() throws {
         let expected = ControlRequest(cmd: .sessionReaderOpen, target: "9f3c",
-                                      args: ControlArgs(sizePercent: 60, path: "/repo/plan.md", position: "center-left"))
-        #expect(try request(["session", "reader", "/repo/plan.md", "--position", "center-left",
-                             "--size-percent", "60", "--target", "9f3c"]) == expected)
+                                      args: ControlArgs(sizePercent: 60, path: "/repo/plan.md"))
+        #expect(try request(["session", "reader", "/repo/plan.md", "--size-percent", "60", "--target", "9f3c"])
+            == expected)
     }
 
-    @Test func sessionReaderOpenRejectsABadPositionOrPercentLocally() throws {
-        #expect(validationMessage(["session", "reader", "/repo/plan.md", "--position", "sideways"])?
-            .contains("position must be one of") == true)
+    @Test func sessionReaderOpenRejectsABadPercentLocally() throws {
         #expect(validationMessage(["session", "reader", "/repo/plan.md", "--size-percent", "0"])?
             .contains("--size-percent must be between 1 and 100") == true)
         #expect(throws: (any Error).self) { try Agtermctl.parseAsRoot(["session", "reader", "open"]) }

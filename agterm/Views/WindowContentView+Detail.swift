@@ -90,12 +90,6 @@ extension WindowContentView {
                     .id("\(session.id.uuidString)-scratch")
                     .zIndex(1)
             }
-            // the markdown reader has its own slot: ABOVE the scratch, BELOW the ephemeral overlay, so a HUD
-            // floats over the document and a full program overlay covers it — and hides it, like the scratch,
-            // since the full overlay is translucent and the panel would show through.
-            readerPanel(session: session, interactive: deckInteractive && isActive && !quickTerminal.holdsKey)
-                .opacity(fullOverlay ? 0 : 1)
-                .zIndex(2)
             // renders IN-DECK per session, so its program runs even when the session isn't active;
             // `overlayPanel` owns the constant-shape rule.
             overlayPanel(session: session, isActive: focusable)
@@ -165,8 +159,9 @@ extension WindowContentView {
             }
     }
 
-    /// ONE pane of a session's deck entry: its terminal — or the `Color.clear` placeholder while zoom or the
-    /// dashboard hosts that surface — under the always-present `paneOverlayPanel` sibling, in the
+    /// ONE pane of a session's deck entry: its terminal — the markdown reader in the right pane's place while
+    /// `Session.readerSpec` is set, or the `Color.clear` placeholder while zoom or the dashboard hosts that
+    /// surface — under the always-present `paneOverlayPanel` sibling, in the
     /// constant-shape ZStack `sessionDetail` requires. This is the arranged subview of a shown split, so the
     /// `.background` probe and any per-session chrome go INSIDE here or on the result, never on a wrapper.
     ///
@@ -182,7 +177,16 @@ extension WindowContentView {
         let slot: ReferenceWritableKeyPath<Session, (any TerminalSurface)?> =
             pane == .left ? \.surface : \.splitSurface
         ZStack {
-            if deckHostsSurface(session: session, surface: pane.paneZoomSurface) {
+            if pane == .right, let reader = session.readerSpec {
+                // the reader takes the split pane's slot: the document renders where the shell would, inside
+                // the native split (divider, ratio, ⌘D), and the shell — if one exists — stays alive unhosted
+                // exactly as a hidden split's does. It is chromeless like a pane, tinted to the terminal.
+                ReaderView(path: reader.path, background: GhosttyApp.shared.terminalBackgroundColor,
+                           onPopOut: { store.closeReader(session.id) },
+                           onFocus: { session.splitFocused = true })
+                    .overlay { paneDim(!focused, session: session) }
+                    .id("\(session.id.uuidString)-reader-\(session.readerSlotGeneration)")
+            } else if deckHostsSurface(session: session, surface: pane.paneZoomSurface) {
                 TerminalView(session: session, surfaceKeyPath: slot,
                              makeSurface: pane == .left ? makeSurface : makeSplitSurface,
                              isActive: gates.focusable && focused && !gates.overlaid && !covered,
@@ -256,38 +260,6 @@ extension WindowContentView {
         // with no overlay up this is an empty full-frame GeometryReader; keep it inert so it never
         // intercepts clicks meant for the pane(s).
         .allowsHitTesting(live && session.overlayActive && deckHostsSurface(session: session, surface: .overlay))
-    }
-
-    /// The markdown reader panel, ONE ALWAYS-PRESENT sibling per session with its content gated inside the
-    /// GeometryReader like `overlayPanel`. It shares that panel's geometry math through `OverlayPanelStyle`
-    /// but none of its slot: `session.reader.open` never touches `overlayActive`, so every focus, cover and
-    /// `overlay.*` question stays as it was. The web view is interactive — scrolling, selecting, clicking a
-    /// link — yet opening it moves no first responder: `ReaderView` never asks for it, and there is no
-    /// click catcher around the panel, so the session keeps typing until the user clicks the document.
-    @ViewBuilder private func readerPanel(session: Session, interactive: Bool) -> some View {
-        GeometryReader { geo in
-            ZStack {
-                if let spec = session.readerSpec {
-                    let style = OverlayPanelStyle.reader(spec)
-                    ReaderView(path: spec.path)
-                        .frame(width: geo.size.width * style.widthFraction,
-                               height: geo.size.height * style.heightFraction)
-                        .clipShape(RoundedRectangle(cornerRadius: style.cornerRadius))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: style.cornerRadius)
-                                .strokeBorder(Color.white.opacity(style.borderOpacity), lineWidth: 1)
-                        )
-                        .offset(x: style.horizontalOffset(paneWidth: geo.size.width),
-                                y: style.verticalOffset(paneHeight: geo.size.height))
-                        // a replacement keeps `readerActive` true across the swap; the generation rebuilds
-                        // the web view over the new file's folder instead of re-pointing the old one.
-                        .id("\(session.id.uuidString)-reader-\(session.readerSlotGeneration)")
-                }
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-        }
-        // inert while empty, like `overlayPanel`; with a document up only the panel itself takes clicks.
-        .allowsHitTesting(interactive && session.readerActive)
     }
 
     /// ONE split pane's overlay, always FULL-PANE (no size percent, no framed chrome — a floating variant
@@ -405,16 +377,6 @@ struct OverlayPanelStyle: Equatable {
     /// alone and the panel reads as part of the terminal rather than a window hovering over it.
     private static let hudCornerRadius: CGFloat = 8
     private static let hudBorderOpacity = 0.30
-
-    /// The reader panel: a HUD's chrome — border, no shadow, no backdrop wash — but interactive, since the
-    /// user scrolls and selects in it. Its height is fixed near the pane's, so the anchor's row only ever
-    /// centers it; the column is what a caller chooses.
-    static func reader(_ spec: ReaderSpec) -> OverlayPanelStyle {
-        OverlayPanelStyle(widthFraction: CGFloat(spec.sizePercent) / 100,
-                          heightFraction: CGFloat(ReaderLayout.heightPercent) / 100,
-                          framed: true, cornerRadius: hudCornerRadius, borderOpacity: hudBorderOpacity,
-                          shadowRadius: 0, backdrop: false, interactive: true, position: spec.position)
-    }
 
     @MainActor static func resolve(_ session: Session) -> OverlayPanelStyle {
         let fraction = session.overlaySizePercent.map { CGFloat($0) / 100 } ?? 1

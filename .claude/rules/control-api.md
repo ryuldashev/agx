@@ -503,37 +503,51 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 
 ## Markdown reader
 
-- `session.reader.open <path> [--position P] [--size-percent N]` shows a markdown file in a live-reloading
-  `WKWebView` panel over the session; `session.reader.close` takes it down. Control-native like
-  `session.hud.*`: no menu, chord or palette entry. The panel is the in-app twin of the standalone
-  `~/mmee/reader` app, and `agterm/Reader/` ports its `WebPane`/`FileWatcher` under close names so a fix
-  in one is mirrored in the other; the page under `Resources/reader/` is a copy of that repo's `web/`
-  (`make sync-reader`, see its `SOURCE.md`).
-- Its OWN slot, `Session.readerSpec` + `readerSlotGeneration`, NOT the overlay's: it never sets
-  `overlayActive`, so every predicate reading `hudActive`/`programOverlayActive`, the ⌘W ladder,
-  `overlay.*` refusals and zoom addressing are untouched, and a reader stays up beside a HUD or under a
-  program overlay. The deck's `readerPanel` is one always-present sibling at z2 (above the scratch, below
-  `overlayPanel`), hidden under a FULL overlay like the scratch is; `OverlayPanelStyle.reader` reuses the
-  HUD's chrome and the nine-anchor offset math, `interactive` true and `backdrop` false. Opening moves no
-  first responder and there is no click catcher: the session keeps typing until the user clicks the
-  document, and the deck's focus routing never names the panel.
+- `session.reader.open <path> [--size-percent N]` shows a markdown file, live-reloading, in the split's
+  RIGHT pane; `session.reader.close` gives the pane back. Control-native like `session.hud.*`: no menu,
+  chord or palette entry. The pane is the in-app twin of the standalone `~/mmee/reader` app, and
+  `agterm/Reader/` ports its `WebPane`/`FileWatcher` under close names so a fix in one is mirrored in the
+  other; the page under `Resources/reader/` is a copy of that repo's `web/` (`make sync-reader`, see its
+  `SOURCE.md`).
+- It borrows the split, it does not own a slot of its own: `deckPane(.right)` swaps the terminal for
+  `ReaderView` while `Session.readerSpec` is set (a ZStack child swap, so the deck's constant shape holds).
+  A rejected alternative was a floating panel in the HUD's chrome — it read as foreign next to the
+  terminal. Opening on an unsplit session shows a left-right split at `ReaderLayout.defaultSizePercent`
+  (45% for the reader) and records `readerShowedSplit`; opening on a split session keeps the user's ratio
+  unless `--size-percent` says otherwise. The shell keeps focus (`splitFocused = false`); the deck's focus
+  routing never names the reader.
+- Close restores what open changed: a split the reader showed is closed outright when no shell ever ran in
+  the right pane, hidden otherwise; a preexisting split stays. Hiding or closing the split by any other
+  route (⌘D, `session.split.close`) takes the reader with it, because the pane it lives in is gone.
+- Focus: the web view is the responder on macOS, so `ReaderWebView.becomeFirstResponder` reports a click
+  as `splitFocused = true` the way a surface's `onFocusChange` does, and the deck's `paneDim` washes the
+  reader when the shell has focus. ⌘+/⌘−/⌘0 go to `MarkdownReaderView.focused()` before the terminal:
+  the pane preset is 14px (`defaultFontSize`, bounded 10...28) with tighter margins than the standalone
+  window's, injected as a `<style>` on top of the synced page so `Resources/reader/` stays a verbatim copy.
+- The "Open in Reader" button hands the file to the standalone app (`uz.marshub.mmee.reader`, the
+  system's `.md` handler when absent) and closes the reader — a transfer, not a copy. Its control twin is
+  `open -a Reader <path>` plus `session reader close`.
+- It never sets `overlayActive`, so every predicate reading `hudActive`/`programOverlayActive`, the ⌘W
+  ladder, `overlay.*` refusals and zoom addressing are untouched; a reader stays up beside a HUD or under a
+  program overlay.
 - The dispatcher validates the path's TEXT only — non-blank, absolute, no control characters — plus the
-  percent (1...100) and `HudPosition.parse`; `ControlServer+Reader` refuses an unreadable file with
-  `ReaderError.unreadable` before the store is touched. The CLI resolves `~` and relative paths against
-  the caller's cwd (`Reader.absolutePath`), so the socket only ever carries an absolute path and the app
-  never guesses a base. Width is bounded by `ReaderLayout.clampSizePercent` (20...80) in the store;
-  height is the fixed `ReaderLayout.heightPercent`, no caller override.
-- A second open REPLACES in place and bumps `readerSlotGeneration`, which keys the panel's `.id`, so the
+  percent (1...100); `ControlServer+Reader` refuses an unreadable file with `ReaderError.unreadable`
+  before the store is touched, and posts `.agtermApplySplitRatio` when the ratio moved so the LIVE divider
+  follows. The CLI resolves `~` and relative paths against the caller's cwd (`Reader.absolutePath`), so
+  the socket only ever carries an absolute path and the app never guesses a base. The width is bounded
+  by `ReaderLayout.clampSizePercent` (20...80) and lands in `splitRatio` as the primary's fraction.
+- A second open REPLACES in place and bumps `readerSlotGeneration`, which keys the view's `.id`, so the
   web view is rebuilt over the new file's folder (`setBase`) rather than re-pointed. Close is not
-  idempotent (`ReaderError.noReader`). State dies with the session and is never persisted.
-- Read back `ControlSessionNode.reader` — `path`, effective `position` (aliases normalized) and
-  bounded `sizePercent` — omitted when none is up; `overlay`/`hud` report independently beside it.
-  Poll-only, no event.
+  idempotent (`ReaderError.noReader`). State dies with the session and is never persisted; the split it
+  showed persists like any split does.
+- Read back `ControlSessionNode.reader` (`path`) beside `split`/`splitRatio`, omitted when none is up;
+  `overlay`/`hud` report independently. Poll-only, no event.
 - Web-view contract, verbatim from MmeeReader: evals queue until the page posts `ready`;
   `loadFileURL(index.html, allowingReadAccessTo: "/")` because the page's `<base>` is retargeted to the
   document's folder for relative images; the navigation policy allows only the bundled page itself,
   hands http/https/mailto to the browser and any other file to `NSWorkspace`. The message handlers hold
-  the bridge strongly, so `teardown` removes them or the panel leaks past its session.
+  the bridge strongly, so `teardown` removes them or the view leaks past its session. The page is tinted
+  to the terminal background (`--bg`) and takes the appearance its luminance implies.
 - `ReaderFileWatcher` re-arms on the PATH after `.rename`/`.delete` (atomic saves), debounces 120 ms,
   reports a missing file after four misses and again when it returns. All its state lives on its own
   queue; callbacks hop to the main actor.

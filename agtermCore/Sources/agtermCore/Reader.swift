@@ -1,56 +1,46 @@
 import Foundation
 
-/// The markdown reader panel over a session: which file it shows and where it sits. Its own slot beside the
-/// overlay's, so a document can stay up while a HUD reports progress or a program overlay runs. NOT
-/// persisted: a reader is a view onto work in flight, and the file may be gone by the next launch.
+/// The markdown reader in a session's SPLIT pane: which file it shows. The reader takes the right pane's
+/// slot — the split is shown if it was not, and the pane renders the document instead of its shell — so it
+/// sits in the native split with its divider, ratio and focus rules, rather than floating over the session.
+/// NOT persisted: a reader is a view onto work in flight, and the file may be gone by the next launch.
 public struct ReaderSpec: Equatable, Sendable {
     /// Absolute path of the markdown file, resolved by the CLI against the caller's cwd.
     public var path: String
-    /// Which of the pane's nine anchors the panel sits on, the same set `session.hud` and
-    /// `session.background` take.
-    public var position: HudPosition
-    /// Share of the pane's WIDTH the panel occupies, within `ReaderLayout.clampSizePercent`.
-    public var sizePercent: Int
+    /// The caller's requested WIDTH share of the pane, applied to the split ratio on open; nil keeps the
+    /// split's own ratio (or `ReaderLayout.defaultSizePercent` for a split the reader had to show).
+    public var sizePercent: Int?
 
-    public init(path: String, position: HudPosition = ReaderLayout.defaultPosition,
-                sizePercent: Int = ReaderLayout.defaultSizePercent) {
+    public init(path: String, sizePercent: Int? = nil) {
         self.path = path
-        self.position = position
         self.sizePercent = sizePercent
     }
 }
 
-/// The reader panel's geometry rules, host-free so the dispatcher and the deck agree on them.
+/// The reader's geometry rules, host-free so the dispatcher and the store agree on them.
 public enum ReaderLayout {
-    /// Right-hand side: a document beside the pane rather than over its prompt.
-    public static let defaultPosition = HudPosition.centerRight
     public static let defaultSizePercent = 45
-    /// Width bounds: below the floor a column of prose is unreadable, above the cap the panel is a cover and
-    /// the session it documents disappears — `session.overlay` exists for that.
+    /// Width bounds: below the floor a column of prose is unreadable, above the cap the shell beside it is.
     public static let minSizePercent = 20
     public static let maxSizePercent = 80
-    /// The panel runs nearly the pane's full height; `OverlayPanelStyle` centers a fraction this large on
-    /// the vertical axis whatever the anchor's row, leaving a small margin top and bottom.
-    public static let heightPercent = 92
 
     public static func clampSizePercent(_ percent: Int) -> Int {
         min(maxSizePercent, max(minSizePercent, percent))
     }
+
+    /// The split divider's PRIMARY-pane fraction that leaves the reader `percent` of the pane.
+    public static func splitRatio(forSizePercent percent: Int) -> Double {
+        1 - Double(clampSizePercent(percent)) / 100
+    }
 }
 
-/// The reader panel as projected into the `tree` response; present only while one is up. The read side of
-/// `session.reader.open`; poll-only, no event announces it.
+/// The reader as projected into the `tree` response; present only while one is up. The read side of
+/// `session.reader.open`; poll-only, no event announces it. Its width is the session's `splitRatio`.
 public struct ControlReaderNode: Codable, Sendable, Equatable {
     public let path: String
-    /// The EFFECTIVE anchor, defaults included, so a caller can round-trip what `tree` gave it.
-    public let position: String
-    /// The EFFECTIVE width share, after `ReaderLayout.clampSizePercent`.
-    public let sizePercent: Int
 
-    public init(path: String, position: String, sizePercent: Int) {
+    public init(path: String) {
         self.path = path
-        self.position = position
-        self.sizePercent = sizePercent
     }
 }
 

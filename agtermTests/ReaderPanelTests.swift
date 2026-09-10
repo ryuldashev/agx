@@ -2,28 +2,10 @@ import agtermCore
 import XCTest
 @testable import agterm
 
-/// The reader panel's app-side seams: the geometry `OverlayPanelStyle` resolves for it, and the bundled page
-/// `MarkdownReaderView` loads — both live in the app target, so this cannot be host-free.
+/// The reader's app-side seams: the bundled page `MarkdownReaderView` loads and the view it builds, both
+/// of which need the app bundle and WebKit, so this cannot be host-free.
 @MainActor
 final class ReaderPanelTests: XCTestCase {
-    func testReaderStyleIsFramedInteractiveAndNeverABackdrop() {
-        let style = OverlayPanelStyle.reader(ReaderSpec(path: "/tmp/a.md", position: .centerRight, sizePercent: 45))
-        XCTAssertTrue(style.interactive, "the user scrolls and selects in the document")
-        XCTAssertTrue(style.framed)
-        XCTAssertFalse(style.backdrop, "a reader must not mute the session beside it")
-        XCTAssertEqual(style.shadowRadius, 0)
-        XCTAssertEqual(style.widthFraction, 0.45, accuracy: 0.001)
-        XCTAssertEqual(style.heightFraction, CGFloat(ReaderLayout.heightPercent) / 100, accuracy: 0.001)
-    }
-
-    func testTheDefaultAnchorSitsRightAndTheHeightCentersVertically() {
-        let style = OverlayPanelStyle.reader(ReaderSpec(path: "/tmp/a.md"))
-        XCTAssertGreaterThan(style.horizontalOffset(paneWidth: 1000), 0)
-        XCTAssertEqual(style.verticalOffset(paneHeight: 800), 0, "a near-full-height panel has no room to travel")
-        XCTAssertLessThan(OverlayPanelStyle.reader(ReaderSpec(path: "/tmp/a.md", position: .centerLeft))
-            .horizontalOffset(paneWidth: 1000), 0)
-    }
-
     func testTheReaderPageIsBundled() throws {
         let dir = try XCTUnwrap(MarkdownReaderView.webDir(), "Resources/reader must ship in the app bundle")
         for file in ["index.html", "app.js", "reader.css", "markdown-it.min.js", "purify.min.js", "idiomorph.min.js"] {
@@ -38,9 +20,27 @@ final class ReaderPanelTests: XCTestCase {
 
         let view = MarkdownReaderView(path: file.path)
         XCTAssertEqual(view.path, file.path)
-        XCTAssertEqual(view.subviews.count, 2, "the web view and the missing-file banner")
+        XCTAssertEqual(view.subviews.count, 3, "the web view, the missing-file banner and the pop-out button")
         view.teardown()
-        XCTAssertEqual(view.subviews.count, 1, "teardown removes the web view")
+        XCTAssertEqual(view.subviews.count, 2, "teardown removes the web view")
+    }
+
+    func testThePopOutButtonIsLabeledForTheStandaloneReader() throws {
+        let view = MarkdownReaderView(path: "/tmp/absent-\(UUID().uuidString).md")
+        defer { view.teardown() }
+        let button = try XCTUnwrap(view.subviews.compactMap { $0 as? NSButton }.first)
+        XCTAssertEqual(button.title, "Open in Reader")
+        XCTAssertEqual(MarkdownReaderView.standaloneReaderBundleID, "uz.marshub.mmee.reader")
+    }
+
+    func testFontZoomStepsFromThePanePresetAndStaysBounded() {
+        let view = MarkdownReaderView(path: "/tmp/absent-\(UUID().uuidString).md")
+        defer { view.teardown() }
+        XCTAssertEqual(MarkdownReaderView.defaultFontSize, 14, "smaller than the standalone window's 17px")
+        view.adjustFontSize(by: 100)
+        view.adjustFontSize(by: -200)
+        view.resetFontSize()
+        XCTAssertEqual(view.subviews.count, 3, "zoom never rebuilds the view tree")
     }
 
     func testAReaderNeverTouchesTheOverlayGates() {

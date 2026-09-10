@@ -1,8 +1,8 @@
 import Foundation
 
 extension ControlDispatcher {
-    /// Validates host-free reader arguments: the path's text, the anchor and the width. Whether the file
-    /// exists and is readable needs the host's file system and stays app-side.
+    /// Validates host-free reader arguments: the path's text and the width. Whether the file exists and is
+    /// readable needs the host's file system and stays app-side.
     func dispatchReaderCommand(_ request: ControlRequest) -> ControlResponse {
         if request.cmd == .sessionReaderClose {
             return actions.closeReader(request.target, window: request.args?.window)
@@ -22,16 +22,7 @@ extension ControlDispatcher {
         if let percent = args?.sizePercent, !(1...100).contains(percent) {
             return ControlResponse(ok: false, error: "session.reader.open: --size-percent must be 1...100")
         }
-        var position = ReaderLayout.defaultPosition
-        if let raw = args?.position {
-            guard let parsed = HudPosition.parse(raw) else {
-                return ControlResponse(ok: false,
-                                       error: "invalid position: \(raw) (\(HudPosition.acceptedNamesList))")
-            }
-            position = parsed
-        }
         return actions.openReader(request.target, window: args?.window,
-                                  spec: ReaderSpec(path: path, position: position,
-                                                   sizePercent: args?.sizePercent ?? ReaderLayout.defaultSizePercent))
+                                  spec: ReaderSpec(path: path, sizePercent: args?.sizePercent))
     }
 }

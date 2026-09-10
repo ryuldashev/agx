@@ -6,7 +6,7 @@ description: >
   create, rename, close, select, or reorder sessions and workspaces; split panes; toggle the
   per-session scratch terminal; open or close overlay terminals and read their exit status; post a
   passive HUD message panel over a session while the user keeps typing;
-  show a markdown file in a live-reloading reader panel beside a session;
+  show a markdown file, rendered and live-reloading, in a session's right split pane;
   display the native fuzzy picker with caller-supplied choices and poll or cancel it; display
   an image inline via a bundled helper script; type
   into a session, copy its selection, or search its scrollback; post desktop notifications; manage windows (new, list,

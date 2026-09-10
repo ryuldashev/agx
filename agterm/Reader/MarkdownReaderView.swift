@@ -17,11 +17,24 @@ final class MarkdownReaderView: NSView {
     private static let messageNames = ["ready", "outline", "active", "title", "error"]
 
     private(set) var path: String
-    private let web: WKWebView
+    private let web: ReaderWebView
+    private var fontSize = MarkdownReaderView.defaultFontSize
     private let bridge = Bridge()
     private var watcher: ReaderFileWatcher?
     private var text = ""
+    private var appliedBackground: NSColor?
     private let missingBanner = NSTextField(labelWithString: "file is gone from disk")
+    /// Called after the document was handed to the standalone reader, so the owner can take the pane down.
+    var onPopOut: (() -> Void)?
+    /// The web view gained (true) or lost first responder; the owner mirrors it into split focus.
+    var onFocusChange: ((Bool) -> Void)?
+    /// A pane is narrower and closer than the standalone window, so the page runs smaller and tighter than
+    /// its own 17px/64px defaults; ⌘+/⌘−/⌘0 step and reset from here, like a terminal's font zoom.
+    static let defaultFontSize = 14
+    private static let fontSizeRange = 10...28
+    private static let embeddedCSS = ".md{padding:28px 28px 30vh}"
+    /// The standalone MmeeReader (`~/mmee/reader`); the system's `.md` handler stands in when it is absent.
+    static let standaloneReaderBundleID = "uz.marshub.mmee.reader"
 
     /// The bundled page's folder; nil when the build did not bundle it, in which case the panel says so
     /// instead of showing a blank web view.
@@ -36,9 +49,10 @@ final class MarkdownReaderView: NSView {
         self.path = path
         let config = WKWebViewConfiguration()
         for name in Self.messageNames { config.userContentController.add(bridge, name: name) }
-        web = WKWebView(frame: .zero, configuration: config)
+        web = ReaderWebView(frame: .zero, configuration: config)
         super.init(frame: .zero)
         bridge.owner = self
+        web.onFocusChange = { [weak self] focused in self?.onFocusChange?(focused) }
         web.navigationDelegate = bridge
         web.allowsMagnification = true
         if #available(macOS 13.3, *) { web.isInspectable = true }
@@ -49,6 +63,9 @@ final class MarkdownReaderView: NSView {
             web.topAnchor.constraint(equalTo: topAnchor), web.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         installMissingBanner()
+        installPopOutButton()
+        eval("document.head.appendChild(Object.assign(document.createElement('style'), {textContent: \(Self.embeddedCSS.readerJS)}))")
+        eval("setSize(\(fontSize))")
         if let dir = Self.webDir() {
             web.loadFileURL(dir.appendingPathComponent("index.html"), allowingReadAccessTo: URL(fileURLWithPath: "/"))
         } else {
@@ -76,6 +93,40 @@ final class MarkdownReaderView: NSView {
         text = ""
         eval("setBase(\(url.deletingLastPathComponent().absoluteString.readerJS))")
         reread()
+    }
+
+    /// Tints the page to the terminal beside it: the page's `--bg` becomes the terminal background, and the
+    /// view's appearance follows that color's luminance so `prefers-color-scheme` picks the matching palette
+    /// (the page's own dark/light split follows the SYSTEM otherwise, which a dark terminal on a light desk
+    /// turned into a white sheet). Idempotent; a nil color leaves the page on its own palette.
+    func apply(background: NSColor?) {
+        guard let background, background != appliedBackground,
+              let srgb = background.usingColorSpace(.sRGB) else { return }
+        appliedBackground = background
+        let luminance = 0.2126 * srgb.redComponent + 0.7152 * srgb.greenComponent + 0.0722 * srgb.blueComponent
+        appearance = NSAppearance(named: luminance < 0.5 ? .darkAqua : .aqua)
+        let hex = String(format: "#%02x%02x%02x", Int(srgb.redComponent * 255 + 0.5),
+                         Int(srgb.greenComponent * 255 + 0.5), Int(srgb.blueComponent * 255 + 0.5))
+        eval("document.documentElement.style.setProperty('--bg', \(hex.readerJS))")
+    }
+
+    /// The reader whose web view holds the key window's first responder: the font chords act on the pane
+    /// the user is in, and a focused document is that pane even though no terminal surface is.
+    static func focused() -> MarkdownReaderView? {
+        var view = NSApp.keyWindow?.firstResponder as? NSView
+        while let current = view {
+            if let reader = current as? MarkdownReaderView { return reader }
+            view = current.superview
+        }
+        return nil
+    }
+
+    func adjustFontSize(by step: Int) { setFontSize(fontSize + step) }
+    func resetFontSize() { setFontSize(Self.defaultFontSize) }
+
+    private func setFontSize(_ size: Int) {
+        fontSize = min(max(size, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
+        eval("setSize(\(fontSize))")
     }
 
     /// Frees the web view: the message handlers hold the bridge strongly through the content controller,
@@ -109,6 +160,34 @@ final class MarkdownReaderView: NSView {
         queued.forEach(eval)
     }
 
+    /// Hands the document to the standalone reader app in its own window and reports it, so the split pane
+    /// goes back to the shell: the pane is for reading beside the work, the window for reading at length.
+    @objc private func popOut() {
+        let url = URL(fileURLWithPath: path)
+        if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.standaloneReaderBundleID) {
+            NSWorkspace.shared.open([url], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
+        } else {
+            NSWorkspace.shared.open(url)
+        }
+        onPopOut?()
+    }
+
+    private func installPopOutButton() {
+        let button = NSButton(title: "Open in Reader", target: self, action: #selector(popOut))
+        button.image = NSImage(systemSymbolName: "arrow.up.forward.app", accessibilityDescription: nil)
+        button.imagePosition = .imageLeading
+        button.bezelStyle = .accessoryBarAction
+        button.controlSize = .small
+        button.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        button.toolTip = "Open this file in its own Reader window and give the pane back to the shell"
+        button.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(button)
+        NSLayoutConstraint.activate([
+            button.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            button.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+        ])
+    }
+
     private func installMissingBanner() {
         missingBanner.font = .systemFont(ofSize: 11.5, weight: .medium)
         missingBanner.textColor = .systemOrange
@@ -123,6 +202,25 @@ final class MarkdownReaderView: NSView {
 
     /// The page's side of the bridge. Not the view itself because `WKUserContentController` retains its
     /// handlers, and a view retaining its own content controller would never deinit.
+    /// On macOS the `WKWebView` itself is the responder, so first-responder transitions are observable here
+    /// the way `GhosttySurfaceView` observes its own; this is what lets a click in the document read as a
+    /// pane focus.
+    private final class ReaderWebView: WKWebView {
+        var onFocusChange: ((Bool) -> Void)?
+
+        override func becomeFirstResponder() -> Bool {
+            let result = super.becomeFirstResponder()
+            if result { onFocusChange?(true) }
+            return result
+        }
+
+        override func resignFirstResponder() -> Bool {
+            let result = super.resignFirstResponder()
+            if result { onFocusChange?(false) }
+            return result
+        }
+    }
+
     private final class Bridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         weak var owner: MarkdownReaderView?
         var ready = false

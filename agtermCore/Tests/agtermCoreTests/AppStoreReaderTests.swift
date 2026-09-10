@@ -4,16 +4,15 @@ import Testing
 
 @MainActor
 struct AppStoreReaderTests {
-    @Test func openReaderReportsItsSpecInTheTree() throws {
+    @Test func openReaderReportsItsPathInTheTree() throws {
         let store = makeStore()
         let ws = store.addWorkspace(name: "work")
         let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
 
-        #expect(store.openReader(session.id, spec: ReaderSpec(path: "/repo/plan.md", position: .centerLeft,
-                                                              sizePercent: 50)))
+        #expect(store.openReader(session.id, spec: ReaderSpec(path: "/repo/plan.md")))
 
         let node = try #require(store.controlTree().workspaces[0].sessions.first)
-        #expect(node.reader == ControlReaderNode(path: "/repo/plan.md", position: "center-left", sizePercent: 50))
+        #expect(node.reader == ControlReaderNode(path: "/repo/plan.md"))
         #expect(session.readerActive)
     }
 
@@ -29,16 +28,43 @@ struct AppStoreReaderTests {
         #expect(!json.contains("\"reader\""), "no reader must be omitted from the JSON; got \(json)")
     }
 
+    @Test func openingOnAnUnsplitSessionShowsTheSplitAtTheDefaultWidthAndKeepsTheShellFocused() throws {
+        let store = makeStore()
+        let ws = store.addWorkspace(name: "work")
+        let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
+
+        store.openReader(session.id, spec: ReaderSpec(path: "/a.md"))
+
+        #expect(session.isSplit)
+        #expect(session.splitAxis == .leftRight)
+        #expect(!session.splitFocused, "the reader is not typed into; the shell keeps focus")
+        let ratio = try #require(session.splitRatio)
+        #expect(abs(ratio - ReaderLayout.splitRatio(forSizePercent: ReaderLayout.defaultSizePercent)) < 0.001)
+    }
+
     @Test func theWidthIsBoundedOnBothSides() throws {
         let store = makeStore()
         let ws = store.addWorkspace(name: "work")
         let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
 
         store.openReader(session.id, spec: ReaderSpec(path: "/a.md", sizePercent: 100))
-        #expect(session.readerSpec?.sizePercent == ReaderLayout.maxSizePercent)
+        #expect(session.splitRatio == 1 - Double(ReaderLayout.maxSizePercent) / 100)
 
         store.openReader(session.id, spec: ReaderSpec(path: "/a.md", sizePercent: 1))
-        #expect(session.readerSpec?.sizePercent == ReaderLayout.minSizePercent)
+        #expect(session.splitRatio == 1 - Double(ReaderLayout.minSizePercent) / 100)
+    }
+
+    @Test func openingOnASplitSessionKeepsItsRatio() throws {
+        let store = makeStore()
+        let ws = store.addWorkspace(name: "work")
+        let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
+        store.setSplitVisibility(session.id, shown: true)
+        store.applySplitRatio(0.7, forSession: session.id)
+
+        store.openReader(session.id, spec: ReaderSpec(path: "/a.md"))
+
+        #expect(session.splitRatio == 0.7, "a split the user sized stays as sized")
+        #expect(!session.readerShowedSplit)
     }
 
     @Test func aSecondOpenReplacesTheFirstAndBumpsTheGeneration() throws {
@@ -52,9 +78,10 @@ struct AppStoreReaderTests {
 
         #expect(session.readerSpec?.path == "/b.md")
         #expect(session.readerSlotGeneration == first + 1)
+        #expect(session.readerShowedSplit, "the replacement still owes the split it inherited")
     }
 
-    @Test func closeReaderClearsTheStateAndRefusesAnEmptySlot() throws {
+    @Test func closeReaderTakesDownTheSplitItShowedAndRefusesAnEmptySlot() throws {
         let store = makeStore()
         let ws = store.addWorkspace(name: "work")
         let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
@@ -62,8 +89,40 @@ struct AppStoreReaderTests {
         #expect(!store.closeReader(session.id))
         store.openReader(session.id, spec: ReaderSpec(path: "/a.md"))
         #expect(store.closeReader(session.id))
+
         #expect(!session.readerActive)
+        #expect(!session.isSplit)
+        #expect(!session.hasSplit, "no shell ever ran in the pane, so nothing is left to hide")
         #expect(store.controlTree().workspaces[0].sessions.first?.reader == nil)
+    }
+
+    @Test func closeReaderLeavesAPreexistingSplitUp() throws {
+        let store = makeStore()
+        let ws = store.addWorkspace(name: "work")
+        let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
+        store.setSplitVisibility(session.id, shown: true)
+
+        store.openReader(session.id, spec: ReaderSpec(path: "/a.md"))
+        store.closeReader(session.id)
+
+        #expect(session.isSplit, "the shell pane the reader borrowed comes back")
+        #expect(!session.readerActive)
+    }
+
+    @Test func hidingOrClosingTheSplitTakesTheReaderWithIt() throws {
+        let store = makeStore()
+        let ws = store.addWorkspace(name: "work")
+        let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
+
+        store.openReader(session.id, spec: ReaderSpec(path: "/a.md"))
+        store.setSplitVisibility(session.id, shown: false)
+        #expect(!session.readerActive)
+        #expect(!session.readerShowedSplit)
+
+        store.openReader(session.id, spec: ReaderSpec(path: "/a.md"))
+        store.closeSplit(session.id)
+        #expect(!session.readerActive)
+        #expect(!session.hasSplit)
     }
 
     @Test func aReaderLeavesTheOverlaySlotAlone() throws {

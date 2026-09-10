@@ -255,16 +255,19 @@ public final class Session: Identifiable {
     /// (`isSplit`) — a hidden split builds no right surface at bootstrap.
     @ObservationIgnored public var pendingSplitForegroundCommand: [String]?
 
-    /// The markdown reader panel over this session, nil when none is up. Its own slot, not the overlay's:
-    /// it shows a document rather than running a program or painting a message, so it neither covers the
-    /// session nor takes first responder on open, and a HUD or a program overlay can share the pane with it.
-    /// Control-channel only and ephemeral, never persisted.
+    /// The markdown reader in the SPLIT pane, nil when none is up. While set, the right pane renders the
+    /// document instead of its shell (the shell, if one exists, stays alive unhosted, as a hidden split's
+    /// does) and the split is shown. Control-channel only and ephemeral, never persisted.
     public var readerSpec: ReaderSpec?
 
-    /// Bumped on every `openReader` so the deck keys the panel's view identity on it: a replacement keeps
+    /// Bumped on every `openReader` so the deck keys the pane's view identity on it: a replacement keeps
     /// `readerActive` true across the swap, and without it SwiftUI would push the new path into the old
     /// web view instead of building one over the new file's folder.
     public var readerSlotGeneration: Int = 0
+
+    /// Whether `openReader` had to SHOW the split, so `closeReader` puts it back — hidden again, or closed
+    /// outright when no shell ever ran in it — rather than leaving a fresh empty shell where the document was.
+    @ObservationIgnored public var readerShowedSplit = false
 
     public var readerActive: Bool { readerSpec != nil }
 

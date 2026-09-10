@@ -112,8 +112,8 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
     /// The HUD panel occupying the session-wide overlay slot; nil/omitted when none is up. Mutually exclusive
     /// with `overlay` — one slot, and whichever holds it is the one that reports.
     public let hud: ControlHudNode?
-    /// The markdown reader panel over the session; nil/omitted when none is up. Its own slot, so it can
-    /// report beside `hud` or `overlay`.
+    /// The markdown reader in the split pane; nil/omitted when none is up. While present `split` is true
+    /// and `splitRatio` is the reader's width; the right pane shows the document, not a shell.
     public let reader: ControlReaderNode?
     public let scratch: Bool
     public let flagged: Bool

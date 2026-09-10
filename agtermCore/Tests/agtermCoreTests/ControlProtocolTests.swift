@@ -213,8 +213,7 @@ struct ControlProtocolTests {
     @Test func sessionReaderRequestsRoundTrip() throws {
         let cases = [
             ControlRequest(cmd: .sessionReaderOpen, target: "9f3c", args: ControlArgs(path: "/repo/plan.md")),
-            ControlRequest(cmd: .sessionReaderOpen, args: ControlArgs(sizePercent: 60, path: "/repo/plan.md",
-                                                                      position: "center-left")),
+            ControlRequest(cmd: .sessionReaderOpen, args: ControlArgs(sizePercent: 60, path: "/repo/plan.md")),
             ControlRequest(cmd: .sessionReaderClose, target: "9f3c"),
         ]
         for request in cases {
@@ -223,7 +222,7 @@ struct ControlProtocolTests {
     }
 
     @Test func treeSessionNodeRoundTripsWithReaderAndOmitsItWhenNil() throws {
-        let reader = ControlReaderNode(path: "/repo/plan.md", position: "center-right", sizePercent: 45)
+        let reader = ControlReaderNode(path: "/repo/plan.md")
         let session = ControlSessionNode(id: "s1", name: "shell", cwd: "/tmp", active: true, split: false,
                                          reader: reader)
         let response = ControlResponse(ok: true, result: ControlResult(tree: ControlTree(

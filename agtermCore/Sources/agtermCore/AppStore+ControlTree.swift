@@ -107,11 +107,10 @@ extension AppStore {
         return panes.isEmpty ? nil : panes
     }
 
-    /// The tree's `reader`: the live panel's spec with its effective anchor and bounded width, omitted
-    /// when no reader is up.
+    /// The tree's `reader`: the document in the split pane, omitted when no reader is up. Its width is the
+    /// node's `splitRatio`, so nothing is repeated here.
     private func readerNode(_ session: Session) -> ControlReaderNode? {
-        guard let spec = session.readerSpec else { return nil }
-        return ControlReaderNode(path: spec.path, position: spec.position.rawValue, sizePercent: spec.sizePercent)
+        session.readerSpec.map { ControlReaderNode(path: $0.path) }
     }
 
     /// The tree's `hud`: the live panel's spec carrying the slot's EFFECTIVE size on BOTH axes and the

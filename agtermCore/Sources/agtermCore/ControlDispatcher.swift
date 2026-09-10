@@ -102,8 +102,8 @@ public protocol ControlActions {
     /// here, the surface having read it once at creation.
     func updateHud(_ target: String?, window: String?, spec: HudSpec) -> ControlResponse
     func closeHud(_ target: String?, window: String?) -> ControlResponse
-    /// Show a markdown file in the session's reader slot. The dispatcher validated the path text, percent
-    /// and position; the host checks the file is readable and drives the store.
+    /// Show a markdown file in the session's split pane. The dispatcher validated the path text and the
+    /// percent; the host checks the file is readable, drives the store and moves the live divider.
     func openReader(_ target: String?, window: String?, spec: ReaderSpec) -> ControlResponse
     func closeReader(_ target: String?, window: String?) -> ControlResponse
     func setSessionBackground(_ target: String?, window: String?,

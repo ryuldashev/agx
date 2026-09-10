@@ -1753,22 +1753,25 @@
                 color: #e6e1d7;
               "
             >
-              <span style="color: #6b727a"># show a file beside the session; it re-renders as the file changes</span><br />agtermctl
+              <span style="color: #6b727a"># show a file in the right pane; it re-renders as the file changes</span><br />agtermctl
               session reader docs/plan.md --target <span style="color: #f2b45c">"$AGTERM_SESSION_ID"</span><br /><br /><span style="color: #6b727a"
-                ># put it on the left, half the pane wide</span
-              ><br />agtermctl session reader docs/plan.md --position center-left --size-percent 50<br /><br />agtermctl session reader close
+                ># give it half the width</span
+              ><br />agtermctl session reader docs/plan.md --size-percent 50<br /><br />agtermctl session reader close
               --target <span style="color: #f2b45c">"$AGTERM_SESSION_ID"</span>
             </div>
             <p style="font-size: 15px; line-height: 1.65; color: #949ba4; margin: 16px 0 0">
-              A reader carries a rendered markdown document — an agent's plan, a report, a diff summary — in a panel over the
-              session, and re-renders it in place as the file changes on disk, scroll position kept. It has its own slot, so it
-              stays up beside a HUD and under a program overlay, and opening it moves no focus: the session keeps typing until
-              you click the document. Task lists, tables, footnotes, highlighted code, mermaid blocks and images relative to
-              the file all render; <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">http</span> links open in the browser.
-              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">--position</span> takes the same anchors a HUD does (default
-              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">center-right</span>), and
+              A reader carries a rendered markdown document — an agent's plan, a report, a diff summary — in the split's right
+              pane, and re-renders it in place as the file changes on disk, scroll position kept. An unsplit session gets a split
+              for it (45% wide by default) and gets it back when the reader closes; a session already split lends its right pane
+              and keeps its width. Opening moves no focus: the shell keeps typing until you click the document. Task lists,
+              tables, footnotes, highlighted code, mermaid blocks and images relative to the file all render;
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">http</span> links open in the browser.
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">Open in Reader</span> in the pane's corner moves the document
+              into its own window in the standalone Reader app and frees the pane. Hiding the split (⌘D) closes the reader too.
               <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">--size-percent</span> sets the width, bounded to 20–80. Read it back
-              from the session node's <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">reader</span> object.
+              from the session node's <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">reader</span> object beside
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">split</span> and
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">splitRatio</span>.
             </p>
             <h3
               style="

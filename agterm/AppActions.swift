@@ -897,12 +897,15 @@ final class AppActions {
     // NOT zoom-gated: font commands act on the FOCUSED surface — while zoomed that is the zoomed terminal —
     // and never touch hidden deck state, so ⌘+/⌘−/⌘0 keep working.
     func increaseFontSize() {
+        if let reader = MarkdownReaderView.focused() { return reader.adjustFontSize(by: 1) }
         focusedSurface()?.performBindingAction("increase_font_size:1")
     }
     func decreaseFontSize() {
+        if let reader = MarkdownReaderView.focused() { return reader.adjustFontSize(by: -1) }
         focusedSurface()?.performBindingAction("decrease_font_size:1")
     }
     func resetFontSize() {
+        if let reader = MarkdownReaderView.focused() { return reader.resetFontSize() }
         focusedSurface()?.performBindingAction("reset_font_size")
     }
 
