@@ -1,7 +1,8 @@
 # 2026-09-10 — markdown reader in the split pane (`session.reader.*`)
 
-Branch `reader-pane-2026-09-10` off `origin/master` (ddda9df). Not deployed, not relaunched: the running
-agx hosts live sessions. v1 (commit 39a9f64) floated the document in a HUD-style panel; Ruslan rejected
+Branch `reader-pane-2026-09-10` off `origin/master` (ddda9df), commit f9617d9. Deployed with `make deploy`
+(Release in `/Applications/agx.app`, outgoing app kept as `agx.app.old`); NOT relaunched — Ruslan restarts
+when his live sessions allow. The branch is not pushed and not merged into master. v1 (commit 39a9f64) floated the document in a HUD-style panel; Ruslan rejected
 that look in the Debug demo ("into the right pane where the terminal runs, natively") — v2 below is
 what landed. Rule text: `.claude/rules/control-api.md` → "Markdown reader".
 
@@ -94,4 +95,3 @@ opens, pane returns to the shell.
   (the shell keeps focus). Clicking the document is the way in.
 - No outline, find, PDF export (MmeeReader has them) — the button is the path to those.
 - `.md` links inside a document open in the system's `.md` handler, not in the pane.
-- Debug demo instance from this session: PID in the session notes; stop with SIGTERM when done.
