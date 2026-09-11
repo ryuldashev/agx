@@ -14,6 +14,10 @@ final class AgentFailoverCoordinator {
     /// The pause between `/model …` and the continue prompt: Claude Code confirms the switch first, and a
     /// prompt typed while it is still handling the slash command lands in the same line.
     static let modelSwitchSettle: TimeInterval = 2.5
+    /// The gap between a typed line and its Return, so the TUI's paste detection has closed the burst.
+    static let returnSettle: TimeInterval = 0.4
+    /// The gap before the safety Return that submits a prompt whose first Return was swallowed.
+    static let returnRepeat: TimeInterval = 1.5
     /// How much of a transcript's tail the handoff digest reads; the last prompts and answer sit there.
     static let transcriptTailBytes = 4_000_000
 
@@ -91,25 +95,43 @@ final class AgentFailoverCoordinator {
     // MARK: - actions
 
     private func switchModel(_ model: String, in session: Session) -> Bool {
-        guard type("/model \(model)\n", into: session) else { return false }
-        let prompt = settings.effectiveFailoverContinuePrompt
+        guard type("/model \(model)", into: session) else { return false }
         let id = session.id
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.modelSwitchSettle) { [weak self] in
-            guard let self, let session = self.library.store(forSession: id)?.session(withID: id) else { return }
-            _ = self.type(prompt + "\n", into: session)
-        }
+        pressReturn(in: id, after: Self.returnSettle)
+        after(Self.modelSwitchSettle) { [weak self] in self?.submitPrompt(in: id) }
         return true
     }
 
     private func retry(after delay: TimeInterval, in session: Session) -> Bool {
         guard (session.surface as? GhosttySurfaceView)?.isRealized == true else { return false }
-        let prompt = settings.effectiveFailoverContinuePrompt
         let id = session.id
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, let session = self.library.store(forSession: id)?.session(withID: id) else { return }
-            _ = self.type(prompt + "\n", into: session)
-        }
+        after(delay) { [weak self] in self?.submitPrompt(in: id) }
         return true
+    }
+
+    /// Type the continue prompt and submit it. The text goes in one burst and the Return comes separately:
+    /// Claude Code treats a burst as a paste and swallows a Return that arrives inside it, so a prompt typed
+    /// `text + "\n"` sits in the input box unsent. A second Return follows in case the first landed while
+    /// the TUI was still digesting the paste; on an empty input it is a no-op.
+    private func submitPrompt(in id: UUID) {
+        guard let session = liveSession(id), type(settings.effectiveFailoverContinuePrompt, into: session) else { return }
+        pressReturn(in: id, after: Self.returnSettle)
+        pressReturn(in: id, after: Self.returnSettle + Self.returnRepeat)
+    }
+
+    private func pressReturn(in id: UUID, after delay: TimeInterval) {
+        after(delay) { [weak self] in
+            guard let self, let session = self.liveSession(id) else { return }
+            _ = self.type("\n", into: session)
+        }
+    }
+
+    private func after(_ delay: TimeInterval, _ work: @escaping @MainActor () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { work() }
+    }
+
+    private func liveSession(_ id: UUID) -> Session? {
+        library.store(forSession: id)?.session(withID: id)
     }
 
     private func type(_ text: String, into session: Session) -> Bool {

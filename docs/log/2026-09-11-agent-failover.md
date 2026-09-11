@@ -39,3 +39,13 @@ spent ladder, or a crashed agent opens `<name> → Codex` beside it with a brief
 - Exhausted families are in-memory per session; nothing persists them across a relaunch.
 - Handoff brief is a digest (3 prompts + last answer). If Codex needs more, it reads the transcript path
   in the brief.
+
+## Follow-up (same day, 18:20)
+First live firing (session "Payroll …", Fable pool spent) switched to `opus[1m]` fine, but the continue
+prompt sat in Claude Code's input unsent and then went in as `/Continue …` → "Unknown command". Reproduced
+in a throwaway session: Claude Code treats a typed burst as a paste and SWALLOWS a Return that arrives
+inside the same burst (`text + "\n"` through `inject` is one key event). Fix: the coordinator types the
+text, presses Return 0.4 s later (`returnSettle`), and presses a safety Return 1.5 s after that
+(`returnRepeat`; a no-op on an empty input). Same split for the `/model` line. Verified with the exact
+sequence over `session type`. Where the leading `/` came from is not reproduced — the swallowed Return is
+the defect that was reproduced and fixed.
