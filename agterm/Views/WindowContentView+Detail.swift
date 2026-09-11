@@ -183,7 +183,8 @@ extension WindowContentView {
                 // exactly as a hidden split's does. It is chromeless like a pane, tinted to the terminal.
                 ReaderView(path: reader.path, background: GhosttyApp.shared.terminalBackgroundColor,
                            onPopOut: { store.closeReader(session.id) },
-                           onFocus: { session.splitFocused = true })
+                           onFocus: { session.splitFocused = true },
+                           onOpenMarkdown: { store.openReader(session.id, spec: ReaderSpec(path: $0)) })
                     .overlay { paneDim(!focused, session: session) }
                     .id("\(session.id.uuidString)-reader-\(session.readerSlotGeneration)")
             } else if deckHostsSurface(session: session, surface: pane.paneZoomSurface) {

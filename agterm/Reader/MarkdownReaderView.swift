@@ -28,6 +28,9 @@ final class MarkdownReaderView: NSView {
     var onPopOut: (() -> Void)?
     /// The web view gained (true) or lost first responder; the owner mirrors it into split focus.
     var onFocusChange: ((Bool) -> Void)?
+    /// A relative `.md` link was clicked; the owner opens that file in this pane, so a chaptered document
+    /// (the bundled guide) reads in place. Unset, the link goes to the system's `.md` handler.
+    var onOpenMarkdown: ((String) -> Void)?
     /// A pane is narrower and closer than the standalone window, so the page runs smaller and tighter than
     /// its own 17px/64px defaults; ⌘+/⌘−/⌘0 step and reset from here, like a terminal's font zoom.
     static let defaultFontSize = 14
@@ -235,8 +238,8 @@ final class MarkdownReaderView: NSView {
         }
 
         /// Only the bundled page itself may load in the panel. A clicked web link opens in the browser, a
-        /// clicked file opens in whatever handles it (another `.md` lands in the user's markdown app); the
-        /// panel shows the document an agent named and nothing else.
+        /// clicked `.md` replaces the document when the owner takes it, any other file opens in whatever
+        /// handles it; the panel never navigates its own web view away from the page.
         func webView(_ web: WKWebView, decidePolicyFor action: WKNavigationAction,
                      decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
             guard let url = action.request.url else { return decisionHandler(.cancel) }
@@ -246,6 +249,11 @@ final class MarkdownReaderView: NSView {
             }
             if url.isFileURL, url.readerDeletingFragment() == web.url?.readerDeletingFragment() {
                 return decisionHandler(.allow)
+            }
+            if url.isFileURL, url.pathExtension.lowercased() == "md", let open = owner?.onOpenMarkdown,
+               FileManager.default.isReadableFile(atPath: url.path) {
+                open(url.readerDeletingFragment().path)
+                return decisionHandler(.cancel)
             }
             if ["http", "https", "mailto"].contains(url.scheme ?? "") || url.isFileURL {
                 NSWorkspace.shared.open(url)

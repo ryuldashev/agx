@@ -152,6 +152,21 @@ targets:
           # Debug alone needs the three hardened-runtime exceptions; see the header of the file.
           CODE_SIGN_ENTITLEMENTS: agterm/agterm-debug.entitlements
     postBuildScripts:
+      # The user guide (docs/guide) plus the pages and screenshots it links, laid out as in the repo at
+      # Contents/Resources/docs so relative links keep resolving. Help ▸ agx Guide opens README.md from
+      # there in the reader pane. Runs before the CLI phase so the re-seal below covers it.
+      - name: Bundle user guide
+        basedOnDependencyAnalysis: false
+        script: |
+          set -euo pipefail
+          dest="$CODESIGNING_FOLDER_PATH/Contents/Resources/docs"
+          rm -rf "$dest"
+          mkdir -p "$dest/screenshots"
+          cp -R "$SRCROOT/docs/guide" "$dest/guide"
+          cp "$SRCROOT/docs/troubleshooting.md" "$SRCROOT/docs/ui-lexicon.md" "$dest/"
+          grep -ho 'screenshots/[A-Za-z0-9_-]*\.png' "$SRCROOT"/docs/guide/*.md | sort -u | while read -r shot; do
+            cp "$SRCROOT/docs/$shot" "$dest/screenshots/"
+          done || true
       # build the agtermctl CLI and bundle it at Contents/MacOS/agtermctl so the
       # in-app "Install Command Line Tool" can symlink it into PATH. Runs before
       # Xcode's automatic code-sign, and signs the helper ad-hoc (matching the

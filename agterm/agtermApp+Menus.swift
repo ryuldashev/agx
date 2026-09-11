@@ -397,12 +397,13 @@ extension agtermApp {
                 .disabled(!PaletteCommand.focusRightPane.isEnabled(in: context))
             }
             CommandGroup(replacing: .help) {
+                Button("\(Brand.productName) Guide…") { actions.openGuide() }
                 Button("\(Brand.productName) on GitHub…") {
                     if let url = URL(string: Brand.homepage) {
                         NSWorkspace.shared.open(url)
                     }
                 }
-                Button("Developer Documentation (\(Brand.upstreamName))…") {
+                Button("\(Brand.upstreamName) Control API Reference…") {
                     if let url = URL(string: Brand.upstreamDocs + "#agtermctl") {
                         NSWorkspace.shared.open(url)
                     }

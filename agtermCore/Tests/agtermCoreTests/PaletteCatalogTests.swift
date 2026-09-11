@@ -54,11 +54,12 @@ struct PaletteCatalogTests {
             "Collapse Workspace",
             "Focus Left Pane",
             "Focus Right Pane",
+            "agx Guide",
         ])
     }
 
     @Test func catalogHasTheExpectedStaticCommandCount() {
-        #expect(PaletteCommand.allCases.count == 50)
+        #expect(PaletteCommand.allCases.count == 51)
     }
 
     @Test func idsRoundTripThroughRawValue() {

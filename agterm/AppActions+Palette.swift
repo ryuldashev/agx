@@ -116,6 +116,7 @@ extension AppActions {
         case .toggleWorkspaceCollapse: toggleActiveWorkspaceCollapse()
         case .focusLeftPane: focusPane(.main)
         case .focusRightPane: focusPane(.split)
+        case .openGuide: openGuide()
         }
     }
 
