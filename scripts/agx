@@ -121,7 +121,7 @@ def gather():
 
 MANIFEST = """you can drive this UI (agtermctl — the app's control socket, already reachable here):
   see everything again      agx context            (this call; --json for structured)
-  DELEGATE to a fresh agent  agx spawn --brief "<task>" --name "<title>" [--workspace-name <W>] [--cwd <PATH>] [--foreground]
+  DELEGATE to a fresh agent  agx spawn --brief "<task>" --name "<title>" [--workspace-name <W>] [--cwd <PATH>] [--agent claude|codex] [--foreground]
     ^ makes the session and launches the agent with the brief as its FIRST MESSAGE (no TUI-typing race).
       A spawned pane is a FULL peer Claude Code session (it already gets CLAUDE.md, skills, and this
       UI-context hook) — so the brief is a self-contained TASK, not a context dump: goal, constraints,
@@ -268,6 +268,36 @@ def _claude_trusts(path):
     return bool(entry.get("hasTrustDialogAccepted"))
 
 
+def _codex_trusts(path):
+    """Codex counterpart of `_claude_trusts`: True if `~/.codex/config.toml` has
+    `[projects."<realpath>"] trust_level = "trusted"`. Codex shows its own one-time trust gate per
+    directory (plus a hooks-review gate the first time agterm's status hooks appear), and a seeded
+    brief waits behind it exactly like Claude's. Unknown/unreadable config → None."""
+    if not path:
+        return None
+    try:
+        real = os.path.realpath(os.path.expanduser(path))
+        text = open(os.path.expanduser("~/.codex/config.toml")).read()
+    except OSError:
+        return None
+    import re
+    m = re.search(r'^\[projects\.' + re.escape(json.dumps(real)) + r'\]\s*\n((?:(?!\[).*\n?)*)', text, re.M)
+    if not m:
+        return False
+    return re.search(r'^\s*trust_level\s*=\s*"trusted"', m.group(1), re.M) is not None
+
+
+def _agent_trusts(agent, path):
+    """Dispatch the trust probe on the agent's executable (`claude`, `codex --model x`, …). Agents we
+    don't know how to probe → None (no warning either way)."""
+    exe = os.path.basename((agent or "").strip().split(" ", 1)[0])
+    if exe == "claude":
+        return _claude_trusts(path)
+    if exe == "codex":
+        return _codex_trusts(path)
+    return None
+
+
 def cmd_spawn(argv):
     """Create an agent session AND seed it with a brief — the smart 'delegate to a fresh agent'.
 
@@ -325,7 +355,7 @@ def cmd_spawn(argv):
         try: os.remove(briefpath)
         except OSError: pass
         print("agx spawn: session creation failed", file=sys.stderr); return 1
-    trusted = _claude_trusts(opts["cwd"])
+    trusted = _agent_trusts(opts["agent"], opts["cwd"])
     if opts["json"]:
         print(json.dumps({"id": sid, "seeded": True, "foreground": opts["foreground"],
                           "cwd_trusted": trusted}, ensure_ascii=False))
@@ -334,7 +364,7 @@ def cmd_spawn(argv):
         tail = f' — "{opts["name"]}"' if opts["name"] else ""
         print(f'agx: spawned {opts["agent"]} [{sid[:8]}] in {where}{tail}, launched with the brief as its first message.')
         if trusted is False:
-            print(f'  ⚠ {opts["cwd"]} is not trusted by Claude yet — accept the one-time trust prompt in the '
+            print(f'  ⚠ {opts["cwd"]} is not trusted by {opts["agent"]} yet — accept the one-time trust prompt in the '
                   'new pane; the brief runs right after.')
     return 0
 
@@ -488,7 +518,7 @@ def main(argv):
               "  agx reader <path.md> [--target ID]   show a markdown file, live-reloading, in THIS session's right pane\n"
               "  agx reader close [--target ID]      give the pane back\n"
               "  agx spawn --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID]\n"
-              "            [--cwd PATH] [--agent claude] [--foreground] [--json]\n"
+              "            [--cwd PATH] [--agent claude|codex] [--foreground] [--json]\n"
               "            create an agent session AND seed it with the brief as its first message\n"
               "  agx schedule add --at <time> --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID] [--cwd PATH]\n"
               "  agx schedule list | cancel <id> | run <id>\n"
