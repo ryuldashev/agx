@@ -1,127 +1,155 @@
 # Driving AGX from an agent
 
-An agent running in an AGX pane is not sandboxed in a terminal: it is operating the user's UI. It
-can see which sessions are open and who needs attention, open a peer session with a task, run a
-command in its own side pane, show a document, and schedule work for later — the same control
-socket the user's shortcuts go through. `agx` is the agent-facing wrapper over `agtermctl`; this
-chapter is what an agent should know before its first tool call.
+An agent in an AGX pane is not sandboxed in a terminal: it is operating the user's UI. It can read
+which sessions are open and who needs attention, open a peer with a task, run a command in its own
+side pane, show a document, and schedule work for later — over the same control socket the user's
+shortcuts go through. `agx` is the agent-facing wrapper over `agtermctl`.
 
-## What an agent gets on start
+## Quickstart: the first five commands in a new session
 
-Every pane's environment carries `AGTERM_ENABLED=1`, `AGTERM_SOCKET` (this app's control socket —
-so a command from a pane addresses the app that spawned it, even with two builds installed),
-`AGTERM_SESSION_ID`, `AGTERM_WORKSPACE_ID`, `AGTERM_WINDOW_ID`, `AGTERM_PANE` / `AGTERM_PANE_ID`, and
-`TERM_PROGRAM=agterm`. The hooks from Help ▸ Install Agent Status Hooks… act only when
-`AGTERM_ENABLED` is set, so they cost nothing outside AGX.
-
-For Claude Code, Codex, and Gemini a session-start hook injects `agx context` into the first turn
-and pins the resume line the pane will run after a relaunch. Other agents get a one-line pointer to
-`agx context` in front of a spawned brief.
-
-## agx context
+**1. Who am I, what is on screen.** Injected into a Claude/Codex/Gemini pane's first turn by the
+`SessionStart` hook; call it again whenever the picture may have changed.
 
 ```
-agx context [--json]
+$ agx context
+me: "◐ AGX user guide v2" [2A6E0D69] · workspace agx · pane left · cwd /Users/rus/agterm · running claude · blinking
+AGX v0.24.0  ·  socket ok
+
+what the user sees now:
+  window "window 1" [512145C0] frontmost, fullscreen, zoomed
+  app focus: workspace agx → "✳ Dashboard-listview доступность в ридере"
+  sidebar: tree, visible  ·  quick terminal: hidden  ·  workspace filter: off
+
+open sessions (15 across 11 workspaces):
+  mars: ✳ Payroll интеграция(claude)[reattached] · ✓ ✳ Mars онлайн-курсы(claude)[2 unseen,reattached] · …
+  agx: ● ◑ Keyboard Shortcuts(claude)[blinking] · ✳ AGX user guide(claude)[split] · ● ◐ AGX user guide v2(claude)[blinking]
+
+you can drive this UI (agtermctl — the app's control socket, already reachable here):
+  …                                       # the manifest below, then "you cannot"
 ```
 
-The self-description: who I am (session, workspace, pane, cwd, running program), what the user sees
-now (frontmost window, focused session, sidebar and quick-terminal state), every open session with
-its status and flags, the manifest of what an agent can drive from here, and the honest list of what
-it cannot. Call it again whenever the picture may have changed — it is the read side of everything
-below.
+The first line is the only reliable answer to *which session is mine*. Note `app focus` — the
+session the user is looking at is a different one.
 
-## agx spawn
+**2. Run a shell step here, not in the chat.** A finite command runs in an overlay on your own pane;
+you get the output and exit code, the user watches it happen.
 
 ```
-agx spawn --brief "<task>" [--name T] [--workspace-name W | --workspace ID] [--cwd PATH]
-          [--agent claude|codex|gemini|…] [--foreground] [--json]
+$ agx run "git log --oneline -1"
+4141139 Add the AGX user guide: docs/guide, Help ▸ agx Guide in the reader pane
+[agx run: exit 0]
 ```
 
-Opens a peer session and launches the agent with the brief as its first message. The rules for a
-brief and the trust probe are in [Agents › Spawning with a brief](agents.md#spawning-with-a-brief).
-Use it when the user should *see* and drive the work; an in-turn subagent (the Agent tool) is
-invisible in the sidebar, shares the caller's turn, and returns to the caller — right for
-token-heavy research, wrong for work the user will want to steer.
+`--pane split` runs it over the split pane instead. The overlay closes when the command exits;
+for something that must stay alive — a tunnel, a dev server — use the scratch:
+`agtermctl session scratch on --command "<cmd>"`, then `agtermctl session text --pane scratch`.
 
-## agx run
+**3. Show a document instead of pasting it.** Write the plan or report, open it once, keep editing.
 
 ```
-agx run "<shell cmd>" [--pane split] [--keep]
+$ agx reader docs/plans/guide.md          # this session's right pane, re-renders on save
+$ agx reader close
 ```
 
-Runs a finite command in an overlay on the caller's own pane and prints its output and exit code.
-The user watches it happen; the agent gets the result. For something that must stay alive — a
-tunnel, a dev server — use the scratch instead: `agtermctl session scratch on --command "<cmd>"`,
-read it later with `agtermctl session text --pane scratch`. A pane already has a real, unrestricted
-shell beside it; an agent should run the shell step itself, not hand it back to the user.
-
-## agx schedule
+**4. Delegate a separable task to a visible peer.**
 
 ```
-agx schedule add --at <time> --brief "<task>" [--name T] [--workspace-name W] [--cwd PATH]
-agx schedule list | cancel <id> | run <id>
+$ agx spawn --brief "Audit docs/ for stale paths; write docs/audit.md as you go" --name "Docs audit" --json
+{"id": "2F5D2E0F-2A63-4CCE-8E4B-AD1C2E3B8F80", "seeded": true, "foreground": false, "cwd_trusted": true}
 ```
 
-Delegation with a delay: the app opens the session at the time and seeds it. Details in
-[Agents › Scheduled sessions](agents.md#scheduled-sessions).
+The peer starts with the brief as its first message, in your workspace and directory. It cannot ask
+you anything, so the brief is a complete task. Prefer this over an in-turn subagent when the user
+should *see* and steer the work; the Agent tool is invisible in the sidebar and returns to you.
 
-## agx reader
+**5. Tell the user, and mark yourself.**
 
 ```
-agx reader <path.md> [--target ID]
-agx reader close [--target ID]
+$ agtermctl notify "Guide draft ready — open in the reader" --title "AGX guide"
+$ agtermctl session status completed        # the hooks do this for Claude/Codex/Gemini; others do it by hand
 ```
 
-Shows a markdown file in the caller's right pane, re-rendering as the file changes. Write the plan or
-report once, open it once, keep editing — the pane follows. Do not paste long markdown into the chat
-when the user should read it rendered. [The reader pane](reader.md).
+## `active` is almost never your own session
 
-## agtermctl essentials
-
-The full verb set is agterm's ([Help ▸ agterm Control API Reference…](https://agterm.com/commands));
-these are the ones a day with agents actually uses:
+`--target` accepts a session id, a unique prefix, or `active`, and **`active` means the session the
+user has selected in the frontmost window** — the one they are looking at — which is some other
+pane whenever they are watching another agent. Every mutating command on `active` (`type`, `close`,
+`scratch`, `overlay`, `reader`, `status`) lands there. Address yourself by the id `agx context`
+prints on its first line, or by `$AGTERM_SESSION_ID`:
 
 ```sh
-agtermctl tree --json                                   # the whole model, read-back for everything
+agtermctl session status active --target "$AGTERM_SESSION_ID"
+agtermctl session close  --target "$AGTERM_SESSION_ID"        # "close the session" means this one
+```
+
+`agx run`, `agx reader`, and `agx spawn` already default to the caller; bare `agtermctl session …`
+does not.
+
+## What a pane knows on start
+
+| variable | value |
+|---|---|
+| `AGTERM_ENABLED` | `1` — the hooks act only when it is set |
+| `AGTERM_SOCKET` | this app's control socket; a pane addresses the instance that spawned it even with two builds installed |
+| `AGTERM_SESSION_ID`, `AGTERM_WORKSPACE_ID`, `AGTERM_WINDOW_ID` | ids for `--target` |
+| `AGTERM_PANE` / `AGTERM_PANE_ID` | `left` / `right` and the surface id |
+| `TERM_PROGRAM` | `agterm` |
+
+## The `agx` verbs
+
+| verb | does | chapter |
+|---|---|---|
+| `agx context [--json]` | the board as text, plus the manifest of what you can drive and cannot | above |
+| `agx run "<cmd>" [--pane split]` | finite command in an overlay on your pane, output + exit code | above |
+| `agx reader <file.md> [--target ID]` · `agx reader close` | live-reloading document in the split pane | [Reader](reader.md) |
+| `agx spawn --brief "…" [--name T] [--workspace-name W] [--cwd P] [--agent A] [--foreground] [--json]` | peer session seeded with the brief | [Agents › Spawning](agents.md#spawning-with-a-brief) |
+| `agx schedule add --at <t> --brief "…"` · `list` · `run <id>` · `cancel <id>` | the app opens a seeded session at that time | [Agents › Scheduled](agents.md#scheduled-sessions) |
+| `agx usage [--json]` | per-session model, context, cost, and the account pools | [Agents › Usage](agents.md#usage) |
+
+## `agtermctl` essentials
+
+The full verb set is agterm's ([agterm.com/commands](https://agterm.com/commands), Help ▸ agterm
+Control API Reference…); these are the ones a day with agents uses:
+
+```sh
+agtermctl tree --json                                   # the whole model; read-back for everything
 agtermctl session text --target <id|prefix> [--lines N] # read another session's terminal
 agtermctl session type --target <id> --select "text\n"  # type into it (\n submits)
 agtermctl session select --target <id>                  # bring it to front
-agtermctl session status active|completed|blocked|idle [--blink]   # my own glyph
-agtermctl session hud open "<message>" --target <id> [--detail …] [--spinner]  # passive panel
-agtermctl session overlay open --target <id> -- <cmd>   # a program over a session
-agtermctl session failure rate_limit --handoff          # hand my task to another agent now
+agtermctl session status active|completed|blocked|idle [--blink] --target <id>
+agtermctl session hud open "<message>" --target <id> [--detail …] [--spinner]   # passive panel
+agtermctl session overlay open "<cmd>" --target <id> [--size-percent 60]         # a program over a session
+agtermctl session failure rate_limit --handoff --target <id>   # hand my task to another agent now
+agtermctl restore list | open <n> | last                # recently closed; reopen resumes the agent
 agtermctl workspace new "<NAME>"                        # positional, not a flag
-agtermctl notify "<body>" [--title "…"]                 # desktop notification tied to this session
+agtermctl notify "<body>" [--title "…"]                 # desktop notification tied to a session
 printf '%s\n' a b | agtermctl pick --prompt "Which?"     # native picker, blocks until chosen
 agtermctl events                                        # stream status/session/schedule/failover events
 ```
 
-Targets are a session id, a unique prefix, or `active`. `session type` returns when the keys are
-queued, so a `session text` right after it races the program. Positional arguments where the CLI
-says so: `session move <workspace>`, `workspace new "<NAME>"`, `notify "<body>"`.
+`session type` returns when the keys are queued, so a `session text` right after it races the
+program. Positional where the CLI says so: `session move <workspace>`, `workspace new "<NAME>"`,
+`notify "<body>"`, `session overlay open "<cmd>"`.
 
 ## Hooks and the skill
 
-- **Help ▸ Install Agent Status Hooks…** merges, per agent, the hooks its manifest declares:
-  status on prompt / tool / stop / permission-prompt, `SessionStart` for context and resume,
-  `StopFailure` for failover. Marker-guarded, so rerunning is safe; each script is a no-op outside
-  AGX and always exits 0, so it can never block a turn. The wrappers bake in the bundled
-  `agtermctl` and `agx` paths, so nothing has to be on `PATH`.
-- **Help ▸ Install Agent Skill…** installs the agterm skill for Claude Code and Codex: the control
-  model, the addressing rules, and every `agtermctl` command, so an agent can build its own layout
-  without being told the API. The same skill ships as a plugin
-  (`claude plugin install agterm@agterm`); install by one route, never both.
-- **Help ▸ Install Command Line Tool…** links `agtermctl` and `agx` into `/usr/local/bin` for
-  shells outside AGX. Inside a pane the hooks and `agx context` already know where the binaries are.
+The three Help ▸ Install… items are described file by file in [First run](first-run.md). What
+they mean for an agent:
+
+- The **status hooks** report `active` / `completed` / `blocked` per turn, inject `agx context` on
+  `SessionStart`, pin the resume line a relaunch will run, and report `StopFailure` for failover.
+  Each is a no-op outside AGX and always exits 0, so it can never block a turn.
+- The **agterm skill** (`~/.claude/skills/agterm/`) is the control model and every command, so an
+  agent can build its own layout without being told the API.
+- The **CLI symlinks** matter only outside a pane; inside, the hooks bake the bundle paths in.
 
 ## The action journal
 
-`<state dir>/journal.jsonl` records every ⌘/⌃ chord the app saw (with the character the layout
-produced and whether the chord was consumed), every built-in action with its origin (keymap or
-palette), every mutating control request (command, target, caller), and the scratch / split / close
-state flips. Plain typing is never recorded. When the UI did something nobody remembers asking for
-— a scratch that appeared over an agent, a split that hid the wrong pane — the journal answers
-"what drove it" instead of reconstructing it:
+`~/Library/Application Support/agx/journal.jsonl` records every ⌘/⌃ chord the app saw, every
+built-in action with its origin (keymap or palette), every mutating control request (command,
+target, caller), and the scratch / split / close state flips. Plain typing is never recorded.
+When the UI did something nobody remembers asking for — a scratch over an agent, a split hiding
+the wrong pane — the journal answers "what drove it":
 
 ```sh
 tail -f ~/Library/Application\ Support/agx/journal.jsonl
@@ -129,13 +157,13 @@ tail -f ~/Library/Application\ Support/agx/journal.jsonl
 
 ## What an agent cannot do
 
-- **Message another agent structurally.** `session type` is fire-and-forget stdin: you type into its
-  input; there is no request/reply. To get an answer, poll `session text` on it.
-- **See pixels.** There is no window screenshot. An agent reads terminal buffers and `tree`, not the
-  chrome — which is what the ⌥ hint panel and `docs/ui-lexicon.md` tokens are for when the user
-  reports a button.
+- **Message another agent structurally.** `session type` is fire-and-forget stdin; there is no
+  request/reply. To get an answer, poll `session text` on it.
+- **See pixels.** No window screenshot. An agent reads terminal buffers and `tree`, not the chrome —
+  which is what the ⌥ hint panel and the [UI lexicon](../ui-lexicon.md) tokens are for when the
+  user reports a button.
 - **Edit settings on disk.** `settings.json` is held in memory and rewritten at quit, silently
   reverting the edit. Change UI state through `agtermctl` or the Settings window.
-- **Spawn a bare binary.** A session started with `--command` execs that argv under the GUI's
-  minimal `PATH`; a binary not on it exits 127. Workspace defaults and `agx spawn` resolve the agent
-  for you; a hand-written command should be a full path or a `zsh -lc '…'` line.
+- **Spawn a bare binary.** `session new --command` execs that argv under the GUI's minimal `PATH`; a
+  binary not on it exits 127. Workspace defaults and `agx spawn` resolve the agent for you; a
+  hand-written command should be a full path or a `zsh -lc '…'` line.
