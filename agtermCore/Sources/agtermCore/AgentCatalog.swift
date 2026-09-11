@@ -26,7 +26,7 @@ public struct AgentDefinition: Codable, Equatable, Sendable, Identifiable {
 }
 
 /// How an agent CLI takes the brief a spawn or scheduled job hands it: the text becomes ONE shell
-/// argument either right after the launch line or behind a flag.
+/// argument either right after the launch line or behind a flag (`seedFlag` in the manifest).
 public enum BriefSeed: Equatable, Sendable {
     /// `<agent> "<brief>"` — Claude Code, Codex, most TUIs.
     case positional
@@ -43,16 +43,15 @@ public enum BriefSeed: Equatable, Sendable {
     }
 }
 
-/// One lifecycle hook an agent's JSON `settings.json` runs: the event, an optional matcher, the script
-/// (relative to the installed script directory) and its arguments. Claude Code and Gemini CLI share
-/// this shape byte-for-byte (`hooks.<Event>: [{matcher?, hooks: [{type: command, command}]}]`).
-public struct HookBinding: Equatable, Sendable {
+/// One lifecycle hook an agent's JSON hook file runs: the event, an optional matcher, the script
+/// (relative to the installed package directory) and its arguments, quoted at install time.
+public struct HookBinding: Codable, Equatable, Sendable {
     public let event: String
     public let matcher: String?
     public let script: String
-    public let args: String
+    public let args: [String]
 
-    public init(event: String, matcher: String? = nil, script: String, args: String = "") {
+    public init(event: String, matcher: String? = nil, script: String, args: [String] = []) {
         self.event = event
         self.matcher = matcher
         self.script = script
@@ -60,41 +59,56 @@ public struct HookBinding: Equatable, Sendable {
     }
 }
 
-/// The two JSON hook-file dialects agx can merge into.
-public enum HookFileShape: Equatable, Sendable {
+/// The JSON hook-file dialects the installer can merge into.
+public enum HookDialect: String, Codable, Sendable {
     /// `hooks.<Event>: [{matcher?, hooks: [{type: command, command}]}]` — Claude Code, Gemini CLI.
     case claude
     /// `{version: 1, hooks: {<event>: [{command}]}}` — Cursor's `hooks.json`; no matchers.
     case cursor
 }
 
-/// How the agent-status indicator learns what an agent is doing.
+/// One `[[hooks.<event>]]` row of a TOML hook file: the agent's event and the action word the agent's
+/// adapter script receives as `$1`.
+public struct TOMLHookEvent: Codable, Equatable, Sendable {
+    public let event: String
+    public let action: String
+
+    public init(event: String, action: String) {
+        self.event = event
+        self.action = action
+    }
+}
+
+/// How the agent-status indicator learns what an agent is doing — the `status` object of a manifest,
+/// discriminated by `kind`. The core knows these three mechanisms and nothing about any agent.
 public enum StatusIntegration: Equatable, Sendable {
-    /// Lifecycle hooks merged into a JSON hook file (relative to `~`).
-    case jsonHooks(settingsFile: String, shape: HookFileShape, hooks: [HookBinding])
-    /// Codex's `[[hooks.*]]` array-of-tables in `config.toml`, driven by the bundled Codex adapter.
-    case codexConfig
-    /// Pi's auto-discovered global extension.
-    case piExtension
-    /// OpenCode's auto-discovered global plugin.
-    case opencodePlugin
+    /// Hooks merged into a JSON hook file (`file` relative to `~`).
+    case jsonHooks(file: String, dialect: HookDialect, hooks: [HookBinding])
+    /// A marker-guarded `[[hooks.*]]` block in a TOML config (`file` relative to `~`) invoking the
+    /// agent's adapter `script` (relative to the package) with one `action` per event.
+    case tomlHooks(file: String, script: String, events: [TOMLHookEvent])
+    /// A bundled plugin `source` (relative to the package) copied to `destination` (relative to `~`)
+    /// once `requires` (relative to `~`) exists; `marker` is the ownership sentinel a reinstall needs
+    /// before overwriting an existing file.
+    case plugin(source: String, destination: String, requires: String, marker: String)
     /// Nothing to install: the pane shows no status glyph for this agent.
     case none
 }
 
 /// How `agx context` reaches a fresh agent so it knows the UI it lives in.
-public enum ContextDelivery: Equatable, Sendable {
-    /// A `SessionStart` hook returns it as `additionalContext` — the brief stays clean.
+public enum ContextDelivery: String, Codable, Sendable {
+    /// A session-start hook returns it as additional context — the brief stays clean.
     case sessionStartHook
     /// No hook surface: `agx spawn` prefixes the brief with a one-line pointer to `agx context`.
     case briefPrefix
 }
 
-/// Everything agx knows about one agent CLI. The catalog is the single source of that knowledge: the
-/// installer, the seed line, the restore pin and `agx spawn` all read it, and no other code names an
-/// agent. A profile with only `name` and `binary` is launch-only — seeded positionally, no status, no
-/// resume — the graceful floor for a CLI agx has not studied yet. Measured facts per agent live in
-/// `docs/reference/agents/<binary>.md`.
+/// Everything agx knows about one agent CLI, decoded from `agents/<binary>/agent.json` in the
+/// agent-status package. The manifests are the single source of that knowledge: the installer, the
+/// seed line, the restore pin and `agx spawn` (python, same files) all read them, and no other code
+/// names an agent. A manifest with only `name` and `binary` is launch-only — seeded positionally, no
+/// status, no resume — the graceful floor for a CLI agx has not studied yet. Measured facts per agent
+/// live in `docs/reference/agents/<binary>.md`.
 public struct AgentProfile: Sendable, Equatable, Identifiable {
     /// The binary name, which is also the stable identity (`claude`, `codex`, …).
     public var id: String { binary }
@@ -106,21 +120,28 @@ public struct AgentProfile: Sendable, Equatable, Identifiable {
     /// The launch line that reopens a session by id (`{id}` substituted), nil when the CLI cannot.
     public let resumeTemplate: String?
     public let status: StatusIntegration
+    /// The agent's own post-install step (`status.activate`), shown after a successful install — "Run
+    /// /hooks in Codex to approve them", "Restart Pi or run /reload" — nil when nothing needs doing.
+    public let activate: String?
     public let context: ContextDelivery
     /// The agent's config directory relative to `~` (`.claude`); its presence gates the installer.
     public let configDirectory: String?
+    /// Position on the Settings ▸ Agents "available" list; unlisted manifests sort last, by binary.
+    public let order: Int
 
     public init(name: String, binary: String, command: String? = nil, seed: BriefSeed = .positional,
-                resumeTemplate: String? = nil, status: StatusIntegration = .none,
-                context: ContextDelivery = .briefPrefix, configDirectory: String? = nil) {
+                resumeTemplate: String? = nil, status: StatusIntegration = .none, activate: String? = nil,
+                context: ContextDelivery = .briefPrefix, configDirectory: String? = nil, order: Int = .max) {
         self.name = name
         self.binary = binary
         self.command = command ?? binary
         self.seed = seed
         self.resumeTemplate = resumeTemplate
         self.status = status
+        self.activate = activate
         self.context = context
         self.configDirectory = configDirectory
+        self.order = order
     }
 
     /// The restore line for `sessionID`, nil when the agent has no resume or the id is not id-shaped
@@ -138,123 +159,127 @@ public struct AgentProfile: Sendable, Equatable, Identifiable {
         return true
     }
 
-    /// The `hooks` bindings when status rides a JSON settings file, empty otherwise.
+    /// The `hooks` bindings when status rides a JSON hook file, empty otherwise.
     public var jsonHookBindings: [HookBinding] {
         if case .jsonHooks(_, _, let hooks) = status { return hooks }
         return []
     }
 
     /// The JSON hook file (relative to `~`) the bindings merge into, nil for other integrations.
-    public var jsonHooksSettingsFile: String? {
+    public var jsonHooksFile: String? {
         if case .jsonHooks(let file, _, _) = status { return file }
         return nil
     }
 
-    public var jsonHooksShape: HookFileShape? {
-        if case .jsonHooks(_, let shape, _) = status { return shape }
+    public var jsonHooksDialect: HookDialect? {
+        if case .jsonHooks(_, let dialect, _) = status { return dialect }
         return nil
     }
 }
 
-/// Discovery of local agent CLIs. Host-free: the filesystem probe is injected, so the resolution order
-/// is unit-testable without touching a real `PATH`.
-public enum AgentCatalog {
-    /// The four status hooks share `agterm-agent-status.sh` and differ by state; `prompt` and `afterTool`
-    /// both set `active` — the latter so the status returns to `active` when work RESUMES after a
-    /// `blocked` permission prompt (no agent has a "permission answered" event, and the gated tool's
-    /// pre-hook fired BEFORE `blocked` was set). Only `stop`→`completed` auto-resets. The two
-    /// `SessionStart` entries pin the restore line and feed `agx context`; restore comes first so the
-    /// pin lands before the (slower) context call.
-    static func statusHooks(prompt: String, afterTool: String, stop: String,
-                            permission: (event: String, matcher: String)?, sessionStart: String = "SessionStart",
-                            resumeTemplate: String, contextFormat: String = "claude") -> [HookBinding] {
-        var hooks = [
-            HookBinding(event: prompt, script: AgentHooksInstall.wrapperName, args: " active --blink"),
-            HookBinding(event: afterTool, script: AgentHooksInstall.wrapperName, args: " active --blink"),
-            HookBinding(event: stop, script: AgentHooksInstall.wrapperName, args: " completed --auto-reset"),
-        ]
-        if let permission {
-            hooks.append(HookBinding(event: permission.event, matcher: permission.matcher,
-                                     script: AgentHooksInstall.wrapperName, args: " blocked"))
-        }
-        hooks.append(HookBinding(event: sessionStart, script: AgentHooksInstall.sessionRestoreHookName,
-                                 args: " --resume-line " + AgentHooksInstall.shellQuote(resumeTemplate)))
-        hooks.append(HookBinding(event: sessionStart, script: AgentHooksInstall.sessionContextHookName,
-                                 args: " --format " + contextFormat))
-        return hooks
+extension AgentProfile: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case name, binary, command, seedFlag, resume, status, context, configDirectory, order
     }
 
-    /// `StopFailure` is Claude Code's alone: it reports a turn-ending API error to `session.failure`, so
-    /// the app can switch model or hand the task to another agent (`AgentFailover`).
-    public static let claude = AgentProfile(
-        name: "Claude Code", binary: "claude",
-        resumeTemplate: "claude --resume {id} --fork-session",
-        status: .jsonHooks(settingsFile: ".claude/settings.json", shape: .claude, hooks: statusHooks(
-            prompt: "UserPromptSubmit", afterTool: "PostToolUse", stop: "Stop",
-            permission: ("Notification", "permission_prompt"),
-            resumeTemplate: "claude --resume {id} --fork-session")
-            + [HookBinding(event: "StopFailure", script: AgentHooksInstall.agentFailureHookName)]),
-        context: .sessionStartHook, configDirectory: ".claude")
+    private struct Status: Decodable {
+        enum Kind: String, Decodable { case jsonHooks, tomlHooks, plugin }
+        let kind: Kind
+        let activate: String?
+        let file: String?
+        let dialect: HookDialect?
+        let hooks: [HookBinding]?
+        let script: String?
+        let events: [TOMLHookEvent]?
+        let source: String?
+        let destination: String?
+        let requires: String?
+        let marker: String?
 
-    /// Gemini CLI's hooks are a port of Claude Code's (`gemini hooks migrate` exists), renamed: there is
-    /// no `Stop`, so `AfterAgent` closes a turn, and `Notification` matches on `notification_type`.
-    /// `-i` seeds an interactive session — the positional argument is headless mode.
-    public static let gemini = AgentProfile(
-        name: "Gemini CLI", binary: "gemini", seed: .flag("-i"),
-        resumeTemplate: "gemini -r {id}",
-        status: .jsonHooks(settingsFile: ".gemini/settings.json", shape: .claude, hooks: statusHooks(
-            prompt: "BeforeAgent", afterTool: "AfterTool", stop: "AfterAgent",
-            permission: ("Notification", "ToolPermission"),
-            resumeTemplate: "gemini -r {id}")),
-        context: .sessionStartHook, configDirectory: ".gemini")
+        func integration(_ decoder: Decoder) throws -> StatusIntegration {
+            func need<T>(_ value: T?, _ key: String) throws -> T {
+                guard let value else {
+                    throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                                                            debugDescription: "status.\(key) missing for \(kind)"))
+                }
+                return value
+            }
+            switch kind {
+            case .jsonHooks:
+                return .jsonHooks(file: try need(file, "file"), dialect: try need(dialect, "dialect"),
+                                  hooks: try need(hooks, "hooks"))
+            case .tomlHooks:
+                return .tomlHooks(file: try need(file, "file"), script: try need(script, "script"),
+                                  events: try need(events, "events"))
+            case .plugin:
+                return .plugin(source: try need(source, "source"), destination: try need(destination, "destination"),
+                               requires: try need(requires, "requires"), marker: try need(marker, "marker"))
+            }
+        }
+    }
 
-    public static let codex = AgentProfile(
-        name: "Codex", binary: "codex",
-        resumeTemplate: "codex resume {id}",
-        status: .codexConfig, configDirectory: ".codex")
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let status = try c.decodeIfPresent(Status.self, forKey: .status)
+        self.init(name: try c.decode(String.self, forKey: .name),
+                  binary: try c.decode(String.self, forKey: .binary),
+                  command: try c.decodeIfPresent(String.self, forKey: .command),
+                  seed: try c.decodeIfPresent(String.self, forKey: .seedFlag).map(BriefSeed.flag) ?? .positional,
+                  resumeTemplate: try c.decodeIfPresent(String.self, forKey: .resume),
+                  status: try status?.integration(decoder) ?? .none,
+                  activate: status?.activate,
+                  context: try c.decodeIfPresent(ContextDelivery.self, forKey: .context) ?? .briefPrefix,
+                  configDirectory: try c.decodeIfPresent(String.self, forKey: .configDirectory),
+                  order: try c.decodeIfPresent(Int.self, forKey: .order) ?? .max)
+    }
+}
 
-    /// Cursor's `hooks.json` has no permission event and no matchers; `sessionStart` answers with a
-    /// top-level `additional_context` rather than Claude's envelope.
-    public static let cursor = AgentProfile(
-        name: "Cursor Agent", binary: "cursor-agent",
-        resumeTemplate: "cursor-agent --resume {id}",
-        status: .jsonHooks(settingsFile: ".cursor/hooks.json", shape: .cursor, hooks: statusHooks(
-            prompt: "beforeSubmitPrompt", afterTool: "postToolUse", stop: "stop", permission: nil,
-            sessionStart: "sessionStart", resumeTemplate: "cursor-agent --resume {id}", contextFormat: "cursor")),
-        context: .sessionStartHook, configDirectory: ".cursor")
+/// The agent manifests and discovery of local agent CLIs. Host-free: the filesystem probe is injected,
+/// so the resolution order is unit-testable without touching a real `PATH`.
+public enum AgentCatalog {
+    /// The manifests directory inside an agent-status package.
+    public static let agentsDirectoryName = "agents"
+    public static let manifestName = "agent.json"
 
-    /// `opencode <text>` reads the text as a project directory; the prompt rides `--prompt`.
-    public static let opencode = AgentProfile(
-        name: "OpenCode", binary: "opencode", seed: .flag("--prompt"),
-        resumeTemplate: "opencode --session {id}",
-        status: .opencodePlugin, configDirectory: ".config/opencode")
+    /// Every agent with a manifest, in `order`. Resolved once: `AGTERM_AGENTS_DIR`, else the bundled
+    /// package's `agents/` (the app and its `agtermctl`), else the source checkout's (`swift test`).
+    /// No directory at all → empty, and every launch line is treated as an unknown, launch-only agent.
+    public static let known: [AgentProfile] = load(directory: defaultDirectory)
 
-    /// Mimo Code is an OpenCode fork with the same CLI surface; its plugin loading is unverified, so
-    /// status stays off until measured (`docs/reference/agents/mimo.md`).
-    public static let mimo = AgentProfile(
-        name: "Mimo", binary: "mimo", seed: .flag("--prompt"),
-        resumeTemplate: "mimo --session {id}", configDirectory: ".config/mimocode")
+    /// Decode every `<directory>/<x>/agent.json`, skipping a malformed one so a single bad manifest
+    /// cannot take the whole catalog down (`AgentCatalogTests` asserts the bundled set decodes).
+    public static func load(directory: URL?) -> [AgentProfile] {
+        guard let directory,
+              let entries = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        else { return [] }
+        let decoder = JSONDecoder()
+        let profiles = entries.compactMap { entry -> AgentProfile? in
+            guard let data = try? Data(contentsOf: entry.appendingPathComponent(manifestName)) else { return nil }
+            return try? decoder.decode(AgentProfile.self, from: data)
+        }
+        return profiles.sorted { ($0.order, $0.binary) < ($1.order, $1.binary) }
+    }
 
-    /// The agents offered on the Settings ▸ Agents "available" list, in the order they are shown.
-    /// A binary missing from `PATH` is simply not offered; nothing here is required to exist.
-    public static let known: [AgentProfile] = [
-        claude,
-        codex,
-        gemini,
-        AgentProfile(name: "Copilot CLI", binary: "copilot"),
-        cursor,
-        opencode,
-        AgentProfile(name: "Crush", binary: "crush"),
-        AgentProfile(name: "Aider", binary: "aider"),
-        AgentProfile(name: "Amp", binary: "amp"),
-        AgentProfile(name: "Goose", binary: "goose"),
-        AgentProfile(name: "Kimi Code", binary: "kimi"),
-        AgentProfile(name: "Qwen Code", binary: "qwen"),
-        AgentProfile(name: "Droid", binary: "droid"),
-        mimo,
-        AgentProfile(name: "Hermes", binary: "hermes"),
-        AgentProfile(name: "Pi", binary: "pi", status: .piExtension, configDirectory: ".pi"),
-    ]
+    static var defaultDirectory: URL? {
+        let fm = FileManager.default
+        var candidates: [URL] = []
+        if let override = ProcessInfo.processInfo.environment["AGTERM_AGENTS_DIR"] {
+            candidates.append(URL(fileURLWithPath: override))
+        }
+        if let resources = Bundle.main.resourceURL {
+            candidates.append(resources.appendingPathComponent("agent-status/\(agentsDirectoryName)"))
+        }
+        candidates.append(sourceDirectory)
+        return candidates.first { fm.fileExists(atPath: $0.path) }
+    }
+
+    /// `agterm/Resources/agent-status/agents` relative to this source file — the SPM test run, which
+    /// has no app bundle.
+    static var sourceDirectory: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("agterm/Resources/agent-status/\(agentsDirectoryName)")
+    }
 
     public static func profile(binary: String) -> AgentProfile? {
         known.first { $0.binary == binary }

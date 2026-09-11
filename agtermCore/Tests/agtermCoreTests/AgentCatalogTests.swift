@@ -2,8 +2,67 @@ import Foundation
 import Testing
 @testable import agtermCore
 
-/// Connected-agent shape and the `PATH` probe behind Settings ▸ Agents ▸ Found on This Mac.
+/// Connected-agent shape, the bundled manifests and the `PATH` probe behind Settings ▸ Agents ▸ Found on
+/// This Mac.
 struct AgentCatalogTests {
+    private func agent(_ binary: String) -> AgentProfile {
+        AgentCatalog.profile(binary: binary)!
+    }
+
+    /// Every `agents/<binary>/agent.json` in the bundled package decodes — the loader skips a malformed one
+    /// silently, so this is the check that catches a broken manifest before it ships.
+    @Test func everyBundledManifestDecodes() throws {
+        let fm = FileManager.default
+        let directory = AgentCatalog.sourceDirectory
+        let folders = try fm.contentsOfDirectory(atPath: directory.path).filter { !$0.hasPrefix(".") }
+        #expect(AgentCatalog.known.count == folders.count)
+        #expect(Set(AgentCatalog.known.map(\.binary)).isSuperset(of: ["claude", "codex", "gemini", "cursor-agent", "opencode", "mimo", "pi"]))
+        for folder in folders {
+            #expect(fm.fileExists(atPath: directory.appendingPathComponent(folder + "/agent.json").path), "\(folder) has no agent.json")
+        }
+    }
+
+    /// Manifest folder = binary, so a contributor finds an agent by the command they type.
+    @Test func manifestFolderIsNamedAfterTheAgent() throws {
+        let folders = try FileManager.default.contentsOfDirectory(atPath: AgentCatalog.sourceDirectory.path)
+        for profile in AgentCatalog.known {
+            let folder = profile.binary == "cursor-agent" ? "cursor" : profile.binary
+            #expect(folders.contains(folder), "no agents/\(folder)/ for \(profile.binary)")
+        }
+    }
+
+    @Test func catalogOrderComesFromTheManifests() {
+        #expect(AgentCatalog.known.prefix(3).map(\.binary) == ["claude", "codex", "gemini"])
+        #expect(AgentCatalog.known.last?.binary == "pi")
+    }
+
+    @Test func manifestScriptsExistInThePackage() {
+        let package = AgentCatalog.sourceDirectory.deletingLastPathComponent()
+        for profile in AgentCatalog.known {
+            let scripts: [String]
+            switch profile.status {
+            case .jsonHooks(_, _, let hooks): scripts = hooks.map(\.script)
+            case .tomlHooks(_, let script, _): scripts = [script]
+            case .plugin(let source, _, _, _): scripts = [source]
+            case .none: scripts = []
+            }
+            for script in scripts {
+                #expect(FileManager.default.fileExists(atPath: package.appendingPathComponent(script).path),
+                        "\(profile.binary): \(script) missing")
+            }
+        }
+    }
+
+    @Test func malformedManifestIsSkippedNotFatal() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("agents-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent("good"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent("bad"), withIntermediateDirectories: true)
+        try #"{"name": "Good", "binary": "good"}"#.write(to: dir.appendingPathComponent("good/agent.json"), atomically: true, encoding: .utf8)
+        try #"{"name": "Bad", "binary": "bad", "status": {"kind": "jsonHooks"}}"#.write(to: dir.appendingPathComponent("bad/agent.json"), atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        #expect(AgentCatalog.load(directory: dir).map(\.binary) == ["good"])
+        #expect(AgentCatalog.load(directory: nil).isEmpty)
+    }
 
     @Test func blankCommandIsNotRunnable() {
         #expect(AgentDefinition(name: "x", command: "   ").launchCommand == nil)
@@ -60,11 +119,11 @@ struct AgentCatalogTests {
     }
 
     @Test func resumeCommandSubstitutesAnIdShapedToken() {
-        #expect(AgentCatalog.claude.resumeCommand(sessionID: "ab-12_c") == "claude --resume ab-12_c --fork-session")
-        #expect(AgentCatalog.gemini.resumeCommand(sessionID: "u1") == "gemini -r u1")
-        #expect(AgentCatalog.codex.resumeCommand(sessionID: "t9") == "codex resume t9")
-        #expect(AgentCatalog.claude.resumeCommand(sessionID: "x; rm -rf /") == nil)
-        #expect(AgentCatalog.claude.resumeCommand(sessionID: "") == nil)
+        #expect(agent("claude").resumeCommand(sessionID: "ab-12_c") == "claude --resume ab-12_c --fork-session")
+        #expect(agent("gemini").resumeCommand(sessionID: "u1") == "gemini -r u1")
+        #expect(agent("codex").resumeCommand(sessionID: "t9") == "codex resume t9")
+        #expect(agent("claude").resumeCommand(sessionID: "x; rm -rf /") == nil)
+        #expect(agent("claude").resumeCommand(sessionID: "") == nil)
         #expect(AgentProfile(name: "Aider", binary: "aider").resumeCommand(sessionID: "a") == nil)
     }
 
@@ -77,37 +136,57 @@ struct AgentCatalogTests {
         #expect(!bare.hasStatusIntegration)
         #expect(bare.context == .briefPrefix)
         #expect(bare.jsonHookBindings.isEmpty)
-        #expect(bare.jsonHooksSettingsFile == nil)
+        #expect(bare.jsonHooksFile == nil)
     }
 
     @Test func seedArgumentsPlaceTheBriefWhereTheAgentReadsIt() {
         #expect(BriefSeed.positional.arguments(briefArgument: #""$b""#) == #""$b""#)
-        #expect(AgentCatalog.gemini.seed.arguments(briefArgument: #""$b""#) == #"-i "$b""#)
-        #expect(AgentCatalog.opencode.seed.arguments(briefArgument: #""$b""#) == #"--prompt "$b""#)
-        #expect(AgentCatalog.mimo.seed == .flag("--prompt"))
+        #expect(agent("gemini").seed.arguments(briefArgument: #""$b""#) == #"-i "$b""#)
+        #expect(agent("opencode").seed.arguments(briefArgument: #""$b""#) == #"--prompt "$b""#)
+        #expect(agent("mimo").seed == .flag("--prompt"))
     }
 
     @Test func geminiHooksMirrorClaudeUnderGeminiEventNames() {
-        let events = AgentCatalog.gemini.jsonHookBindings.map(\.event)
+        let events = agent("gemini").jsonHookBindings.map(\.event)
         #expect(events == ["BeforeAgent", "AfterTool", "AfterAgent", "Notification", "SessionStart", "SessionStart"])
-        #expect(AgentCatalog.gemini.jsonHookBindings[3].matcher == "ToolPermission")
-        #expect(AgentCatalog.gemini.jsonHookBindings[4].args.contains("--resume-line 'gemini -r {id}'"))
-        #expect(AgentCatalog.gemini.jsonHooksSettingsFile == ".gemini/settings.json")
-        #expect(AgentCatalog.gemini.jsonHooksShape == .claude)
+        #expect(agent("gemini").jsonHookBindings[3].matcher == "ToolPermission")
+        #expect(agent("gemini").jsonHookBindings[4].args == ["--resume-line", "gemini -r {id}"])
+        #expect(agent("gemini").jsonHooksFile == ".gemini/settings.json")
+        #expect(agent("gemini").jsonHooksDialect == .claude)
     }
 
-    @Test func cursorHooksHaveNoPermissionEventAndAnswerInCursorFormat() {
-        let hooks = AgentCatalog.cursor.jsonHookBindings
-        #expect(hooks.map(\.event) == ["beforeSubmitPrompt", "postToolUse", "stop", "sessionStart", "sessionStart"])
-        #expect(hooks.allSatisfy { $0.matcher == nil })
-        #expect(hooks.last?.args == " --format cursor")
-        #expect(AgentCatalog.cursor.jsonHooksShape == .cursor)
+    /// Cursor and Mimo are launch + resume only until their hooks are measured in a live pane
+    /// (`docs/reference/agents/cursor.md`, `mimo.md`).
+    @Test func cursorAndMimoAreLaunchAndResumeOnly() {
+        for binary in ["cursor-agent", "mimo"] {
+            #expect(agent(binary).supportsResume)
+            #expect(!agent(binary).hasStatusIntegration)
+            #expect(agent(binary).context == .briefPrefix)
+        }
+    }
+
+    @Test func claudeKeepsTheStopFailureHook() {
+        let claude = agent("claude")
+        #expect(claude.jsonHookBindings.last?.event == "StopFailure")
+        #expect(claude.jsonHookBindings.last?.script == "agx-agent-failure.sh")
+        #expect(claude.context == .sessionStartHook)
+        #expect(claude.activate == nil)
+    }
+
+    @Test func codexManifestDrivesTheTOMLBlock() {
+        guard case .tomlHooks(let file, let script, let events) = agent("codex").status else {
+            Issue.record("codex is not tomlHooks"); return
+        }
+        #expect(file == ".codex/config.toml")
+        #expect(script == "agents/codex/status.sh")
+        #expect(events.map(\.action) == ["session-start", "user-prompt-submit", "pre-tool-use", "post-tool-use", "permission-request", "stop"])
+        #expect(agent("codex").activate?.contains("/hooks") == true)
     }
 
     @Test func everyKnownBinaryIsUniqueAndProfilesResolveByBinary() {
         let binaries = AgentCatalog.known.map(\.binary)
         #expect(binaries.count == Set(binaries).count)
-        #expect(AgentCatalog.profile(binary: "opencode") == AgentCatalog.opencode)
+        #expect(AgentCatalog.profile(binary: "opencode")?.name == "OpenCode")
         #expect(AgentCatalog.profile(binary: "nope") == nil)
     }
 }

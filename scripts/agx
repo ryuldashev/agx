@@ -329,23 +329,48 @@ def _mimo_trusts(path):
     return any(os.path.realpath(os.path.expanduser(p)) == real for p in paths if isinstance(p, str))
 
 
-# Mirror of agtermCore/AgentCatalog.swift, the source of truth for what agx knows about each agent
-# CLI: how it takes the brief (`seed` = the flag before the text; [] = positional), whether an
-# installed SessionStart hook already hands it `agx context` (else spawn prefixes the brief), and how
-# to probe the one-time folder-trust gate. Keep in step when a profile changes there.
-AGENTS = {
-    "claude":       {"seed": [],           "context_hook": True,  "trusts": _claude_trusts},
-    "codex":        {"seed": [],           "context_hook": True,  "trusts": _codex_trusts},
-    "gemini":       {"seed": ["-i"],       "context_hook": True,  "trusts": _gemini_trusts},
-    "cursor-agent": {"seed": [],           "context_hook": True,  "trusts": None},
-    "opencode":     {"seed": ["--prompt"], "context_hook": False, "trusts": None},
-    "mimo":         {"seed": ["--prompt"], "context_hook": False, "trusts": _mimo_trusts},
+TRUST_PROBES = {
+    "claudeProjects": _claude_trusts,
+    "codexProjects": _codex_trusts,
+    "geminiTrustedFolders": _gemini_trusts,
+    "mimoTrustedWorkspaces": _mimo_trusts,
 }
-KNOWN_BINARIES = ["claude", "codex", "gemini", "copilot", "cursor-agent", "opencode", "crush", "aider",
-                  "amp", "goose", "kimi", "qwen", "droid", "mimo", "hermes", "pi"]
 
 CONTEXT_PREFIX = ("You are running inside AGX, an agent terminal. Run `agx context` first: it tells you "
                   "which pane you are, what the user sees, and what you can do to this UI.\n\n")
+
+
+def _agents_dir():
+    """The `agents/<binary>/agent.json` manifests — the same files the app reads (AgentCatalog.swift):
+    the bundled package beside this script, else the installed copy, else the source checkout."""
+    here = os.path.dirname(os.path.realpath(__file__))
+    for d in (os.environ.get("AGTERM_AGENTS_DIR"),
+              os.path.join(here, "agent-status", "agents"),
+              os.path.expanduser("~/.config/agx/agent-status/agents"),
+              os.path.normpath(os.path.join(here, "..", "agterm", "Resources", "agent-status", "agents"))):
+        if d and os.path.isdir(d):
+            return d
+    return None
+
+
+def _load_agents():
+    """{binary: manifest} in catalog order; a malformed manifest is skipped, no directory → {}."""
+    d = _agents_dir()
+    if not d:
+        return {}
+    agents = []
+    for name in os.listdir(d):
+        try:
+            m = json.load(open(os.path.join(d, name, "agent.json")))
+        except (OSError, ValueError):
+            continue
+        if isinstance(m, dict) and isinstance(m.get("binary"), str) and isinstance(m.get("name"), str):
+            agents.append(m)
+    agents.sort(key=lambda m: (m.get("order", 1 << 30), m["binary"]))
+    return {m["binary"]: m for m in agents}
+
+
+AGENTS = _load_agents()
 
 
 def _agent_exe(agent):
@@ -353,20 +378,23 @@ def _agent_exe(agent):
 
 
 def _agent_profile(agent):
-    return AGENTS.get(_agent_exe(agent), {"seed": [], "context_hook": False, "trusts": None})
+    """The manifest behind a launch line (`claude`, `codex --model x`); an unknown binary gets the
+    launch-only floor: positional brief, no context hook, no trust probe."""
+    return AGENTS.get(_agent_exe(agent), {})
 
 
 def _installed_agents():
     """Known agent binaries on PATH plus the per-user tool dirs a GUI-spawned shell may lack."""
     extra = [os.path.expanduser(d) for d in ("~/.local/bin", "~/.bun/bin", "~/.cargo/bin", "~/.npm-global/bin")]
     path = os.environ.get("PATH", "") + ":" + ":".join(extra) + ":/opt/homebrew/bin:/usr/local/bin"
-    return [b for b in KNOWN_BINARIES if shutil.which(b, path=path)]
+    return [b for b in AGENTS if shutil.which(b, path=path)]
 
 
 def _agent_trusts(agent, path):
     """Dispatch the trust probe on the agent's executable (`claude`, `codex --model x`, …). Agents we
     don't know how to probe → None (no warning either way)."""
-    probe = _agent_profile(agent)["trusts"]
+    trust = _agent_profile(agent).get("trust") or {}
+    probe = TRUST_PROBES.get(trust.get("kind"))
     if probe:
         return probe(path)
     return None
@@ -409,10 +437,10 @@ def cmd_spawn(argv):
     # Where "$b" goes is the agent's profile (`gemini -i "$b"`, `opencode --prompt "$b"`); an agent with
     # no SessionStart context hook gets a one-line pointer to `agx context` in front of the brief.
     profile = _agent_profile(opts["agent"])
-    if not profile["context_hook"]:
+    if profile.get("context") != "sessionStartHook":
         with open(briefpath, "w") as f:
             f.write(CONTEXT_PREFIX + opts["brief"])
-    seed = " ".join(profile["seed"] + ['"$b"'])
+    seed = " ".join(([profile["seedFlag"]] if profile.get("seedFlag") else []) + ['"$b"'])
     body = 'b="$(cat %s)"; rm -f %s; exec %s %s' % (briefpath, briefpath, opts["agent"], seed)
     command = "zsh -lc '" + body + "'"
     args = ["session", "new", "--command", command]

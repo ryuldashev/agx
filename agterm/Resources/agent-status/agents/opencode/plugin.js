@@ -29,7 +29,7 @@ const ABORT_ERROR_NAMES = new Set(["MessageAbortedError", "AbortError"]);
 const OVERFLOW_ERROR_NAME = "ContextOverflowError";
 
 function defaultWrapperPath() {
-  return join(homedir(), ".config", "agterm", "agent-status", "agterm-agent-status.sh");
+  return join(homedir(), ".config", "agx", "agent-status", "agterm-agent-status.sh");
 }
 
 /**

@@ -1,0 +1,44 @@
+{
+  "order": 1,
+  "name": "Codex",
+  "binary": "codex",
+  "resume": "codex resume {id}",
+  "configDirectory": ".codex",
+  "context": "sessionStartHook",
+  "trust": {
+    "kind": "codexProjects",
+    "file": "~/.codex/config.toml"
+  },
+  "status": {
+    "kind": "tomlHooks",
+    "activate": "Run /hooks in Codex to review and approve them before they take effect.",
+    "file": ".codex/config.toml",
+    "script": "agents/codex/status.sh",
+    "events": [
+      {
+        "event": "SessionStart",
+        "action": "session-start"
+      },
+      {
+        "event": "UserPromptSubmit",
+        "action": "user-prompt-submit"
+      },
+      {
+        "event": "PreToolUse",
+        "action": "pre-tool-use"
+      },
+      {
+        "event": "PostToolUse",
+        "action": "post-tool-use"
+      },
+      {
+        "event": "PermissionRequest",
+        "action": "permission-request"
+      },
+      {
+        "event": "Stop",
+        "action": "stop"
+      }
+    ]
+  }
+}

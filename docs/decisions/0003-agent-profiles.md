@@ -23,32 +23,42 @@ terminal agent — out of scope.
 
 ## Decision
 
-`AgentProfile` (`agtermCore/AgentCatalog.swift`) is the single place agx knows an agent: `seed`
-(where `"$b"` goes), `resumeTemplate` (`{id}`), `status` (`.jsonHooks(file, shape, bindings)` /
-`.codexConfig` / `.piExtension` / `.opencodePlugin` / `.none`), `context` (`.sessionStartHook` /
-`.briefPrefix`) and `configDirectory` (the install gate). Consumers read the profile and never a
-binary name: `AgentHooksInstaller` iterates every `.jsonHooks` profile through one
-`mergeJSONHooks(shape:)`; `ScheduledLaunch.commandLine` (schedule + failover handoff) renders the
-seed; `AgentBinary.of` resolves through the catalog; the two `SessionStart` scripts take
-`--resume-line` / `--format` from the binding instead of hard-coding Claude; Codex's adapter calls
-them from `session-start`.
+One folder per agent, `agterm/Resources/agent-status/agents/<binary>/`, is the single place agx knows
+an agent. Its `agent.json` declares: `seedFlag` (where `"$b"` goes), `resume` (`{id}`), `context`
+(`sessionStartHook` / `briefPrefix`), `configDirectory` (the install gate), `trust` (the folder-trust
+file `agx spawn` probes) and `status` — discriminated by `kind`: `jsonHooks` (file + `claude`/`cursor`
+dialect + bindings), `tomlHooks` (file + adapter script + event→action rows), `plugin` (source,
+destination, `requires` directory, ownership marker). An agent that needs code keeps it in the same
+folder (`codex/status.sh`, `opencode/plugin.js`, `pi/extension.ts`); the shared scripts stay at the
+package root.
 
-Graceful floor: a profile with only a name and binary is launch-only — positional seed, no glyph, no
+`AgentCatalog.known` decodes the manifests (`AGTERM_AGENTS_DIR` → the bundle → the source checkout);
+`scripts/agx` reads the same files in python. Consumers read a profile and never a binary name:
+`AgentHooksInstaller` runs one step per manifest by `status.kind`; `ScheduledLaunch.commandLine`
+(schedule + failover handoff) renders the seed; `AgentBinary.of` resolves through the catalog; the two
+session-start scripts take `--resume-line` / `--format` from the binding. The core knows the three
+integration kinds and nothing about any agent — adding one is a folder, not a Swift change.
+
+Graceful floor: a manifest with only `name` and `binary` is launch-only — positional seed, no glyph, no
 resume, `agx spawn` prefixes the brief with a pointer to `agx context`. Nothing an unknown CLI can
-do today is taken away from it.
+do today is taken away from it. A malformed manifest is skipped, not fatal; `AgentCatalogTests`
+asserts every bundled one decodes and that every script it names exists.
 
-`scripts/agx` (python) cannot read the Swift catalog, so it carries a mirror `AGENTS` table for seed,
-context delivery and trust probes. Accepted duplication, documented in both places; the alternative
-(a control command exposing profiles) is more plumbing than the table until a third consumer appears.
+Refined the same day from a first cut that kept the profiles as Swift literals plus a python mirror
+table: two copies of the same facts, and Cursor hooks installed on documentation alone. The manifest
+layout removes the mirror; Cursor and Mimo ship launch + resume until a live pane confirms their hooks.
 
 ## Consequences
 
-- Adding an agent = one `AgentProfile` + a `docs/reference/agents/<binary>.md` of measured facts (+ the
-  `AGENTS` mirror line in `scripts/agx` when seed/context/trust differ from the default).
+- Adding an agent = `agents/<binary>/agent.json` (+ its adapter beside it) + a
+  `docs/reference/agents/<binary>.md` of measured facts. A new trust-file format needs a probe in
+  `scripts/agx:TRUST_PROBES`; a new hook-file format needs a fourth `status.kind` in the core.
 - Installed Claude hooks from before this change carry no `--resume-line`/`--format`; the idempotency
   probe is by script path so they are kept as-is, and both scripts default to Claude's lines.
-- The Cursor `sessionStart` hook and Gemini's `Notification` matcher are installed on documented
-  contracts, not on an observed run (both need a login this machine does not have). If either
-  misfires, the profile is the only place to fix.
-- Mimo's plugin loading is unverified; its status stays `.none` until measured.
+- Gemini's `Notification` matcher is installed on a documented contract, not on an observed run (needs
+  a login this machine does not have). If it misfires, the manifest is the only place to fix.
+- Cursor and Mimo have no `status` until a live pane confirms their hook surface; Mimo's plugin
+  loading is unverified.
+- Codex re-prompts hook trust once: its adapter moved from `agterm-codex-status.sh` to
+  `agents/codex/status.sh`, and Codex trusts hooks by command path.
 - `agx usage` remains Claude-only (Codex exposes usage only over its app-server JSON-RPC).

@@ -9,7 +9,7 @@ import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
-  const wrapper = join(homedir(), ".config", "agterm", "agent-status", "agterm-agent-status.sh");
+  const wrapper = join(homedir(), ".config", "agx", "agent-status", "agterm-agent-status.sh");
 
   async function report(args: string[]): Promise<void> {
     if (!process.env.AGTERM_SESSION_ID) return;

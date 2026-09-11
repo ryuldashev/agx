@@ -18,17 +18,20 @@ Goose, Kimi, Qwen, Droid, Mimo, Hermes, Pi) and offers one-click Connect. The pr
 `~/.bun/bin` and the Homebrew prefixes itself: the GUI is launched by launchd, whose `PATH` has none
 of the directories agents actually install into.
 
-**Agent profiles** (`agtermCore/AgentCatalog.swift`, ADR-0003) — everything agx knows about one CLI
-lives in its `AgentProfile`: how it takes a brief (`claude "$b"` vs `gemini -i "$b"` vs `opencode
---prompt "$b"`), its resume line (`{id}`), which hook file its status hooks merge into and in which
-dialect, how `agx context` reaches it, and its config directory. The installer, `ScheduledLaunch` (schedule
-+ failover), the restore pin and `agx spawn` read the profile; nothing else names an agent. A profile
-with only a name and binary is launch-only: seeded positionally, no glyph, no resume — the graceful floor.
-Depth today: Claude Code and Gemini CLI (hooks + resume + context), Codex (hooks + resume + context via
-its adapter), Cursor (hooks without a permission event + resume + context), OpenCode (plugin status,
-`--prompt` seed, `--session` resume), Mimo (seed + resume only). Measured facts per CLI —
-`docs/reference/agents/<binary>.md`. `scripts/agx` mirrors the seed/context/trust part of the catalog in
-its `AGENTS` table (python can't read the Swift catalog); keep the two in step.
+**Agent profiles** (`Resources/agent-status/agents/<binary>/agent.json`, ADR-0003) — one folder per
+agent CLI holds everything agx knows about it: a manifest (how it takes a brief — `claude "$b"` vs
+`gemini -i "$b"` vs `opencode --prompt "$b"` — its resume line with `{id}`, which hook file its status
+hooks go into and in which dialect, how `agx context` reaches it, its config directory, its
+folder-trust file) and, beside it, the agent's own adapter when it needs one (`codex/status.sh`,
+`opencode/plugin.js`, `pi/extension.ts`). `AgentCatalog.swift` decodes the manifests; the installer,
+`ScheduledLaunch` (schedule + failover), the restore pin and `scripts/agx` (python, same files) read
+them, and no Swift or python code names an agent. The core knows three integration kinds — `jsonHooks`
+(Claude/Gemini shape or Cursor's flat shape), `tomlHooks` (Codex's `[[hooks.*]]` block), `plugin`
+(copy once the agent's directory exists) — and nothing else. A manifest with only a name and binary
+is launch-only: seeded positionally, no glyph, no resume — the graceful floor. Depth today: Claude Code
+and Gemini CLI (hooks + resume + context), Codex (hooks + resume + context via its adapter), OpenCode
+(plugin status, `--prompt` seed, `--session` resume), Cursor and Mimo (seed + resume; their hooks wait
+for a live pane). Measured facts per CLI — `docs/reference/agents/<binary>.md`.
 
 **⌥ names the chrome** — holding ⌥ alone drops a panel under the title bar listing every visible chrome
 control as icon + the short token used to talk about it + its shortcut, so a button can be reported by name
@@ -170,7 +173,8 @@ New files (no upstream conflict surface):
 
 ```
 agtermCore/Sources/agtermCore/Brand.swift              fork identity, one place
-agtermCore/Sources/agtermCore/AgentCatalog.swift       known agents + PATH probe
+agtermCore/Sources/agtermCore/AgentCatalog.swift       agent.json loader + PATH probe
+agterm/Resources/agent-status/agents/<binary>/        one manifest (+ adapter) per agent
 agtermCore/Sources/agtermCore/WorkspaceDefaults.swift  the seed and its precedence rules
 agtermCore/Sources/agtermCore/AppStore+Defaults.swift  store read/write + shared resolver
 agtermCore/Sources/agtermCore/AppStore+ControlTree.swift  extracted from AppStore.swift (line budget)

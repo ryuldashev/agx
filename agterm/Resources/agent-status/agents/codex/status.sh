@@ -13,8 +13,9 @@ action=${1:-}
 [ -n "$action" ] || exit 0
 shift
 
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
-status_wrapper=${AGTERM_STATUS_WRAPPER:-"$script_dir/agterm-agent-status.sh"}
+# This adapter lives in agents/codex/; the shared scripts sit two levels up at the package root.
+package_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd)
+status_wrapper=${AGTERM_STATUS_WRAPPER:-"$package_dir/agterm-agent-status.sh"}
 
 pane_args=()
 [ -n "${AGTERM_PANE:-}" ] && pane_args=(--pane "$AGTERM_PANE")
@@ -115,9 +116,9 @@ case "$action" in
     # two SessionStart jobs Claude Code's hooks do. stdin (the hook JSON) goes to the restore script
     # first via a temp copy so both can read it; either failing is silent.
     hook_json=$(cat 2>/dev/null || true)
-    printf '%s' "$hook_json" | "$script_dir/agx-session-restore.sh" --resume-line 'codex resume {id}' \
+    printf '%s' "$hook_json" | "$package_dir/agx-session-restore.sh" --resume-line 'codex resume {id}' \
       >/dev/null 2>&1 || true
-    "$script_dir/agx-session-context.sh" --format codex 2>/dev/null || true
+    "$package_dir/agx-session-context.sh" --format codex 2>/dev/null || true
     ;;
   user-prompt-submit)
     report_status active --blink

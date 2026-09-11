@@ -1,0 +1,14 @@
+{
+  "order": 15,
+  "name": "Pi",
+  "binary": "pi",
+  "configDirectory": ".pi",
+  "status": {
+    "kind": "plugin",
+    "activate": "Restart Pi or run /reload.",
+    "source": "agents/pi/extension.ts",
+    "destination": ".pi/agent/extensions/agterm-status.ts",
+    "requires": ".pi/agent",
+    "marker": "// agterm-pi-status-extension"
+  }
+}

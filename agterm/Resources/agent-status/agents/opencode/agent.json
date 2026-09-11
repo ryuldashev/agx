@@ -1,0 +1,16 @@
+{
+  "order": 5,
+  "name": "OpenCode",
+  "binary": "opencode",
+  "seedFlag": "--prompt",
+  "resume": "opencode --session {id}",
+  "configDirectory": ".config/opencode",
+  "status": {
+    "kind": "plugin",
+    "activate": "Restart OpenCode.",
+    "source": "agents/opencode/plugin.js",
+    "destination": ".config/opencode/plugins/agterm-status.js",
+    "requires": ".config/opencode",
+    "marker": "// agterm-opencode-status-plugin"
+  }
+}

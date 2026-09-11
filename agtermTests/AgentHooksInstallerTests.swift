@@ -1,5 +1,6 @@
 import AppKit
 import XCTest
+import agtermCore
 @testable import agterm
 
 /// NSAlert sizes itself to fit `informativeText`, with no scroll and no height cap, so any text long enough
@@ -7,29 +8,44 @@ import XCTest
 /// whole 29-line hooks block and did exactly that.
 @MainActor
 final class AgentHooksInstallerTests: XCTestCase {
-    private let allCodexResults: [AgentHooksInstaller.CodexResult] =
-        [.merged, .alreadyConfigured, .hooksExist, .unparseable, .unreadable, .noCodex]
+    private let allResults: [AgentHooksInstaller.IntegrationResult] = [
+        .merged, .unchanged, .notInstalled,
+        .skipped(reason: "already defines its own hooks", manual: true),
+        .skipped(reason: "isn't valid TOML", manual: true),
+        .skipped(reason: "exists but couldn't be read", manual: false),
+    ]
 
-    func testNoCodexOutcomeEmbedsTheHooksBlock() {
-        for result in allCodexResults {
-            let text = AgentHooksInstaller.codexText(result)
+    private var codex: AgentProfile {
+        AgentCatalog.profile(binary: "codex")!
+    }
+
+    func testNoOutcomeEmbedsTheHooksBlock() {
+        for result in allResults {
+            let text = AgentHooksInstaller.agentText(codex, result)
             XCTAssertFalse(text.contains("[[hooks."), "\(result) should point at the docs, not inline the block")
             XCTAssertFalse(text.contains("\n"), "\(result) should stay a single line")
         }
     }
 
     func testOnlyTheManualMergeOutcomesOfferTheDocsButton() {
-        for result in allCodexResults {
-            let expected = result == .hooksExist || result == .unparseable
+        for result in allResults {
+            let expected: Bool
+            if case .skipped(_, let manual) = result { expected = manual } else { expected = false }
             XCTAssertEqual(result.needsManualMerge, expected, "\(result) offers the docs button: \(expected)")
         }
     }
 
     func testManualMergeTextNamesTheDocsSection() {
-        for result in allCodexResults where result.needsManualMerge {
-            XCTAssertTrue(AgentHooksInstaller.codexText(result).contains("Add Codex hooks by hand"),
+        for result in allResults where result.needsManualMerge {
+            XCTAssertTrue(AgentHooksInstaller.agentText(codex, result).contains("Add Codex hooks by hand"),
                           "\(result) should name the docs section the button opens")
         }
+    }
+
+    func testMergedTextCarriesTheAgentsActivateStep() {
+        let text = AgentHooksInstaller.agentText(codex, .merged)
+        XCTAssertTrue(text.contains("~/.codex/config.toml"))
+        XCTAssertTrue(text.contains("Run /hooks in Codex"))
     }
 
     func testDocsButtonIsSecondSoTheDefaultStaysOK() {

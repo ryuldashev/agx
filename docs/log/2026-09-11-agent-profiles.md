@@ -23,3 +23,18 @@ agents without a hook, probes Gemini/Mimo folder trust, and lists the installed 
 - Mimo: check whether `~/.config/mimocode/plugins/` loads the OpenCode status plugin; if yes, flip its
   status to `.opencodePlugin` with a mimo path.
 - `agx usage` for Codex via `account/usage/read` on the app-server.
+
+## Later the same day — per-agent folders
+Ruslan set the bar: open-source quality, one folder per agent with its hooks, nothing extra. Restructured:
+`Resources/agent-status/agents/<binary>/agent.json` (16 manifests, the schema is in ADR-0003) with the
+agent's adapter beside it (`codex/status.sh`, `opencode/plugin.js`, `pi/extension.ts`); `AgentCatalog`
+is now a loader, `AgentHooksInstall(er)` is generic over `jsonHooks`/`tomlHooks`/`plugin`, `scripts/agx`
+reads the same manifests (the python `AGENTS` mirror is gone). Trimmed Cursor and Mimo to launch +
+resume — their hooks were installed on docs, not on a run. Plugin/extension defaults now point at
+`~/.config/agx/…` (they said `agterm`, masked here by a symlink).
+
+Verified: `swift test` 2785/2785, `make lint` clean, `make test-app` 266/266, `make build`, `make deploy`.
+
+Next: relaunch agx + Help ▸ Install Agent Status Hooks (Codex asks for hook trust once — its adapter path
+changed). First live Gemini pane confirms the `Notification` matcher; first live Cursor pane earns its
+`status` block.
