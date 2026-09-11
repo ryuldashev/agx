@@ -27,7 +27,7 @@ C-boundary concurrency before changing the bridge.
   Set only a short `/tmp` `AGTERM_STATE_DIR` so app and inherited CLI derive the same socket.
   Prepend the Debug app's `Contents/MacOS` to PATH for custom commands; login shells may restore the
   deployed CLI, so manual commands should use the Debug binary's full path.
-- A fresh isolated state dir reads as a first launch and opens the welcome alert.
+- A fresh isolated state dir reads as a first launch and opens the Welcome window (non-modal).
   `mkdir -p "$AGTERM_STATE_DIR/windows"` before launching to skip it: `FirstRunWelcome.hasPriorState`
   looks for `settings.json`, `workspaces.json`, or `windows` before the app writes anything.
   Leave the marker out only when the welcome itself is under test.
@@ -146,11 +146,12 @@ C-boundary concurrency before changing the bridge.
   consumed), every built-in action with its origin (keymap / palette), every mutating control request, and
   the scratch/split/close state flips all routes funnel through. Plain typing is never recorded. Rotates
   once at 8 MB. `tail -f ~/Library/Application\ Support/agx/journal.jsonl` while reproducing.
-- An isolated `open -n --env AGTERM_STATE_DIR=<dir>` Debug instance never binds its socket until the
-  first-run Welcome and Permissions modals are dismissed by hand — they run before the scene's `.task`
-  that calls `controlServer.start()`. Add `--env AGTERM_UITEST_FORCE_SIDEBAR_VISIBLE=1` (the UI-test
-  sentinel) to suppress both; the window then pops in front of the user, so stop it (SIGTERM its PID)
-  as soon as the probe is done.
+- An isolated `open -n --env AGTERM_STATE_DIR=<dir>` Debug instance opens the first-run Welcome window
+  (non-modal since 2026-09-12: the socket binds anyway) and, on an upgrade path, the Permissions wall,
+  which is modal and holds `controlServer.start()`. Add `--env AGTERM_UITEST_FORCE_SIDEBAR_VISIBLE=1`
+  (the UI-test sentinel) to suppress both; the window then pops in front of the user, so stop it
+  (SIGTERM its PID) as soon as the probe is done. Never launch the Debug binary directly from a shell —
+  it stays alive with no window and no socket; use `open -n`.
 - Use absolute repo-root paths for existence checks. Tool cwd persists across calls and often drifts into
   `agtermCore`.
 - CI and release mechanics live in `.claude/rules/ci.md` and `release.md`. `CHANGELOG.md` is release-only;

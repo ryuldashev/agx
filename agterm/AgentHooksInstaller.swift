@@ -87,6 +87,46 @@ enum AgentHooksInstaller {
         }
     }
 
+    /// Read-only: which agents on this Mac already carry the hooks, and which could. Decided by the same
+    /// merges the install runs (a merge that would change nothing = installed), so the Welcome checklist
+    /// and the installer can never disagree; nothing is written.
+    struct Status: Equatable {
+        var installed: [String]
+        var eligible: [String]
+        var packagePresent: Bool
+    }
+
+    static func status() -> Status {
+        let fm = FileManager.default
+        var status = Status(installed: [], eligible: [], packagePresent: fm.fileExists(atPath: destinationFolder.path))
+        for profile in AgentCatalog.known where profile.hasStatusIntegration {
+            guard let configDirectory = profile.configDirectory, exists(configDirectory) else { continue }
+            status.eligible.append(profile.name)
+            if status.packagePresent, isInstalled(profile) { status.installed.append(profile.name) }
+        }
+        return status
+    }
+
+    private static func isInstalled(_ profile: AgentProfile) -> Bool {
+        let scriptDir = destinationFolder.path
+        switch profile.status {
+        case .jsonHooks(let file, let dialect, let hooks):
+            guard let existing = try? readExistingConfig(at: home.appendingPathComponent(file)), !existing.isEmpty,
+                  let merged = try? AgentHooksInstall.mergeJSONHooks(existing: existing, scriptDir: scriptDir,
+                                                                     dialect: dialect, bindings: hooks) else { return false }
+            return !merged.changed
+        case .tomlHooks(let file, let script, let events):
+            guard let existing = try? readExistingConfig(at: home.appendingPathComponent(file)) else { return false }
+            return AgentHooksInstall.mergeTOMLHooks(existing: existing, scriptDir: scriptDir, script: script,
+                                                    events: events) == .unchanged
+        case .plugin(_, let destination, _, let marker):
+            guard let existing = try? readExistingConfig(at: home.appendingPathComponent(destination)) else { return false }
+            return existing.contains(marker)
+        case .none:
+            return false
+        }
+    }
+
     /// Run the install and show the result window.
     static func run() {
         do {

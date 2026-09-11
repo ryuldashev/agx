@@ -19,6 +19,9 @@ struct SettingsView: View {
     private enum Tab: Hashable { case general, appearance, interface, notifications, agents, agentStatus, keyMapping }
     @State private var selection: Tab = .general
 
+    /// Posted by the Welcome panel's "Connect an agent" row; the Settings scene has no other way in.
+    static let openAgentsTab = Notification.Name("\(Brand.bundleID).settings.openAgentsTab")
+
     var body: some View {
         TabView(selection: $selection) {
             GeneralSettingsView(model: model)
@@ -44,6 +47,7 @@ struct SettingsView: View {
                 .tag(Tab.keyMapping)
         }
         .frame(width: 540, height: 640)
+        .onReceive(NotificationCenter.default.publisher(for: Self.openAgentsTab)) { _ in selection = .agents }
         // without this a process-launch reopen (see agtermApp's FB11763863 workaround) resurrects a stale
         // Settings window on its last tab, stealing key focus from the real launch window.
         .background(NonRestorableWindow())
