@@ -12,7 +12,7 @@ enum PermissionsAlert {
     /// retain its target, and these are created per presentation.
     private static var openSettingsTargets: [OpenSettingsTarget] = []
 
-    /// Suppressed under XCUITest for `WelcomeAlert`'s reason: every test launches on a fresh state
+    /// Suppressed under XCUITest for `WelcomeWindow`'s reason: every test launches on a fresh state
     /// directory, so a first-run modal would open before the first assertion.
     static var isSuppressedForUITest: Bool {
         ContentView.isUITestLaunch && ProcessInfo.processInfo.environment["AGTERM_UITEST_SHOW_PERMISSIONS"] == nil
@@ -25,7 +25,7 @@ enum PermissionsAlert {
         guard !presented, !isSuppressedForUITest else { return }
         presented = true
         settingsModel.setPermissionsPrimerShown(true)
-        // hop out of the caller's Task before the nested modal loop, as WelcomeAlert does: started from
+        // hop out of the caller's Task before the nested modal loop: started from
         // inside the scene's `.task`, `runModal()` returns `.abort` immediately and nothing is drawn.
         DispatchQueue.main.async { present(library: library) }
     }

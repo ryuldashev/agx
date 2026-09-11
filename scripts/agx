@@ -158,6 +158,10 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
       for someone else's session.)
   ephemeral term on a session agtermctl session overlay open --target <id> -- <cmd>   (read: overlay text --target <id>)
   set my own status glyph    agtermctl session status active|completed|blocked|idle [--blink]
+  close MY OWN session       agtermctl session close --target "$AGTERM_SESSION_ID"   (mine, never `active`)
+    ^ when the user says "close this session / tab" they mean THIS pane, not a hand-off and not "end the
+      conversation": finish the log/handoff note first, then close. Outside agx (AGTERM_ENABLED unset)
+      there is nothing to close — just end the turn.
   desktop notification       agtermctl notify "<body>" [--title "..."]     native picker: agtermctl pick ...
   watch UI events (stream)   agtermctl events
 

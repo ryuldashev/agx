@@ -17,6 +17,7 @@ public final class ActionJournal: @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "agterm.action-journal", qos: .utility)
     private var directory: URL?
+    private var observer: (@Sendable (String, [String: String]) -> Void)?
     private let maxBytes: Int
     private let now: () -> Date
     private let formatter: ISO8601DateFormatter = {
@@ -39,11 +40,18 @@ public final class ActionJournal: @unchecked Sendable {
 
     public var fileURL: URL? { queue.sync { directory?.appendingPathComponent(Self.fileName) } }
 
+    /// One listener sees every record on the journal's queue, configured or not — the discovery map is
+    /// derived from the same records the file gets, so the two can never disagree.
+    public func setObserver(_ observer: (@Sendable (String, [String: String]) -> Void)?) {
+        queue.sync { self.observer = observer }
+    }
+
     /// Record one event. `kind` names the layer (`key`, `action`, `control`, `state`); `fields` are flat
     /// string pairs — keep them short, this is a grep target, not a data model.
     public func log(_ kind: String, _ fields: [String: String] = [:]) {
         let stamp = formatter.string(from: now())
         queue.async { [self] in
+            observer?(kind, fields)
             guard let directory else { return }
             var record: [String: String] = fields
             record["ts"] = stamp

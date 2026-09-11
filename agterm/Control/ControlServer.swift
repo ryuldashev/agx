@@ -415,6 +415,8 @@ final class ControlServer {
         if let target = request.target { fields["target"] = target }
         if let mode = request.args?.mode { fields["mode"] = mode }
         if let name = request.args?.name { fields["name"] = name }
+        // `agx spawn` is a `session.new` whose command reads the brief from its `agx-brief-*` temp file.
+        if request.cmd == .sessionNew, request.args?.command?.contains("agx-brief-") == true { fields["via"] = "agx-spawn" }
         ActionJournal.shared.log("control", fields)
     }
 

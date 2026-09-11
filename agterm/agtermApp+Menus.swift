@@ -412,6 +412,9 @@ extension agtermApp {
                 Button("Install Agent Status Hooks…") { AgentHooksInstaller.run() }
                 Button("Install Agent Skill…") { SkillInstaller.run() }
                 Divider()
+                Button("Getting Started…") {
+                    WelcomeWindow.present(settingsModel: settingsModel, library: library, tracker: discoveries)
+                }
                 Button("Permissions…") { PermissionsAlert.present(library: library) }
             }
     }
