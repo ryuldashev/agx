@@ -40,7 +40,8 @@ struct AgentsSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(available) { known in
-                    HStack {
+                    HStack(spacing: 10) {
+                        AgentTile(profile: known, size: 24)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(known.name)
                             Text(known.binary)

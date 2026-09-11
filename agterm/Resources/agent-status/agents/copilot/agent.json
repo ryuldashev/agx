@@ -1,5 +1,9 @@
 {
   "order": 3,
   "name": "Copilot CLI",
-  "binary": "copilot"
+  "binary": "copilot",
+  "icon": {
+    "glyph": "◐",
+    "tint": "#8957E5"
+  }
 }

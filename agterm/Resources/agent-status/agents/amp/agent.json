@@ -1,5 +1,9 @@
 {
   "order": 8,
   "name": "Amp",
-  "binary": "amp"
+  "binary": "amp",
+  "icon": {
+    "glyph": "↯",
+    "tint": "#F97316"
+  }
 }

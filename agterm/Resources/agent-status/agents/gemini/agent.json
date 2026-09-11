@@ -2,6 +2,10 @@
   "order": 2,
   "name": "Gemini CLI",
   "binary": "gemini",
+  "icon": {
+    "glyph": "✦",
+    "tint": "#4E8BF5"
+  },
   "seedFlag": "-i",
   "resume": "gemini -r {id}",
   "configDirectory": ".gemini",

@@ -2,6 +2,10 @@
   "order": 5,
   "name": "OpenCode",
   "binary": "opencode",
+  "icon": {
+    "glyph": "❯",
+    "tint": "#E5A50A"
+  },
   "seedFlag": "--prompt",
   "resume": "opencode --session {id}",
   "configDirectory": ".config/opencode",

@@ -38,3 +38,10 @@ Verified: `swift test` 2785/2785, `make lint` clean, `make test-app` 266/266, `m
 Next: relaunch agx + Help ▸ Install Agent Status Hooks (Codex asks for hook trust once — its adapter path
 changed). First live Gemini pane confirms the `Notification` matcher; first live Cursor pane earns its
 `status` block.
+
+## Result window
+Ruslan: paths and prose in the install alert are unreadable; wants agent icons and check marks. The NSAlert
+is replaced by `AgentHooksResultView` (modal window): one row per agent — `AgentTile` (manifest `icon`:
+glyph + tint, no brand logos) · name · one-liner · ✓ / ⚠ / –, plus a shell-integration row; `Open Docs`
+only when a TOML merge needs a hand. Reference render: `docs/reference/agents/hooks-result-window.png`.
+The same tile marks the "Found on This Mac" list in Settings ▸ Agents.

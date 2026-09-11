@@ -9,6 +9,7 @@ lives beside it (`codex/status.sh`, `opencode/plugin.js`, `pi/extension.ts`). Bo
   "order": 0,                        // position on Settings ▸ Agents; omitted → last
   "name": "Claude Code",
   "binary": "claude",                // the command, also the identity
+  "icon": { "glyph": "✳", "tint": "#D97757" },   // tile in Settings and the installer; default: first letter, grey
   "command": "claude",               // launch line seeded on Connect (default: binary)
   "seedFlag": "-i",                  // `<binary> -i "<brief>"`; omitted → positional
   "resume": "claude --resume {id}",  // restore line after a relaunch; omitted → no resume

@@ -1,5 +1,9 @@
 {
   "order": 10,
   "name": "Kimi Code",
-  "binary": "kimi"
+  "binary": "kimi",
+  "icon": {
+    "glyph": "☾",
+    "tint": "#7C4DFF"
+  }
 }

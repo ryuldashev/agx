@@ -14,7 +14,9 @@ struct AgentCatalogTests {
     @Test func everyBundledManifestDecodes() throws {
         let fm = FileManager.default
         let directory = AgentCatalog.sourceDirectory
-        let folders = try fm.contentsOfDirectory(atPath: directory.path).filter { !$0.hasPrefix(".") }
+        let folders = try fm.contentsOfDirectory(atPath: directory.path).filter {
+            !$0.hasPrefix(".") && !$0.hasSuffix(".md")
+        }
         #expect(AgentCatalog.known.count == folders.count)
         #expect(Set(AgentCatalog.known.map(\.binary)).isSuperset(of: ["claude", "codex", "gemini", "cursor-agent", "opencode", "mimo", "pi"]))
         for folder in folders {

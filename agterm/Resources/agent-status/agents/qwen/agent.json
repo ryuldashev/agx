@@ -1,5 +1,9 @@
 {
   "order": 11,
   "name": "Qwen Code",
-  "binary": "qwen"
+  "binary": "qwen",
+  "icon": {
+    "glyph": "⟁",
+    "tint": "#615CED"
+  }
 }

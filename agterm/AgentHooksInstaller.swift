@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import agtermCore
 
 /// Installs the bundled agent-status package into the user's home: the scripts into
@@ -8,7 +9,7 @@ import agtermCore
 /// `status.kind`: JSON hooks merged into the agent's hook file, a TOML `[[hooks.*]]` block into its config,
 /// or a plugin copied into its plugins directory — each only when the agent's own directory already exists.
 /// Hook files get a `.bak` first; a TOML step that finds foreign hooks or no parseable TOML points at the
-/// docs for a manual merge. The host-free string/JSON/TOML transforms and the plugin ownership policy live in
+/// docs for a manual merge. The result is one row per agent (`AgentHooksResultView`). The host-free string/JSON/TOML transforms and the plugin ownership policy live in
 /// `agtermCore.AgentHooksInstall`; this type owns the AppKit filesystem glue. Idempotent: a re-run refreshes
 /// the baked tool paths (healing a moved bundle) and no-ops on already-present entries.
 @MainActor
@@ -52,21 +53,46 @@ enum AgentHooksInstaller {
         }
     }
 
-    private struct InstallOutcome {
-        let agents: [(profile: AgentProfile, result: IntegrationResult)]
+    /// One agent's line in the result window: the profile (name, tile) and what happened to it.
+    struct Row {
+        let profile: AgentProfile
+        let result: IntegrationResult
 
-        var isWarning: Bool { agents.contains { $0.result.isWarning } }
-        var needsManualMerge: Bool { agents.contains { $0.result.needsManualMerge } }
+        /// The one-liner under the name. No paths: the file is named only when it was left untouched,
+        /// and then by its basename, so the user knows WHICH file to look at without a column of homes.
+        var detail: String {
+            switch result {
+            case .merged:
+                return [installed, profile.activate].compactMap { $0 }.joined(separator: " ")
+            case .unchanged:
+                return "Already set up."
+            case .notInstalled:
+                return "Not installed on this Mac."
+            case .skipped(let reason, let manual):
+                return "\(targetName) \(reason) — left untouched." + (manual ? " See the docs for the block to add by hand." : "")
+            }
+        }
+
+        private var installed: String {
+            if case .plugin = profile.status { return "Plugin installed." }
+            return "Hooks added."
+        }
+
+        private var targetName: String {
+            switch profile.status {
+            case .jsonHooks(let file, _, _), .tomlHooks(let file, _, _): return (file as NSString).lastPathComponent
+            case .plugin(_, let destination, _, _): return (destination as NSString).lastPathComponent
+            case .none: return ""
+            }
+        }
     }
 
-    /// Run the install and show a result alert.
+    /// Run the install and show the result window.
     static func run() {
         do {
-            let outcome = try install()
-            present(style: outcome.isWarning ? .warning : .informational,
-                    title: outcome.isWarning ? "Agent Status Hooks Installed — with a warning" : "Agent Status Hooks Installed",
-                    text: successText(outcome),
-                    docs: outcome.needsManualMerge ? codexManualDocsURL : nil)
+            let rows = try install()
+            let docs = rows.contains { $0.result.needsManualMerge } ? codexManualDocsURL : nil
+            presentResult(rows: rows, docs: docs)
         } catch let error as InstallError {
             present(style: .warning, title: "Install Failed", text: error.message)
         } catch {
@@ -75,13 +101,11 @@ enum AgentHooksInstaller {
     }
 
     // every step runs regardless of an earlier one's outcome; each agent reports its own result.
-    private static func install() throws -> InstallOutcome {
+    private static func install() throws -> [Row] {
         try copyBundledFolder()
         try bakeToolPaths()
         try appendShellRC()
-        let agents = try AgentCatalog.known.filter(\.hasStatusIntegration)
-            .map { (profile: $0, result: try install($0)) }
-        return InstallOutcome(agents: agents)
+        return try AgentCatalog.known.filter(\.hasStatusIntegration).map { Row(profile: $0, result: try install($0)) }
     }
 
     private static func install(_ profile: AgentProfile) throws -> IntegrationResult {
@@ -295,44 +319,31 @@ enum AgentHooksInstaller {
         }
     }
 
-    // the success-alert text: one line per agent, calling out anything left untouched. NSAlert sizes itself
-    // to fit `informativeText` with no scroll and no cap, so every line stays short and embeds no generated
-    // block (#430) — the manual-merge cases send the user to the docs instead.
-    private static func successText(_ outcome: InstallOutcome) -> String {
-        let lines = outcome.agents.map { agentText($0.profile, $0.result) }.joined(separator: "\n")
-        return """
-        Scripts installed to \(destinationFolder.path).
-        \(lines)
-        The source line was added to ~/.zshrc, ~/.bashrc (and ~/.config/fish/config.fish if fish is installed).
-
-        Open a new terminal for the shell integration to take effect.
-        """
+    // the result window, run modally like the alert it replaces so the callers' queueing (welcome →
+    // skill → hooks) keeps working.
+    private static func presentResult(rows: [Row], docs: URL?) {
+        let holder = WindowHolder()
+        let view = AgentHooksResultView(rows: rows, docs: docs, onOpenDocs: {
+            if let docs { NSWorkspace.shared.open(docs) }
+            holder.close()
+        }, onClose: { holder.close() })
+        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+        window.styleMask = [.titled, .closable]
+        window.title = "Agent Status Hooks"
+        window.center()
+        holder.window = window
+        NSApp.runModal(for: window)
     }
 
-    static func agentText(_ profile: AgentProfile, _ result: IntegrationResult) -> String {
-        let (file, what) = target(of: profile)
-        let activate = profile.activate.map { " " + $0 } ?? ""
-        switch result {
-        case .merged:
-            return "\(profile.name) \(what) installed into \(file).\(activate)"
-        case .unchanged:
-            return "\(profile.name) \(what) already current in \(file).\(activate)"
-        case .notInstalled:
-            return "No ~/\(profile.configDirectory ?? "") found, so \(profile.name) was skipped. "
-                + "Install it, then run this again."
-        case .skipped(let reason, let manual):
-            return "Your \(file) \(reason), so agterm left it untouched."
-                + (manual ? " See the Add Codex hooks by hand section of the agterm docs for the block to add." : "")
-        }
-    }
+    @MainActor
+    private final class WindowHolder {
+        var window: NSWindow?
 
-    // the file an agent's integration lands in, and what to call it.
-    private static func target(of profile: AgentProfile) -> (file: String, what: String) {
-        switch profile.status {
-        case .jsonHooks(let file, _, _): return ("~/" + file, "hooks")
-        case .tomlHooks(let file, _, _): return ("~/" + file, "hooks")
-        case .plugin(_, let destination, _, _): return ("~/" + destination, "plugin")
-        case .none: return ("", "")
+        func close() {
+            guard let window else { return }
+            self.window = nil
+            NSApp.stopModal()
+            window.close()
         }
     }
 
@@ -340,23 +351,12 @@ enum AgentHooksInstaller {
     /// renders `informativeText` as plain, unselectable text, so a printed URL would have to be retyped.
     static let codexManualDocsURL = URL(string: "https://agterm.com/docs#codex-hooks-manual")
 
-    /// The result alert, with a second button when `docs` is set. Split out of `present()` so a hosted test
-    /// can check the buttons without running a modal.
-    static func makeAlert(style: NSAlert.Style, title: String, text: String, docs: URL?) -> NSAlert {
+    // the install-failed alert: the package could not even be copied, so there are no rows to show.
+    private static func present(style: NSAlert.Style, title: String, text: String) {
         let alert = NSAlert()
         alert.alertStyle = style
         alert.messageText = title
         alert.informativeText = text
-        if docs != nil {
-            alert.addButton(withTitle: "OK")
-            alert.addButton(withTitle: "Open Docs")
-        }
-        return alert
-    }
-
-    private static func present(style: NSAlert.Style, title: String, text: String, docs: URL? = nil) {
-        let alert = makeAlert(style: style, title: title, text: text, docs: docs)
-        guard alert.runModal() == .alertSecondButtonReturn, let docs else { return }
-        NSWorkspace.shared.open(docs)
+        alert.runModal()
     }
 }

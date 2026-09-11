@@ -2,6 +2,10 @@
   "order": 13,
   "name": "Mimo",
   "binary": "mimo",
+  "icon": {
+    "glyph": "◭",
+    "tint": "#FF6B35"
+  },
   "seedFlag": "--prompt",
   "resume": "mimo --session {id}",
   "configDirectory": ".config/mimocode",

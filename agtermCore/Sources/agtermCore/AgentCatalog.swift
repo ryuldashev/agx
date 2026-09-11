@@ -95,6 +95,19 @@ public enum StatusIntegration: Equatable, Sendable {
     case none
 }
 
+/// The agent's tile in Settings and the installer: one glyph on a tinted rounded square. No brand
+/// logos — a character and a colour are enough to tell agents apart at a glance and carry no marks.
+public struct AgentIcon: Codable, Equatable, Sendable {
+    public let glyph: String
+    /// `#RRGGBB`.
+    public let tint: String
+
+    public init(glyph: String, tint: String) {
+        self.glyph = glyph
+        self.tint = tint
+    }
+}
+
 /// How `agx context` reaches a fresh agent so it knows the UI it lives in.
 public enum ContextDelivery: String, Codable, Sendable {
     /// A session-start hook returns it as additional context — the brief stays clean.
@@ -114,6 +127,8 @@ public struct AgentProfile: Sendable, Equatable, Identifiable {
     public var id: String { binary }
     public let name: String
     public let binary: String
+    /// The tile shown for this agent, nil → the first letter of `name` on grey.
+    public let icon: AgentIcon?
     /// The launch line seeded into a new `AgentDefinition`; usually just the binary.
     public let command: String
     public let seed: BriefSeed
@@ -129,11 +144,12 @@ public struct AgentProfile: Sendable, Equatable, Identifiable {
     /// Position on the Settings ▸ Agents "available" list; unlisted manifests sort last, by binary.
     public let order: Int
 
-    public init(name: String, binary: String, command: String? = nil, seed: BriefSeed = .positional,
+    public init(name: String, binary: String, icon: AgentIcon? = nil, command: String? = nil, seed: BriefSeed = .positional,
                 resumeTemplate: String? = nil, status: StatusIntegration = .none, activate: String? = nil,
                 context: ContextDelivery = .briefPrefix, configDirectory: String? = nil, order: Int = .max) {
         self.name = name
         self.binary = binary
+        self.icon = icon
         self.command = command ?? binary
         self.seed = seed
         self.resumeTemplate = resumeTemplate
@@ -179,7 +195,7 @@ public struct AgentProfile: Sendable, Equatable, Identifiable {
 
 extension AgentProfile: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case name, binary, command, seedFlag, resume, status, context, configDirectory, order
+        case name, binary, icon, command, seedFlag, resume, status, context, configDirectory, order
     }
 
     private struct Status: Decodable {
@@ -223,6 +239,7 @@ extension AgentProfile: Decodable {
         let status = try c.decodeIfPresent(Status.self, forKey: .status)
         self.init(name: try c.decode(String.self, forKey: .name),
                   binary: try c.decode(String.self, forKey: .binary),
+                  icon: try c.decodeIfPresent(AgentIcon.self, forKey: .icon),
                   command: try c.decodeIfPresent(String.self, forKey: .command),
                   seed: try c.decodeIfPresent(String.self, forKey: .seedFlag).map(BriefSeed.flag) ?? .positional,
                   resumeTemplate: try c.decodeIfPresent(String.self, forKey: .resume),
