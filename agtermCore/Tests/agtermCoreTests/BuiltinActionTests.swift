@@ -33,7 +33,7 @@ struct BuiltinActionTests {
         #expect(BuiltinAction.previousWorkspace.rawValue == "previous_workspace")
         #expect(BuiltinAction.nextWorkspace.rawValue == "next_workspace")
         #expect(BuiltinAction.toggleWorkspaceCollapse.rawValue == "toggle_workspace_collapse")
-        #expect(BuiltinAction.allCases.count == 46)
+        #expect(BuiltinAction.allCases.count == 47)
     }
 
     @Test func rejectsUnknownName() {
@@ -123,6 +123,7 @@ struct BuiltinActionTests {
             .customCommandPalette: Chord(mods: [.control, .shift], key: "o"),
             .showAttention: Chord(mods: [.control, .shift], key: "i"),
             .dashboard: Chord(mods: [.command, .shift], key: "g"),
+            .keyboardShortcuts: Chord(mods: [.command], key: "/"),
         ]
         #expect(expected.count == BuiltinAction.allCases.count)
         for action in BuiltinAction.allCases {

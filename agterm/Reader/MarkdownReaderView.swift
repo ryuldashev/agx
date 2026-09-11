@@ -35,7 +35,18 @@ final class MarkdownReaderView: NSView {
     /// its own 17px/64px defaults; ⌘+/⌘−/⌘0 step and reset from here, like a terminal's font zoom.
     static let defaultFontSize = 14
     private static let fontSizeRange = 10...28
-    private static let embeddedCSS = ".md{padding:28px 28px 30vh}"
+    /// Injected on top of the synced page (`Resources/reader/` stays a verbatim copy of `~/mmee/reader/web`,
+    /// so pane-specific styling lives here): tighter pane margins, plus the `<kbd>` capsule and right-aligned
+    /// nowrap Keys column the Keyboard Shortcuts sheet renders.
+    private static let embeddedCSS = """
+    .md{padding:28px 28px 30vh}
+    .md kbd{display:inline-block;min-width:1.4em;padding:.05em .45em;font:600 .8em/1.35 var(--mono);\
+    text-align:center;color:var(--fg);background:var(--code-bg);border:1px solid var(--rule);\
+    border-bottom-width:2px;border-radius:5px}
+    .md kbd+kbd{margin-left:.16em}
+    .md td:has(> kbd:first-child){white-space:nowrap;width:1%;text-align:right}
+    .md table:has(td > kbd:first-child) th:last-child{text-align:right}
+    """
     /// The standalone MmeeReader (`~/mmee/reader`); the system's `.md` handler stands in when it is absent.
     static let standaloneReaderBundleID = "uz.marshub.mmee.reader"
 

@@ -97,6 +97,7 @@ extension AppActions {
         case .quickTerminal: toggleQuickTerminal()
         case .dashboard: toggleDashboard()
         case .toggleFullscreen: toggleFullscreen()
+        case .keyboardShortcuts: showKeyboardShortcuts()
         case .increaseFontSize: increaseFontSize()
         case .decreaseFontSize: decreaseFontSize()
         case .resetFontSize: resetFontSize()

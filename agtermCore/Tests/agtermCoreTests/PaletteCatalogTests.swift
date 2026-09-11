@@ -35,6 +35,7 @@ struct PaletteCatalogTests {
             "Quick Terminal",
             "Dashboard",
             "Toggle Full Screen",
+            "Keyboard Shortcuts…",
             "Increase Font Size",
             "Decrease Font Size",
             "Actual Font Size",
@@ -169,7 +170,7 @@ struct PaletteCatalogTests {
         .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .toggleSplit, .toggleHorizontalSplit,
         .toggleScratch, .find,
         .previousSession, .nextSession, .previousAttentionSession, .nextAttentionSession,
-        .firstSession, .lastSession,
+        .firstSession, .lastSession, .keyboardShortcuts,
     ]
 
     @Test func everyCommandIsLiveWhenNothingIsMissingOrCovering() {
@@ -260,6 +261,7 @@ struct PaletteCatalogTests {
         #expect(PaletteCommand.toggleTerminalZoom.builtinAction == .toggleTerminalZoom)
         #expect(PaletteCommand.resetFontSize.builtinAction == .resetFontSize)
         #expect(PaletteCommand.dashboard.builtinAction == .dashboard)
+        #expect(PaletteCommand.keyboardShortcuts.builtinAction == .keyboardShortcuts)
         #expect(PaletteCommand.reopenRecent.builtinAction == .reopenRecent)
         #expect(PaletteCommand.undoClose.builtinAction == .undoClose)
         #expect(PaletteCommand.toggleWorkspaceFilter.builtinAction == .toggleWorkspaceFilter)

@@ -86,7 +86,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
     case firstSession, lastSession, showAttention
     case toggleSplit, toggleHorizontalSplit, closeSplit, toggleScratch, toggleTerminalZoom
     case toggleSidebar, toggleFlag, focusWorkspace
-    case find, quickTerminal, dashboard, toggleFullscreen
+    case find, quickTerminal, dashboard, toggleFullscreen, keyboardShortcuts
     case increaseFontSize, decreaseFontSize, resetFontSize, selectTheme
     case editKeymap, reloadKeymap, editGhosttyConfig, reloadConfig
     case deleteWorkspace, toggleFlaggedView, clearFlagged, clearFocus
@@ -104,7 +104,8 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .toggleSplit,
              .toggleHorizontalSplit, .toggleScratch,
              .find, .previousSession, .nextSession, .previousAttentionSession, .nextAttentionSession,
-             .firstSession, .lastSession:
+             .firstSession, .lastSession, .keyboardShortcuts:
+            // Keyboard Shortcuts opens the reader in the active session's split pane, so it needs one.
             return context.hasActiveSession
         case .renameWorkspace, .focusWorkspace, .addWorkspaceToFocus, .toggleWorkspaceCollapse:
             return context.hasCurrentWorkspace
@@ -210,6 +211,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .quickTerminal: return "Quick Terminal"
         case .dashboard: return "Dashboard"
         case .toggleFullscreen: return "Toggle Full Screen"
+        case .keyboardShortcuts: return "Keyboard Shortcuts…"
         case .increaseFontSize: return "Increase Font Size"
         case .decreaseFontSize: return "Decrease Font Size"
         case .resetFontSize: return "Actual Font Size"
@@ -266,6 +268,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .quickTerminal: return .quickTerminal
         case .dashboard: return .dashboard
         case .toggleFullscreen: return .toggleFullscreen
+        case .keyboardShortcuts: return .keyboardShortcuts
         case .increaseFontSize: return .increaseFontSize
         case .decreaseFontSize: return .decreaseFontSize
         case .resetFontSize: return .resetFontSize

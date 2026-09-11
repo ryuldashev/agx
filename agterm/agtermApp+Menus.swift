@@ -398,6 +398,10 @@ extension agtermApp {
             }
             CommandGroup(replacing: .help) {
                 Button("\(Brand.productName) Guide…") { actions.openGuide() }
+                Button("Keyboard Shortcuts…") { actions.showKeyboardShortcuts() }
+                    .keyboardShortcut(shortcut(for: .keyboardShortcuts))
+                    .disabled(!PaletteCommand.keyboardShortcuts.isEnabled(in: actions.paletteContext))
+                Divider()
                 Button("\(Brand.productName) on GitHub…") {
                     if let url = URL(string: Brand.homepage) {
                         NSWorkspace.shared.open(url)
