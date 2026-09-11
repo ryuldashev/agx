@@ -111,6 +111,13 @@ case "$action" in
   session-start)
     stop_watcher
     report_status idle
+    # Pin `codex resume <id>` as the pane's restore line and hand the session `agx context`, the same
+    # two SessionStart jobs Claude Code's hooks do. stdin (the hook JSON) goes to the restore script
+    # first via a temp copy so both can read it; either failing is silent.
+    hook_json=$(cat 2>/dev/null || true)
+    printf '%s' "$hook_json" | "$script_dir/agx-session-restore.sh" --resume-line 'codex resume {id}' \
+      >/dev/null 2>&1 || true
+    "$script_dir/agx-session-context.sh" --format codex 2>/dev/null || true
     ;;
   user-prompt-submit)
     report_status active --blink

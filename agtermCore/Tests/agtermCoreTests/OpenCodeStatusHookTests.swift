@@ -129,6 +129,14 @@ struct OpenCodeStatusHookTests {
         try recordScript.write(to: statusWrapper, atomically: true, encoding: .utf8)
         try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: statusWrapper.path)
 
+        // the restore pin lands beside the wrapper: record its argv plus the stdin JSON it was handed
+        let restore = dir.appendingPathComponent("agx-session-restore.sh")
+        try """
+        #!/bin/bash
+        printf 'restore %s <%s>\\n' "$*" "$(cat)" >> '\(statuses.path)'
+        """.write(to: restore, atomically: true, encoding: .utf8)
+        try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: restore.path)
+
         if !setStatusWrapper {
             let defaultWrapperDir = home.appendingPathComponent(".config/agterm/agent-status", isDirectory: true)
             try fm.createDirectory(at: defaultWrapperDir, withIntermediateDirectories: true)
@@ -380,6 +388,19 @@ struct OpenCodeStatusHookTests {
             event("session.created", properties: ["info": ["id": "child", "parentID": "root"]]),
         ])
         #expect(calls.isEmpty)
+    }
+
+    @Test func topLevelSessionCreatedPinsResumeChildDoesNot() throws {
+        let calls = try runEvents([
+            event("session.created", properties: ["info": ["id": "ses_root"]]),
+            event("session.created", properties: ["info": ["id": "ses_child", "parentID": "ses_root"]]),
+            status("busy"),
+        ])
+        // the pin is fire-and-forget, so only membership is asserted, not its order against the status
+        #expect(Set(calls) == [
+            "restore --resume-line opencode --session {id} <{\"session_id\":\"ses_root\"}>",
+            "active --blink",
+        ])
     }
 
     @Test func pluginIsSilentNoOpOutsideAgterm() throws {

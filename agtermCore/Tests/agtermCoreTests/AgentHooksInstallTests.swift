@@ -48,6 +48,64 @@ struct AgentHooksInstallTests {
         #expect(evts["StopFailure"]![0]["matcher"] == nil)
     }
 
+    /// An older install wrote the SessionStart hooks without arguments; the probe is by script path, so
+    /// a re-run neither duplicates them nor rewrites them (the scripts default to Claude's lines).
+    @Test func legacyArgumentlessSessionStartHooksAreKept() throws {
+        let existing = """
+        {"hooks": {"SessionStart": [
+          {"hooks": [{"type": "command", "command": "'\(scriptDir)/agx-session-restore.sh'"}]},
+          {"hooks": [{"type": "command", "command": "'\(scriptDir)/agx-session-context.sh'"}]}
+        ]}}
+        """
+        let result = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
+        let starts = events(result.json)["SessionStart"]!
+        #expect(starts.count == 2)
+        #expect(command(starts[0]) == "'\(scriptDir)/agx-session-restore.sh'")
+    }
+
+    @Test func geminiMergeUsesGeminiEventsInTheClaudeShape() throws {
+        let result = try AgentHooksInstall.mergeJSONHooks(existing: nil, scriptDir: scriptDir,
+                                                          bindings: AgentCatalog.gemini.jsonHookBindings)
+        let evts = events(result.json)
+        #expect(command(evts["BeforeAgent"]![0])?.hasSuffix("agent-status.sh' active --blink") == true)
+        #expect(command(evts["AfterAgent"]![0])?.hasSuffix("agent-status.sh' completed --auto-reset") == true)
+        #expect(evts["Notification"]![0]["matcher"] as? String == "ToolPermission")
+        #expect(evts["Stop"] == nil)
+        #expect(evts["StopFailure"] == nil)
+        #expect(command(evts["SessionStart"]![0])?.contains("--resume-line 'gemini -r {id}'") == true)
+        let again = try AgentHooksInstall.mergeJSONHooks(existing: result.json, scriptDir: scriptDir,
+                                                         bindings: AgentCatalog.gemini.jsonHookBindings)
+        #expect(!again.changed)
+    }
+
+    @Test func cursorMergeWritesFlatRowsUnderVersionOne() throws {
+        let existing = """
+        {"version": 1, "hooks": {"afterFileEdit": [{"command": "./mine.sh"}]}}
+        """
+        let result = try AgentHooksInstall.mergeJSONHooks(existing: existing, scriptDir: scriptDir, shape: .cursor,
+                                                          bindings: AgentCatalog.cursor.jsonHookBindings)
+        #expect(result.changed)
+        let root = try #require(JSONSerialization.jsonObject(with: Data(result.json.utf8)) as? [String: Any])
+        #expect(root["version"] as? Int == 1)
+        let evts = try #require(root["hooks"] as? [String: [[String: Any]]])
+        #expect(evts["afterFileEdit"]?.first?["command"] as? String == "./mine.sh")
+        #expect(evts["beforeSubmitPrompt"]?.first?["command"] as? String == "'\(scriptDir)/agterm-agent-status.sh' active --blink")
+        #expect(evts["stop"]?.first?["command"] as? String == "'\(scriptDir)/agterm-agent-status.sh' completed --auto-reset")
+        #expect(evts["beforeSubmitPrompt"]?.first?["hooks"] == nil)
+        #expect(evts["sessionStart"]?.count == 2)
+        #expect(evts["sessionStart"]?[1]["command"] as? String == "'\(scriptDir)/agx-session-context.sh' --format cursor")
+        let again = try AgentHooksInstall.mergeJSONHooks(existing: result.json, scriptDir: scriptDir, shape: .cursor,
+                                                         bindings: AgentCatalog.cursor.jsonHookBindings)
+        #expect(!again.changed)
+    }
+
+    @Test func cursorMergeIntoAnEmptyFileAddsVersion() throws {
+        let result = try AgentHooksInstall.mergeJSONHooks(existing: nil, scriptDir: scriptDir, shape: .cursor,
+                                                          bindings: AgentCatalog.cursor.jsonHookBindings)
+        let root = try #require(JSONSerialization.jsonObject(with: Data(result.json.utf8)) as? [String: Any])
+        #expect(root["version"] as? Int == 1)
+    }
+
     @Test func mergeWhenPresentIsNoOp() throws {
         let first = try AgentHooksInstall.mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
         let second = try AgentHooksInstall.mergeClaudeSettings(existing: first.json, scriptDir: scriptDir)
@@ -123,8 +181,8 @@ struct AgentHooksInstallTests {
         let result = try AgentHooksInstall.mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
         let start = try #require(events(result.json)["SessionStart"])
         #expect(start.count == 2)
-        #expect(command(start[0]) == "'\(scriptDir)/agx-session-restore.sh'")
-        #expect(command(start[1]) == "'\(scriptDir)/agx-session-context.sh'")
+        #expect(command(start[0])?.hasPrefix("'\(scriptDir)/agx-session-restore.sh'") == true)
+        #expect(command(start[1])?.hasPrefix("'\(scriptDir)/agx-session-context.sh'") == true)
         #expect(start[0]["matcher"] == nil)
         #expect(start[1]["matcher"] == nil)
     }
@@ -143,7 +201,7 @@ struct AgentHooksInstallTests {
         #expect(commands == [
             "/usr/bin/other-start.sh",
             "'\(scriptDir)/agx-session-restore.sh'",
-            "'\(scriptDir)/agx-session-context.sh'",
+            "'\(scriptDir)/agx-session-context.sh' --format claude",
         ])
         let again = try AgentHooksInstall.mergeClaudeSettings(existing: result.json, scriptDir: scriptDir)
         #expect(!again.changed)

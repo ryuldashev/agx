@@ -49,4 +49,65 @@ struct AgentCatalogTests {
         #expect(settings.agent(withID: blankCommand.id) == nil)
         #expect(settings.agent(withID: nil) == nil)
     }
+
+    @Test func profileIsFoundByTheFirstKnownTokenOfALaunchLine() {
+        #expect(AgentCatalog.profile(forCommandLine: #"exec claude "$b""#)?.binary == "claude")
+        #expect(AgentCatalog.profile(forCommandLine: "codex --model gpt-5")?.binary == "codex")
+        #expect(AgentCatalog.profile(forCommandLine: "zsh -lc 'exec /opt/bin/gemini -i x'")?.binary == "gemini")
+        #expect(AgentCatalog.profile(forCommandLine: "vim") == nil)
+        #expect(AgentCatalog.profile(forCommandLine: nil) == nil)
+        #expect(AgentDefinition(name: "x", command: "cursor-agent").profile?.name == "Cursor Agent")
+    }
+
+    @Test func resumeCommandSubstitutesAnIdShapedToken() {
+        #expect(AgentCatalog.claude.resumeCommand(sessionID: "ab-12_c") == "claude --resume ab-12_c --fork-session")
+        #expect(AgentCatalog.gemini.resumeCommand(sessionID: "u1") == "gemini -r u1")
+        #expect(AgentCatalog.codex.resumeCommand(sessionID: "t9") == "codex resume t9")
+        #expect(AgentCatalog.claude.resumeCommand(sessionID: "x; rm -rf /") == nil)
+        #expect(AgentCatalog.claude.resumeCommand(sessionID: "") == nil)
+        #expect(AgentProfile(name: "Aider", binary: "aider").resumeCommand(sessionID: "a") == nil)
+    }
+
+    /// A catalog entry with nothing but a name and binary is the graceful floor: launchable, seeded
+    /// positionally, no status, no resume, context by brief prefix.
+    @Test func bareProfileIsLaunchOnly() {
+        let bare = AgentProfile(name: "Crush", binary: "crush")
+        #expect(bare.seed == .positional)
+        #expect(!bare.supportsResume)
+        #expect(!bare.hasStatusIntegration)
+        #expect(bare.context == .briefPrefix)
+        #expect(bare.jsonHookBindings.isEmpty)
+        #expect(bare.jsonHooksSettingsFile == nil)
+    }
+
+    @Test func seedArgumentsPlaceTheBriefWhereTheAgentReadsIt() {
+        #expect(BriefSeed.positional.arguments(briefArgument: #""$b""#) == #""$b""#)
+        #expect(AgentCatalog.gemini.seed.arguments(briefArgument: #""$b""#) == #"-i "$b""#)
+        #expect(AgentCatalog.opencode.seed.arguments(briefArgument: #""$b""#) == #"--prompt "$b""#)
+        #expect(AgentCatalog.mimo.seed == .flag("--prompt"))
+    }
+
+    @Test func geminiHooksMirrorClaudeUnderGeminiEventNames() {
+        let events = AgentCatalog.gemini.jsonHookBindings.map(\.event)
+        #expect(events == ["BeforeAgent", "AfterTool", "AfterAgent", "Notification", "SessionStart", "SessionStart"])
+        #expect(AgentCatalog.gemini.jsonHookBindings[3].matcher == "ToolPermission")
+        #expect(AgentCatalog.gemini.jsonHookBindings[4].args.contains("--resume-line 'gemini -r {id}'"))
+        #expect(AgentCatalog.gemini.jsonHooksSettingsFile == ".gemini/settings.json")
+        #expect(AgentCatalog.gemini.jsonHooksShape == .claude)
+    }
+
+    @Test func cursorHooksHaveNoPermissionEventAndAnswerInCursorFormat() {
+        let hooks = AgentCatalog.cursor.jsonHookBindings
+        #expect(hooks.map(\.event) == ["beforeSubmitPrompt", "postToolUse", "stop", "sessionStart", "sessionStart"])
+        #expect(hooks.allSatisfy { $0.matcher == nil })
+        #expect(hooks.last?.args == " --format cursor")
+        #expect(AgentCatalog.cursor.jsonHooksShape == .cursor)
+    }
+
+    @Test func everyKnownBinaryIsUniqueAndProfilesResolveByBinary() {
+        let binaries = AgentCatalog.known.map(\.binary)
+        #expect(binaries.count == Set(binaries).count)
+        #expect(AgentCatalog.profile(binary: "opencode") == AgentCatalog.opencode)
+        #expect(AgentCatalog.profile(binary: "nope") == nil)
+    }
 }

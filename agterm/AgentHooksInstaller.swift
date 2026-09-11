@@ -78,14 +78,23 @@ enum AgentHooksInstaller {
 
     // aggregates per-integration outcomes so `install()` stays under the large_tuple lint (max 3 members).
     private struct InstallOutcome {
-        let settingsSkipped: Bool
+        let jsonHooks: [(profile: AgentProfile, result: JSONHooksResult)]
         let codex: CodexResult
         let pi: PiResult
         let opencode: OpenCodeResult
 
         var isWarning: Bool {
-            settingsSkipped || codex.isWarning || pi.isWarning || opencode.isWarning
+            jsonHooks.contains { $0.result == .skipped } || codex.isWarning || pi.isWarning || opencode.isWarning
         }
+    }
+
+    // JSON-hooks merge outcome for one profile (Claude Code, Gemini CLI, …).
+    private enum JSONHooksResult: Equatable {
+        case merged, unchanged
+        /// invalid JSON or unreadable: the file was left untouched.
+        case skipped
+        /// the agent's config directory does not exist, so nothing was seeded.
+        case noConfigDirectory
     }
 
     /// Run the install and show a result alert.
@@ -107,12 +116,13 @@ enum AgentHooksInstaller {
     private static func install() throws -> InstallOutcome {
         try copyBundledFolder()
         try bakeAgtermctlPath()
-        let settingsSkipped = try mergeClaudeSettings()
+        let jsonHooks = try AgentCatalog.known.filter { $0.jsonHooksSettingsFile != nil }
+            .map { (profile: $0, result: try mergeJSONHooks(for: $0)) }
         try appendShellRC()
         let codex = try mergeCodexConfig()
         let pi = try installPiExtension()
         let opencode = try installOpenCodePlugin()
-        return InstallOutcome(settingsSkipped: settingsSkipped, codex: codex, pi: pi, opencode: opencode)
+        return InstallOutcome(jsonHooks: jsonHooks, codex: codex, pi: pi, opencode: opencode)
     }
 
     private static func copyBundledFolder() throws {
@@ -202,25 +212,32 @@ enum AgentHooksInstaller {
         }
     }
 
-    // merge the Claude Code hooks (status + SessionStart) into ~/.claude/settings.json, writing a .bak first when anything
-    // changes. returns true when the merge was SKIPPED (invalid JSON, or unreadable) and the file left as is.
-    private static func mergeClaudeSettings() throws -> Bool {
-        let claudeDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude")
-        let settings = claudeDir.appendingPathComponent("settings.json")
+    // merge a profile's hooks into its JSON settings file, writing a .bak first when anything changes. Gated on
+    // the agent's config directory existing so a home without the agent isn't seeded with its settings file.
+    private static func mergeJSONHooks(for profile: AgentProfile) throws -> JSONHooksResult {
+        guard let relative = profile.jsonHooksSettingsFile, let configDirectory = profile.configDirectory else {
+            return .noConfigDirectory
+        }
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        guard FileManager.default.fileExists(atPath: home.appendingPathComponent(configDirectory).path) else {
+            return .noConfigDirectory
+        }
+        let settings = home.appendingPathComponent(relative)
         let existing: String?
         do {
             existing = try readExistingConfig(at: settings)
         } catch {
-            return true // unreadable: leave it untouched rather than clobber it with no backup
+            return .skipped // unreadable: leave it untouched rather than clobber it with no backup
         }
         let merged: (json: String, changed: Bool)
         do {
-            merged = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: destinationFolder.path)
+            merged = try AgentHooksInstall.mergeJSONHooks(existing: existing, scriptDir: destinationFolder.path,
+                                                          shape: profile.jsonHooksShape ?? .claude,
+                                                          bindings: profile.jsonHookBindings)
         } catch AgentHooksInstall.MergeError.malformedExistingSettings {
-            return true // invalid JSON: leave the user's file untouched
+            return .skipped // invalid JSON: leave the user's file untouched
         }
-        guard merged.changed else { return false }
-        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
+        guard merged.changed else { return .unchanged }
         // resolve the symlink target FIRST (a dotfiles-managed link must survive) and read its mode once, so
         // the rewrite AND the .bak inherit it instead of an atomic rename widening a chmod-600 file to 0644.
         let target = symlinkTarget(of: settings) ?? settings
@@ -232,7 +249,7 @@ enum AgentHooksInstaller {
             try AgentHooksInstall.writeFile(existing, toPath: backup, posixMode: mode)
         }
         try writePreservingSymlink(merged.json, to: settings, posixMode: mode)
-        return false
+        return .merged
     }
 
     // append the marker-guarded source line to ~/.zshrc, ~/.bashrc, ~/.config/fish/config.fish (idempotent).
@@ -372,13 +389,10 @@ enum AgentHooksInstaller {
 
     // the success-alert text, calling out anything an integration could not safely update and left alone.
     private static func successText(_ outcome: InstallOutcome) -> String {
-        let claudeLine = outcome.settingsSkipped
-            ? "Your ~/.claude/settings.json isn't valid JSON (or couldn't be read), so the Claude Code hooks were NOT added "
-              + "(the file was left untouched). Fix it and run this again, or add the hooks manually."
-            : "Claude Code hooks (status, plus the two agx SessionStart hooks) merged into ~/.claude/settings.json."
+        let hookLines = outcome.jsonHooks.map { jsonHooksText($0.profile, $0.result) }.joined(separator: "\n")
         return """
         Scripts installed to \(destinationFolder.path).
-        \(claudeLine)
+        \(hookLines)
         \(codexText(outcome.codex))
         \(piText(outcome.pi))
         \(opencodeText(outcome.opencode))
@@ -386,6 +400,22 @@ enum AgentHooksInstaller {
 
         Open a new terminal for the shell integration to take effect.
         """
+    }
+
+    // one alert line per JSON-hooks agent (Claude Code, Gemini CLI).
+    private static func jsonHooksText(_ profile: AgentProfile, _ result: JSONHooksResult) -> String {
+        let file = "~/" + (profile.jsonHooksSettingsFile ?? "")
+        switch result {
+        case .merged:
+            return "\(profile.name) hooks (status, plus the two agx SessionStart hooks) merged into \(file)."
+        case .unchanged:
+            return "\(profile.name) hooks are already present in \(file)."
+        case .skipped:
+            return "Your \(file) isn't valid JSON (or couldn't be read), so the \(profile.name) hooks were NOT added "
+                + "(the file was left untouched). Fix it and run this again, or add the hooks manually."
+        case .noConfigDirectory:
+            return "No ~/\(profile.configDirectory ?? "") found, so \(profile.name) hooks were skipped."
+        }
     }
 
     // the Codex portion of the alert. Every case stays one line and embeds no generated block: NSAlert sizes

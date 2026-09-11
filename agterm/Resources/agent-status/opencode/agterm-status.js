@@ -8,7 +8,7 @@
 
 import { spawn } from "node:child_process";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const ACTIVE = ["active", "--blink"];
 const BLOCKED = ["blocked"];
@@ -30,6 +30,25 @@ const OVERFLOW_ERROR_NAME = "ContextOverflowError";
 
 function defaultWrapperPath() {
   return join(homedir(), ".config", "agterm", "agent-status", "agterm-agent-status.sh");
+}
+
+/**
+ * Pin `opencode --session <id>` as the pane's restore line once per top-level session (a task
+ * subagent carries parentID and must not win the pin), the same job Claude Code's SessionStart hook
+ * does. Fire-and-forget: the restore script prints nothing and exits 0 whatever happens.
+ */
+function pinRestore(wrapper, sessionID) {
+  try {
+    const child = spawn(join(dirname(wrapper), "agx-session-restore.sh"),
+      ["--resume-line", "opencode --session {id}"],
+      { stdio: ["pipe", "ignore", "ignore"], env: process.env, detached: true });
+    child.on("error", () => {});
+    child.stdin.on("error", () => {});
+    child.stdin.end(JSON.stringify({ session_id: sessionID }));
+    child.unref();
+  } catch {
+    /* advisory */
+  }
 }
 
 function errorName(error) {
@@ -117,6 +136,11 @@ export const AgtermStatusPlugin = async () => {
         : undefined;
 
     switch (type) {
+      case "session.created": {
+        const info = properties.info ?? {};
+        if (typeof info.id === "string" && info.id && !info.parentID) pinRestore(wrapper, info.id);
+        return null;
+      }
       case "session.status": {
         const kind =
           typeof properties.status === "string" ? properties.status : properties.status?.type;

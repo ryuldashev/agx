@@ -133,14 +133,17 @@ public enum SchedulePolicy {
 }
 
 /// The shell line a fired job runs: the agent gets the brief as ONE argument read from a file the line
-/// then deletes, so quotes, newlines, and `$` in the brief never reach the shell as syntax. The same
-/// shape `agx spawn` used before the feature moved into the app.
+/// then deletes, so quotes, newlines, and `$` in the brief never reach the shell as syntax. Where the
+/// argument goes is the agent profile's `seed` (`claude "$b"` vs `gemini -i "$b"`); an unknown launch
+/// line is seeded positionally. The same shape `agx spawn` renders.
 public enum ScheduledLaunch {
     public static let fallbackAgent = "claude"
 
     public static func commandLine(launch: String?, briefFile: String) -> String {
         let agent = launch.trimmedOrNilValue ?? fallbackAgent
-        let body = "b=\"$(cat \(quote(briefFile)))\"; rm -f \(quote(briefFile)); exec \(agent) \"$b\""
+        let seed = AgentCatalog.profile(forCommandLine: agent)?.seed ?? .positional
+        let body = "b=\"$(cat \(quote(briefFile)))\"; rm -f \(quote(briefFile)); exec \(agent) "
+            + seed.arguments(briefArgument: "\"$b\"")
         return "/bin/zsh -lc \(quote(body))"
     }
 

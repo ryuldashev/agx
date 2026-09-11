@@ -48,31 +48,6 @@ public enum AgentHooksInstall {
     /// can switch the model or hand the task to another agent. A no-op outside agx.
     public static let agentFailureHookName = "agx-agent-failure.sh"
 
-    /// The Claude Code hook events the merge installs: the script each runs (relative to the script directory)
-    /// plus its arguments. The four status hooks share the wrapper and differ by state: `UserPromptSubmit` and
-    /// `PostToolUse` both set `active` — the latter after every tool run, so the status returns to `active`
-    /// when work RESUMES after a `blocked` permission prompt: Claude Code has no "permission answered" event,
-    /// and the gated tool's `PreToolUse` fired BEFORE `blocked` was set, so its `PostToolUse` is the first hook
-    /// afterwards. `Notification` alone carries the `permission_prompt` matcher, and only `Stop`→`completed`
-    /// passes `--auto-reset` (it clears on visit); the rest stay keep-state. The two `SessionStart` entries
-    /// take no arguments; restore comes first so the pin lands before the (slower) context call.
-    struct ClaudeHook {
-        let event: String
-        let matcher: String?
-        let script: String
-        let args: String
-    }
-
-    static let claudeHooks: [ClaudeHook] = [
-        ClaudeHook(event: "UserPromptSubmit", matcher: nil, script: wrapperName, args: " active --blink"),
-        ClaudeHook(event: "PostToolUse", matcher: nil, script: wrapperName, args: " active --blink"),
-        ClaudeHook(event: "Stop", matcher: nil, script: wrapperName, args: " completed --auto-reset"),
-        ClaudeHook(event: "Notification", matcher: "permission_prompt", script: wrapperName, args: " blocked"),
-        ClaudeHook(event: "SessionStart", matcher: nil, script: sessionRestoreHookName, args: ""),
-        ClaudeHook(event: "SessionStart", matcher: nil, script: sessionContextHookName, args: ""),
-        ClaudeHook(event: "StopFailure", matcher: nil, script: agentFailureHookName, args: ""),
-    ]
-
     /// Codex lifecycle events paired with actions the installed Codex hook understands; the adapter, not
     /// agterm's runtime, owns the event-to-status behavior and the Auto Review workaround.
     static let codexHooks: [(event: String, action: String)] = [
@@ -121,25 +96,29 @@ public enum AgentHooksInstall {
     /// object: the installer refuses to overwrite a hand-maintained file it cannot safely parse.
     public enum MergeError: Error { case malformedExistingSettings }
 
-    /// merge the four agent-status hooks and the two `SessionStart` hooks into an existing Claude Code
-    /// `settings.json`.
-    ///
-    /// `existing` is the current contents (nil/empty = start from a fresh object). Returns the new JSON and
-    /// whether it differs; idempotent — a hook already present (detected by its script's path in an entry of
-    /// that event) is skipped, so the input comes back with `changed == false` once all are in. Unrelated
-    /// hooks and keys are preserved; invalid JSON throws.
-    public static func mergeClaudeSettings(existing: String?, scriptDir: String) throws -> (json: String, changed: Bool) {
+    /// merge a profile's lifecycle hooks into its JSON settings file (`existing` nil/empty = start from a
+    /// fresh object). Returns the new JSON and whether it differs; idempotent — a hook already present
+    /// (detected by its script's path in an entry of that event) is skipped, so the input comes back with
+    /// `changed == false` once all are in. Unrelated hooks and keys are preserved; invalid JSON throws.
+    /// `shape` picks the dialect: Claude's nested entries (also Gemini's) or Cursor's flat `{command}` rows
+    /// under a `version: 1` root.
+    public static func mergeJSONHooks(existing: String?, scriptDir: String, shape: HookFileShape = .claude,
+                                      bindings: [HookBinding]) throws -> (json: String, changed: Bool) {
         var root = try parsedObject(existing)
 
         var hooks = root["hooks"] as? [String: Any] ?? [:]
         var didChange = false
-        for hook in claudeHooks {
+        for hook in bindings {
             var entries = hooks[hook.event] as? [[String: Any]] ?? []
             let script = scriptDir + "/" + hook.script
             if entries.contains(where: { entryUsesScript($0, script: script) }) {
                 continue
             }
-            entries.append(hookEntry(command: shellQuote(script) + hook.args, matcher: hook.matcher))
+            let command = shellQuote(script) + hook.args
+            switch shape {
+            case .claude: entries.append(hookEntry(command: command, matcher: hook.matcher))
+            case .cursor: entries.append(["command": command])
+            }
             hooks[hook.event] = entries
             didChange = true
         }
@@ -147,7 +126,15 @@ public enum AgentHooksInstall {
             return (existing ?? "", false)
         }
         root["hooks"] = hooks
+        if shape == .cursor, root["version"] == nil {
+            root["version"] = 1
+        }
         return (serialize(root), true)
+    }
+
+    /// The Claude Code merge: `AgentCatalog.claude`'s bindings into `~/.claude/settings.json`.
+    public static func mergeClaudeSettings(existing: String?, scriptDir: String) throws -> (json: String, changed: Bool) {
+        try mergeJSONHooks(existing: existing, scriptDir: scriptDir, bindings: AgentCatalog.claude.jsonHookBindings)
     }
 
     /// append the marker-guarded `source` line for the shell integration to a shell rc file.
@@ -364,6 +351,7 @@ public enum AgentHooksInstall {
 
     // does a hook entry already invoke this script (idempotency probe, by absolute script path)?
     private static func entryUsesScript(_ entry: [String: Any], script: String) -> Bool {
+        if (entry["command"] as? String)?.contains(script) == true { return true }
         guard let commands = entry["hooks"] as? [[String: Any]] else { return false }
         return commands.contains { ($0["command"] as? String)?.contains(script) == true }
     }

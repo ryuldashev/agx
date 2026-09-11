@@ -14,9 +14,21 @@ worth it.
 **Connected agents** (`Settings ▸ Agents`) — a named list of local agent CLIs, each just a display
 name and a shell line, so anything runnable qualifies. A "Found on This Mac" section probes `PATH`
 for the CLIs it knows (Claude Code, Codex, Gemini, Copilot, Cursor, OpenCode, Crush, Aider, Amp,
-Goose, Kimi, Qwen, Droid, Mimo, Hermes) and offers one-click Connect. The probe adds `~/.local/bin`,
+Goose, Kimi, Qwen, Droid, Mimo, Hermes, Pi) and offers one-click Connect. The probe adds `~/.local/bin`,
 `~/.bun/bin` and the Homebrew prefixes itself: the GUI is launched by launchd, whose `PATH` has none
 of the directories agents actually install into.
+
+**Agent profiles** (`agtermCore/AgentCatalog.swift`, ADR-0003) — everything agx knows about one CLI
+lives in its `AgentProfile`: how it takes a brief (`claude "$b"` vs `gemini -i "$b"` vs `opencode
+--prompt "$b"`), its resume line (`{id}`), which hook file its status hooks merge into and in which
+dialect, how `agx context` reaches it, and its config directory. The installer, `ScheduledLaunch` (schedule
++ failover), the restore pin and `agx spawn` read the profile; nothing else names an agent. A profile
+with only a name and binary is launch-only: seeded positionally, no glyph, no resume — the graceful floor.
+Depth today: Claude Code and Gemini CLI (hooks + resume + context), Codex (hooks + resume + context via
+its adapter), Cursor (hooks without a permission event + resume + context), OpenCode (plugin status,
+`--prompt` seed, `--session` resume), Mimo (seed + resume only). Measured facts per CLI —
+`docs/reference/agents/<binary>.md`. `scripts/agx` mirrors the seed/context/trust part of the catalog in
+its `AGENTS` table (python can't read the Swift catalog); keep the two in step.
 
 **⌥ names the chrome** — holding ⌥ alone drops a panel under the title bar listing every visible chrome
 control as icon + the short token used to talk about it + its shortcut, so a button can be reported by name
@@ -60,12 +72,14 @@ agent-facing side of the control API: `agx context` describes the UI an in-pane 
 opens a peer session seeded with a brief, `agx schedule` wraps scheduled sessions, `agx run` runs a command in
 the pane's overlay. It is bundled at `Contents/Resources/agx`, finds `agtermctl` as its `../MacOS` sibling,
 and Help ▸ Install Command Line Tool links it into `/usr/local/bin` beside `agtermctl` (one admin prompt for
-both). Help ▸ Install Agent Status Hooks adds two Claude Code `SessionStart` hooks from
-`Resources/agent-status/` with the same marker-guarded merge as the status hooks: `agx-session-restore.sh` pins
-`claude --resume <session_id> --fork-session` as the pane's restore command, `agx-session-context.sh` injects
-`agx context` as additional context. Both are gated on `AGTERM_ENABLED=1`, use python3 rather than jq, print
-nothing on failure and always exit 0, so outside agx they cost one `test` and can never block a turn. The
-installer bakes the bundled `agtermctl`/`agx` paths into the wrappers, so nothing needs to be on PATH.
+both). Help ▸ Install Agent Status Hooks adds two `SessionStart` hooks per hook-capable profile from
+`Resources/agent-status/` with the same marker-guarded merge as the status hooks: `agx-session-restore.sh
+--resume-line '<profile template>'` pins the agent's resume line for the session id on stdin as the pane's
+restore command, `agx-session-context.sh --format claude|codex|cursor` injects `agx context` as additional
+context in that agent's envelope. Codex's adapter calls both from its `session-start` action. All are gated
+on `AGTERM_ENABLED=1`, use python3 rather than jq, print nothing on failure and always exit 0, so outside agx
+they cost one `test` and can never block a turn. The installer bakes the bundled `agtermctl`/`agx` paths into
+the wrappers, so nothing needs to be on PATH.
 
 **Agent failover** — when Claude Code stops on an API error, the app decides what happens next instead of
 leaving the pane at "You're out of usage credits. Run /usage-credits … or /model". Claude Code's
