@@ -277,6 +277,7 @@ struct SocketClientTests {
             custom_command_palette      ctrl+shift+o
             show_attention              ctrl+shift+i
             dashboard                   cmd+shift+g
+            keyboard_shortcuts          cmd+/
 
         commands:
             Deploy  cmd+shift+y

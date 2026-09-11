@@ -221,24 +221,28 @@ public struct Chord: Equatable, Hashable, Sendable {
     /// The chord as macOS menu glyphs (e.g. `⌘⌥N`): modifiers in the macOS order `⌃⌥⇧⌘`, then the key (single
     /// letters uppercased, named keys as symbols) — action-palette hints, so a built-in reads like its menu equivalent;
     /// custom commands keep the raw kitty `displayString`.
-    public var glyphString: String {
-        var s = ""
-        if mods.contains(.control) { s += "⌃" }
-        if mods.contains(.option) { s += "⌥" }
-        if mods.contains(.shift) { s += "⇧" }
-        if mods.contains(.command) { s += "⌘" }
+    public var glyphString: String { kbdGlyphs.joined() }
+
+    /// The chord as an ORDERED list of single glyphs — modifiers in the macOS order `⌃⌥⇧⌘`, then the base
+    /// key — so a caller can wrap each in its own `<kbd>` capsule. `glyphString` is these run together.
+    public var kbdGlyphs: [String] {
+        var glyphs: [String] = []
+        if mods.contains(.control) { glyphs.append("⌃") }
+        if mods.contains(.option) { glyphs.append("⌥") }
+        if mods.contains(.shift) { glyphs.append("⇧") }
+        if mods.contains(.command) { glyphs.append("⌘") }
         switch key {
-        case "tab": s += "⇥"
-        case "space": s += "␣"
-        case "return": s += "↩"
-        case "delete": s += "⌫"
-        case "left": s += "←"
-        case "right": s += "→"
-        case "up": s += "↑"
-        case "down": s += "↓"
-        default: s += key.count == 1 ? key.uppercased() : key
+        case "tab": glyphs.append("⇥")
+        case "space": glyphs.append("␣")
+        case "return": glyphs.append("↩")
+        case "delete": glyphs.append("⌫")
+        case "left": glyphs.append("←")
+        case "right": glyphs.append("→")
+        case "up": glyphs.append("↑")
+        case "down": glyphs.append("↓")
+        default: glyphs.append(key.count == 1 ? key.uppercased() : key)
         }
-        return s
+        return glyphs
     }
 }
 
