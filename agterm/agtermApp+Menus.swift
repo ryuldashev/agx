@@ -48,7 +48,7 @@ extension agtermApp {
     @CommandsBuilder
     var appCommands: some Commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Agterm") { showAboutPanel() }
+                Button("About \(Brand.productName)") { showAboutPanel() }
             }
             // drop SwiftUI's stock Undo/Redo: agterm registers no NSUndoManager, and the ⌘Z they advertise
             // is owned by File ▸ Reopen Closed Item (`BuiltinAction.undoClose`), whose menu precedes Edit
