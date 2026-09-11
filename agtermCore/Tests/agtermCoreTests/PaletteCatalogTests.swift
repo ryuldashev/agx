@@ -60,7 +60,7 @@ struct PaletteCatalogTests {
     }
 
     @Test func catalogHasTheExpectedStaticCommandCount() {
-        #expect(PaletteCommand.allCases.count == 51)
+        #expect(PaletteCommand.allCases.count == 52)
     }
 
     @Test func idsRoundTripThroughRawValue() {
