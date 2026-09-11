@@ -25,3 +25,8 @@ Gates: `make build` ok, `make test` 2800/2800, `make lint` clean. `make deploy` 
   Read before anyone external sees it: `docs/guide/README.md`, `a-day.md`.
 - `origin/master` (ddda9df) is far behind the whole dated chain — moving it is his call.
 - The onboarding session had deployed its own branch first; this deploy supersedes it.
+
+## Addendum 02:45
+- Rebranded leftover "Agterm" strings (About item, quit prompt, window title) via `Brand.productName`; redeployed.
+- `agx` workspace defaults set (`~/agterm`, Claude Code) — lost in the agterm+mmee merge. `mir`, `games`, `roblox`, `home` still have none.
+- Four night sessions closed; their worktrees/branches kept for reference.
