@@ -55,6 +55,7 @@ extension AppStore {
                                           paneOverlays: paneOverlays(session),
                                           hud: hudNode(session),
                                           reader: readerNode(session),
+                                          failover: ControlFailoverNode.project(session.failover),
                                           scratch: session.scratchActive, flagged: session.flagged,
                                           commandWait: (session.initialCommand != nil && session.commandWait) ? true : nil,
                                           durable: session.durable ? true : nil,

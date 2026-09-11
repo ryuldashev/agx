@@ -255,6 +255,13 @@ public final class Session: Identifiable {
     /// (`isSplit`) — a hidden split builds no right surface at bootstrap.
     @ObservationIgnored public var pendingSplitForegroundCommand: [String]?
 
+    /// Failover memory for the agent in the main pane (`session.failure`): pools run dry, the model it was
+    /// switched to, retries, the session it was handed off to. Ephemeral, never persisted.
+    @ObservationIgnored public var failover = FailoverState()
+    /// The agent's transcript file as its failure hook last reported it, so a handoff can carry the
+    /// conversation even when the restore command was never pinned. Ephemeral.
+    @ObservationIgnored public var agentTranscriptPath: String?
+
     /// The markdown reader in the SPLIT pane, nil when none is up. While set, the right pane renders the
     /// document instead of its shell (the shell, if one exists, stays alive unhosted, as a hidden split's
     /// does) and the split is shown. Control-channel only and ephemeral, never persisted.

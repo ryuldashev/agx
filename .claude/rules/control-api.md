@@ -718,3 +718,23 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 - Keep the bundled skill synchronized with commands, arguments, results, keymap, and model.
 - `site/commands.html` documents every command, invocation, arguments, and read-back; `site/docs.html`,
   README and the skill link to it rather than restating the catalog.
+
+## Agent failover
+
+- `session.failure <error> [--message] [--transcript] [--handoff]` is the agent's failure report; the
+  Claude Code `StopFailure` hook (`Resources/agent-status/agx-agent-failure.sh`) sends it. The plain
+  `Stop` hook does NOT fire on an API-error turn (verified in transcripts), so never key failover on it.
+  Detection is never a scan of the terminal buffer.
+- Policy is host-free in `agtermCore/AgentFailover.swift`: `AgentFailure.classify` (error type + message →
+  modelExhausted / accountLimit / auth / transient / blocked / processExited), `FailoverPolicy.decide`
+  (ladder first, families exhausted per session, then handoff, retries ≤3 in 30 min) and
+  `ClaudeTranscript.digest` (last prompts + answer from the JSONL tail). `AgentFailoverCoordinator` (app)
+  owns the effects: `GhosttySurfaceView.inject` types `/model <next>` then the continue prompt after
+  `modelSwitchSettle`; a handoff writes the brief to `<stateDir>/failover/<uuid>.brief` and reuses
+  `ScheduledLaunch.commandLine` to spawn `<name> → <agent>` in the same workspace and cwd.
+- A main-pane exit while `agentIndicator.status == .active` is a crash (a keystroke or interrupt would
+  have cleared the status first) and hands off through `paneExiting`; never during `library.isTerminating`.
+- `/model <alias>[1m]` sets the model and SAVES it as Claude Code's default for new sessions — the ladder
+  changes the user's default, so the notification names the model it switched to.
+- Read-back: the session node's `failover`, the `failover` event, `result.failover` on the command.
+  Knobs: Settings ▸ Agents ▸ Failover (`failoverEnabled/Models/ContinuePrompt/HandoffEnabled/HandoffAgent`).

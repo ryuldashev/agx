@@ -140,6 +140,7 @@ enum AgentHooksInstaller {
             (AgentHooksInstall.codexWrapperName, "AGTERMCTL", ctl),
             (AgentHooksInstall.sessionRestoreHookName, "AGTERMCTL", ctl),
             (AgentHooksInstall.sessionContextHookName, "AGX", CLIInstaller.bundledAgx?.path),
+            (AgentHooksInstall.agentFailureHookName, "AGTERMCTL", ctl),
         ]
         for bake in bakes {
             guard let path = bake.path else { continue } // not bundled: leave the PATH fallback in place

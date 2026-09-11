@@ -14,7 +14,8 @@ description: >
   ghostty config. Also covers the
   window/workspace/session addressing model and the AGTERM_* environment a spawned shell sees, plus
   subscribe to status, notification, session lifecycle, and tree-change events; schedule a session to
-  open later with a brief as the agent's first message; diagnose problems
+  open later with a brief as the agent's first message; report an agent failure so the app switches the
+  model or hands the task to another agent; diagnose problems
   (keymap editor, custom actions, logs); and file a bug as a GitHub issue or a
   feature request / question as a GitHub Discussion.
 when_to_use: >
@@ -23,6 +24,7 @@ when_to_use: >
   session.flag, session.seen, session.reveal, session.duplicate, session.background, session.overlay,
   session.hud, hud panel, show a message over a session, session.reader, reader panel, show a markdown file beside a session, render markdown in the terminal, schedule.add, schedule.list, schedule.cancel,
   schedule.run, scheduled session, run this later, remind me tomorrow, continue at 09:00,
+  session.failure, agent failover, out of usage credits, switch model and continue, hand the task to another agent,
   workspace.new, workspace.select, workspace.go, workspace.move, workspace.focus, workspace.filter, window.new, window.list,
   window.select, window.resize, window.move, window.zoom, window.fullscreen, window.minimize, quick terminal, sidebar, sidebar.mode, sidebar.expand, sidebar.collapse, flagged, notify, font.inc, keymap.reload, keymap.list, config.reload,
   theme.set, theme.list, events, events.read, event subscription, select theme, edit keymap, show an image, display an image inline, show-image,
@@ -210,6 +212,8 @@ no event announces it),
 entry, which is weaker — libghostty will not create a surface while the display is asleep, so a session
 created by a scheduled job overnight stays unrealized until the displays wake and then recovers itself.
 Poll this after an unattended create),
+`failover` (what the app last did about the agent's failure — `{lastAction, switchedTo?, switches, retries,
+exhausted, handedOffTo?}`, the read side of `session failure`; omitted until anything happened),
 `hasSplit` (whether a second pane exists at all, shown or hidden; omitted when there is none — read this
 rather than `split`, which is false for a split hidden with ⌘D even though its pane is still alive),
 `splitAxis` (`vertical` for left/right or `horizontal` for top/bottom; omitted without a split),
@@ -232,7 +236,7 @@ that window, omitted when no pick is pending.
 
 **events**: continuously print control events, subscribing from the current tail when no cursor is
 given. Use `--json` for one bare event object per line; filter with repeatable or comma-separated
-`--kind status|notify|session.created|session.closed|session.durable|tree.changed|schedule.added|schedule.fired|schedule.cancelled|schedule.missed`; resume with paired
+`--kind status|notify|session.created|session.closed|session.durable|tree.changed|schedule.added|schedule.fired|schedule.cancelled|schedule.missed|failover`; resume with paired
 `--run RUN --after SEQ`; and set page size with `--limit 1...1000`. The app retains 4,096 events for
 one process run. Cursor run changes, expiry, and ahead-of-tail errors are fatal and are never silently
 rebaselined. There is no terminal-output event stream.
@@ -423,6 +427,20 @@ omitted when expanded).
   works on it while `--full` is refused (`a hud is always floating: pass --size-percent, not --full`),
   and `surface zoom` will not address it. `hud update`/`hud close` with none up answer `no hud`. Read it
   back from the tree node's `hud` object; nothing announces it as an event, so poll `tree`.
+· `failure <error> [--message TEXT] [--transcript PATH] [--handoff]` — report that the agent in the
+  session failed, so the app can act: `error` is the agent's error type (`rate_limit`, `overloaded`,
+  `server_error`, `authentication_failed`, …) and `--message` the text it showed. "Out of usage credits …
+  keep using X" switches the pane to the next model in the Settings ▸ Agents ▸ Failover ladder
+  (default `opus[1m]`, `sonnet[1m]`) by typing `/model <next>` and a continue prompt; a weekly/session
+  account limit, a spent ladder, an auth error, or `--handoff` opens a peer session with another connected
+  agent (Codex, …) seeded with a brief built from the transcript (`--transcript`, else derived from the
+  pane's `claude --resume` line); `overloaded`/`server_error`/other `rate_limit` re-prompts after 20s, at
+  most three times in 30 minutes; anything else only notifies the user. The answer's `result.failover`
+  says which: `{lastAction: switch-model|retry|handoff|notify, switchedTo?, switches, retries, exhausted,
+  handedOffTo?}` — the same object the session's tree node carries as `failover` once anything happened.
+  Claude Code's `StopFailure` hook (installed by Help ▸ Install Agent Status Hooks) calls this itself, so
+  an agent normally never has to; a main-pane exit while the status is still `active` is treated as a
+  crash and handed off the same way. Every action emits a `failover` event.
 
 **schedule** — `add --at TIME (--brief TEXT | --brief-file PATH) [--name N] [--workspace W |
 --workspace-name N] [--cwd DIR] [--agent A | --command CMD] [--background] [--window W]` (add a

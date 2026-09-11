@@ -23,6 +23,7 @@ struct agtermApp: App {
     @State private var accessibilityObserver: SystemAccessibilityObserver
     @State private var wakeObserver: SystemWakeObserver
     @State private var scheduler: SessionScheduler
+    @State private var failover: AgentFailoverCoordinator
 
     /// Whether this launch owes the user the first-run welcome. Decided in `init()`, because the first
     /// launch writes its own window snapshot moments after the scene appears and that write would read back
@@ -87,6 +88,8 @@ struct agtermApp: App {
         // fires overdue jobs on start and arms a timer for the next; needs the library for a store and the
         // action hub to seed the agent, both already built.
         _scheduler = State(initialValue: SessionScheduler(directory: stateDirectory, library: library, actions: actions))
+        _failover = State(initialValue: AgentFailoverCoordinator(directory: stateDirectory, library: library,
+                                                                 settingsModel: settingsModel))
     }
 
     var body: some Scene {
@@ -101,7 +104,7 @@ struct agtermApp: App {
                     library: library,
                     makeSurface: {
                         Self.makeSurface(for: $0, store: $1,
-                                         env: surfaceEnv(for: $0, pane: .left), library: library)
+                                         env: surfaceEnv(for: $0, pane: .left), library: library, actions: actions)
                     },
                     makeSplitSurface: {
                         Self.makeSplitSurface(for: $0, store: $1,
@@ -201,6 +204,7 @@ struct agtermApp: App {
                         actions.scheduler = scheduler
                         appDelegate.scheduler = scheduler
                         scheduler.start()
+                        actions.failover = failover
                         // last: a modal here blocks the rest of the task, and the window behind it should be
                         // fully wired before it opens. `presentOnce` latches, so the per-window .task is safe.
                         // the wall follows the welcome rather than opening beside it — see `presentOnce`.
@@ -255,7 +259,7 @@ struct agtermApp: App {
     /// directory. On shell exit the view calls back to close the owning session in the store.
     @MainActor
     private static func makeSurface(for session: Session, store: AppStore, env: [String: String],
-                                    library: WindowLibrary) -> GhosttySurfaceView {
+                                    library: WindowLibrary, actions: AppActions) -> GhosttySurfaceView {
         // `initialCommand` (`session.new --command`) replaces the login shell and closes the session on its exit
         // (like kitty); it is the durable creation identity, re-emitted by every `snapshot()`. `foregroundCommand`,
         // a distinct child captured at quit, is consumed run-once; an exec-replacing command has a nil libghostty
@@ -295,7 +299,7 @@ struct agtermApp: App {
         let sessionID = session.id
         view.onExit = { [weak view] in
             guard let view else { return }
-            Self.handlePaneExit(view, store: store, sessionID: sessionID, library: library)
+            Self.handlePaneExit(view, store: store, sessionID: sessionID, library: library, actions: actions)
         }
         view.onOpenFileReference = { path, line in
             store.openOverlay(sessionID, command: ConfigPaths.editorCommand(forPath: path, line: line),
@@ -327,10 +331,15 @@ struct agtermApp: App {
     /// passes with both slots live — tearing down the fresh right pane, stranding the session on the dead left.
     @MainActor
     private static func handlePaneExit(_ view: GhosttySurfaceView, store: AppStore, sessionID: UUID,
-                                       library: WindowLibrary) {
+                                       library: WindowLibrary, actions: AppActions? = nil) {
         if view.isSplitPane {
             store.closeSplitPane(sessionID)
         } else {
+            // before the close: an agent that died mid-turn hands its task on while the session (cwd,
+            // restore line, name) is still there to build the brief from.
+            if let session = store.session(withID: sessionID) {
+                actions?.failover?.paneExiting(session: session, store: store)
+            }
             store.closePrimaryPane(sessionID)
             // makeSplitSurface omits onFontSizeChange, but a promoted survivor is the sole pane and must persist
             // its own cmd +/-. no-op when the session closed instead (`surface` nil).

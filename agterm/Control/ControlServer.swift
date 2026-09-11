@@ -448,7 +448,7 @@ final class ControlServer {
                 .windowClose, .windowRename, .windowDelete, .windowResize, .windowMove, .windowZoom,
                 .windowFullscreen, .windowMinimize,
                 .restoreClear, .restoreList, .restoreOpen, .dashboard, .appRelaunch, .appQuit,
-                .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun:
+                .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun, .sessionFailure:
             return ControlResponse(ok: false, error: "control dispatcher did not handle \(request.cmd.rawValue)")
         case .debugAppearance:
             return setDebugAppearance(args: request.args)

@@ -51,6 +51,7 @@ public enum Command: String, Codable, Sendable {
     case sessionHudClose = "session.hud.close"
     case sessionReaderOpen = "session.reader.open"
     case sessionReaderClose = "session.reader.close"
+    case sessionFailure = "session.failure"
     case quick
     case quickType = "quick.type"
     case quickText = "quick.text"
@@ -324,6 +325,12 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     public var at: String?
     /// The task text `schedule.add` hands the agent as its first message.
     public var brief: String?
+    /// `session.failure`: the agent's error type as its hook reports it (`rate_limit`, `server_error`, …).
+    public var error: String?
+    /// `session.failure`: the agent's transcript file, so a handoff brief can carry the conversation.
+    public var transcript: String?
+    /// `session.failure`: hand the task to another agent now, skipping the model ladder.
+    public var handoff: Bool?
 
     public init(name: String? = nil, cwd: String? = nil, targets: [String]? = nil,
                 workspace: String? = nil, workspaceName: String? = nil,
@@ -347,7 +354,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
                 position: String? = nil, repeats: Bool? = nil, all: Bool? = nil, lines: Int? = nil,
                 light: String? = nil, dark: String? = nil,
                 close: Bool? = nil, fontSize: Double? = nil, autoSize: Bool? = nil, mru: Bool? = nil,
-                agent: String? = nil, at: String? = nil, brief: String? = nil) {
+                agent: String? = nil, at: String? = nil, brief: String? = nil,
+                error: String? = nil, transcript: String? = nil, handoff: Bool? = nil) {
         self.name = name
         self.cwd = cwd
         self.agent = agent
@@ -415,6 +423,9 @@ public struct ControlArgs: Codable, Sendable, Equatable {
         self.mru = mru
         self.at = at
         self.brief = brief
+        self.error = error
+        self.transcript = transcript
+        self.handoff = handoff
     }
 }
 
@@ -482,6 +493,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
     public var scheduled: [ControlScheduledNode]?
     /// The recently-closed sessions and workspaces, for `restore.list`.
     public var closed: [ControlRecentClosedNode]?
+    /// What `session.failure` decided and did (the action name, the model switched to, the peer session).
+    public var failover: ControlFailoverNode?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -491,7 +504,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 events: ControlEventBatch? = nil, keymap: ControlKeymap? = nil,
                 pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil,
                 scheduled: [ControlScheduledNode]? = nil,
-                closed: [ControlRecentClosedNode]? = nil) {
+                closed: [ControlRecentClosedNode]? = nil, failover: ControlFailoverNode? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -511,6 +524,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.defaults = defaults
         self.scheduled = scheduled
         self.closed = closed
+        self.failover = failover
     }
 }
 

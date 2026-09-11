@@ -106,6 +106,9 @@ public protocol ControlActions {
     /// percent; the host checks the file is readable, drives the store and moves the live divider.
     func openReader(_ target: String?, window: String?, spec: ReaderSpec) -> ControlResponse
     func closeReader(_ target: String?, window: String?) -> ControlResponse
+    /// An agent's failure report for the session (`session.failure`): the host decides between a model
+    /// switch, a retry, a handoff to another agent, or a notification, and performs it.
+    func reportFailure(_ target: String?, options: ControlFailureOptions) -> ControlResponse
     func setSessionBackground(_ target: String?, window: String?,
                               options: ControlSessionBackgroundOptions) -> ControlResponse
     func readSessionText(_ target: String?, window: String?, options: ControlSessionTextOptions) -> ControlResponse
@@ -195,6 +198,8 @@ public struct ControlDispatcher {
             return dispatchHudCommand(request)
         case .sessionReaderOpen, .sessionReaderClose:
             return dispatchReaderCommand(request)
+        case .sessionFailure:
+            return dispatchFailureCommand(request)
         case .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun:
             return dispatchScheduleCommand(request)
         }

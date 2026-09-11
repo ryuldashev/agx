@@ -83,6 +83,13 @@ enum EventFormatter {
             if let at = event.payload.at { parts.append("at=\(at)") }
             if let session = event.session { parts.append("session=\(session)") }
             return parts.joined(separator: " ")
+        case .failover:
+            var parts = [time, event.kind.rawValue, name, event.payload.action ?? "-"]
+            if let model = event.payload.model { parts.append("model=\(model)") }
+            if let source = event.payload.source { parts.append("source=\(source)") }
+            if let session = event.session { parts.append("session=\(session)") }
+            if let reason = event.payload.reason { parts.append("reason=\(reason)") }
+            return parts.joined(separator: " ")
         }
     }
 }

@@ -309,6 +309,20 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// line that launches it; a workspace points at one by id (`WorkspaceDefaults.agentID`). nil/empty =
     /// none connected, which is also a fresh install — detection only OFFERS agents, it never adds them.
     public var agents: [AgentDefinition]?
+    /// Agent failover: whether the app reacts to an agent's failure report (`session.failure`) and to an
+    /// agent process dying mid-task. nil = ON.
+    public var failoverEnabled: Bool?
+    /// The `/model` arguments tried, in order, when the current model's usage pool runs dry; nil =
+    /// `FailoverPolicy.defaultModelLadder`.
+    public var failoverModels: [String]?
+    /// The prompt typed after a model switch or a transient-error pause; nil = the default wording.
+    public var failoverContinuePrompt: String?
+    /// Whether, once the ladder is spent (or the account pool / login is gone), the task is handed to
+    /// another connected agent. nil = ON.
+    public var failoverHandoffEnabled: Bool?
+    /// The connected agent (name or id) that takes over; nil = the first connected agent whose binary
+    /// differs from the failed session's.
+    public var failoverHandoffAgent: String?
 
     public init(fontFamily: String? = nil, fontSize: Double? = nil, theme: String? = nil,
                 darkTheme: String? = nil, followSystemAppearance: Bool? = nil,
@@ -332,7 +346,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
                 hiddenInterfaceElements: [String]? = nil,
                 autoHideSidebarInactiveWindows: Bool? = nil, welcomeShown: Bool? = nil,
                 permissionsPrimerShown: Bool? = nil,
-                agents: [AgentDefinition]? = nil) {
+                agents: [AgentDefinition]? = nil, failoverEnabled: Bool? = nil,
+                failoverModels: [String]? = nil, failoverContinuePrompt: String? = nil,
+                failoverHandoffEnabled: Bool? = nil, failoverHandoffAgent: String? = nil) {
         self.fontFamily = fontFamily
         self.fontSize = fontSize
         self.theme = theme
@@ -376,6 +392,34 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.welcomeShown = welcomeShown
         self.permissionsPrimerShown = permissionsPrimerShown
         self.agents = agents
+        self.failoverEnabled = failoverEnabled
+        self.failoverModels = failoverModels
+        self.failoverContinuePrompt = failoverContinuePrompt
+        self.failoverHandoffEnabled = failoverHandoffEnabled
+        self.failoverHandoffAgent = failoverHandoffAgent
+    }
+
+    public var effectiveFailoverEnabled: Bool { failoverEnabled ?? true }
+    public var effectiveFailoverHandoffEnabled: Bool { failoverHandoffEnabled ?? true }
+    /// The ladder with blank entries dropped; an empty list falls back to the default rather than meaning
+    /// "no models", which `failoverHandoffEnabled` already expresses.
+    public var effectiveFailoverModels: [String] {
+        let models = (failoverModels ?? []).compactMap(\.trimmedOrNil)
+        return models.isEmpty ? FailoverPolicy.defaultModelLadder : models
+    }
+    public var effectiveFailoverContinuePrompt: String {
+        failoverContinuePrompt?.trimmedOrNil ?? FailoverPolicy.defaultContinuePrompt
+    }
+
+    /// The agent that takes over a failed session running `sourceBinary` (`claude`, …): the configured one
+    /// when it resolves, else the first connected agent of another kind. Nil = nothing to hand off to.
+    public func failoverHandoffAgent(for sourceBinary: String?) -> AgentDefinition? {
+        let agents = resolvedAgents
+        if let reference = failoverHandoffAgent?.trimmedOrNil {
+            if let uuid = UUID(uuidString: reference), let hit = agents.first(where: { $0.id == uuid }) { return hit }
+            if let hit = agents.first(where: { $0.name.caseInsensitiveCompare(reference) == .orderedSame }) { return hit }
+        }
+        return agents.first { AgentBinary.of(commandLine: $0.command) != sourceBinary || sourceBinary == nil }
     }
 
     /// The connected agents, nil read as empty and blank-named or blank-command rows dropped — the one

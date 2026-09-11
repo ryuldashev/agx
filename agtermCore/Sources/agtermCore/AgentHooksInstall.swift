@@ -44,6 +44,9 @@ public enum AgentHooksInstall {
     /// `agx-session-context.sh` feeds the new session `agx context` as additional context.
     public static let sessionRestoreHookName = "agx-session-restore.sh"
     public static let sessionContextHookName = "agx-session-context.sh"
+    /// The Claude Code `StopFailure` hook: reports a turn-ending API error to `session.failure`, so the app
+    /// can switch the model or hand the task to another agent. A no-op outside agx.
+    public static let agentFailureHookName = "agx-agent-failure.sh"
 
     /// The Claude Code hook events the merge installs: the script each runs (relative to the script directory)
     /// plus its arguments. The four status hooks share the wrapper and differ by state: `UserPromptSubmit` and
@@ -67,6 +70,7 @@ public enum AgentHooksInstall {
         ClaudeHook(event: "Notification", matcher: "permission_prompt", script: wrapperName, args: " blocked"),
         ClaudeHook(event: "SessionStart", matcher: nil, script: sessionRestoreHookName, args: ""),
         ClaudeHook(event: "SessionStart", matcher: nil, script: sessionContextHookName, args: ""),
+        ClaudeHook(event: "StopFailure", matcher: nil, script: agentFailureHookName, args: ""),
     ]
 
     /// Codex lifecycle events paired with actions the installed Codex hook understands; the adapter, not

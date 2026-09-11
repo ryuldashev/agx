@@ -48,6 +48,11 @@ The six event kinds and payloads are:
   across a restart, false when a fresh one was created (the restore fallback ran).
 - `tree.changed`: an empty payload and the affected window id. Name, membership, and ordering changes
   are coalesced for 100 ms per window. Read `tree --json` for the current snapshot.
+- `failover`: the app acted on an agent failure. Payload: `name` (the failed session's name), `action`
+  (`switch-model`|`retry`|`handoff`|`notify`), `model` (for `switch-model`), `reason` (for `handoff`/
+  `notify`), `source` (the failed session's id, for `handoff`); the event's `session` is the NEW session
+  for `handoff`, the failed one otherwise. Human mode: `<time> failover <name> <action> [model=…]
+  [source=…] session=<id> [reason=…]`.
 - `schedule.added` / `schedule.fired` / `schedule.cancelled` / `schedule.missed`: a scheduled session's
   lifecycle. Payload carries `name` and `at` (the job's fire time, ISO 8601 with the local offset); the
   event's `session` id is the JOB's own id for `.added`/`.cancelled`/`.missed`, but for `.fired` it is
@@ -145,6 +150,8 @@ to restore the exact size),
 `["left","right"]`, omitted when neither is; the read side of `session overlay open --pane`, reported
 independently of the session-wide `overlay` flag, which a pane overlay never sets),
 `reader` (the markdown document in the split's right pane — `path`; omitted when none is up),
+`failover` (the read side of `session failure` — `{lastAction, switchedTo?, switches, retries, exhausted, handedOffTo?}`;
+omitted until the app acted on a failure in this session),
 `hud` (the message panel occupying the session-wide overlay slot — the read side of `session hud`; omitted
 when none is up. A
 `{message, detail?, spinner, backgroundColor?, textColor?, sizePercent?, heightPercent?, position}`
@@ -761,6 +768,21 @@ error keeps those names for compatibility.
   beside `split`/`splitRatio`; poll-only, never persisted.
 - `session reader close [--target] [--window W]` — give the pane back. Errors `no reader` when none is
   up. ⌘D and `session split close` close the reader too.
+- `session failure <error> [--message TEXT] [--transcript PATH] [--handoff] [--target] [--window W]` —
+  report the agent's failure and let the app act (`session.failure`). `error` is one shell token (the
+  agent's error type); `--message` is sanitized like `session type` text; `--transcript` is resolved
+  against your cwd and must exist. Classification: message "out of usage credits" / "usage credits are
+  required" → the MODEL's pool is spent → `switch-model` to the next ladder entry whose family (fable /
+  opus / sonnet / haiku) is not yet exhausted in this session, typed as `/model <entry>` then the continue
+  prompt 2.5s later; `rate_limit` + "hit your … limit" → account limit → `handoff`; `authentication_failed`
+  / `oauth_org_not_allowed` / `account_on_hold` / `billing_error` → `handoff`; `overloaded` /
+  `server_error` / other `rate_limit` → `retry` (re-prompt after 20s, ≤3 in 30 min, then `handoff`);
+  `invalid_request` / `max_output_tokens` → `notify`. A handoff opens a session named `<name> → <agent>`
+  in the same workspace and cwd, running the configured handoff agent (Settings ▸ Agents ▸ Failover; default
+  the first connected agent of another kind) with a brief as its first message: why, the source session,
+  the transcript path, the last three user prompts and the last answer. No other agent connected →
+  `notify`. Returns `result.id` and `result.failover`. Refuses an empty or multi-token `error`, and
+  `agent failover not started` before the app finished launching.
 
 **Displaying an image inline.** This skill bundles `scripts/show-image.sh`. It opens an overlay (a
 real terminal surface) and renders the image there via the kitty graphics protocol, which ghostty —

@@ -42,6 +42,10 @@ struct AgentHooksInstallTests {
         #expect(evts["Notification"]![0]["matcher"] as? String == "permission_prompt")
         #expect(evts["UserPromptSubmit"]![0]["matcher"] == nil)
         #expect(evts["PostToolUse"]![0]["matcher"] == nil)
+        // the failure report takes no state argument: the app classifies the error itself
+        #expect(evts["StopFailure"]?.count == 1)
+        #expect(command(evts["StopFailure"]![0]) == "'\(scriptDir)/agx-agent-failure.sh'")
+        #expect(evts["StopFailure"]![0]["matcher"] == nil)
     }
 
     @Test func mergeWhenPresentIsNoOp() throws {
@@ -106,13 +110,13 @@ struct AgentHooksInstallTests {
         // a whitespace-only file has no content to lose, so it starts fresh like an empty file
         let result = try AgentHooksInstall.mergeClaudeSettings(existing: "   \n\t\n", scriptDir: scriptDir)
         #expect(result.changed)
-        #expect(events(result.json).count == 5)
+        #expect(events(result.json).count == 6)
     }
 
     @Test func mergeHandlesEmptyExisting() throws {
         let result = try AgentHooksInstall.mergeClaudeSettings(existing: "", scriptDir: scriptDir)
         #expect(result.changed)
-        #expect(events(result.json).count == 5)
+        #expect(events(result.json).count == 6)
     }
 
     @Test func mergeAddsBothSessionStartHooksRestoreFirst() throws {

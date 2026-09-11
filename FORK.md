@@ -67,6 +67,20 @@ both). Help ▸ Install Agent Status Hooks adds two Claude Code `SessionStart` h
 nothing on failure and always exit 0, so outside agx they cost one `test` and can never block a turn. The
 installer bakes the bundled `agtermctl`/`agx` paths into the wrappers, so nothing needs to be on PATH.
 
+**Agent failover** — when Claude Code stops on an API error, the app decides what happens next instead of
+leaving the pane at "You're out of usage credits. Run /usage-credits … or /model". Claude Code's
+`StopFailure` hook (`Resources/agent-status/agx-agent-failure.sh`, installed by Help ▸ Install Agent Status
+Hooks — the plain `Stop` hook does NOT fire on an API-error turn) reports the error type and message over
+`agtermctl session failure`. A model's spent pool ("out of usage credits … keep using X") types `/model <next>`
+from the Settings ▸ Agents ▸ Failover ladder (default `opus[1m]`, `sonnet[1m]`; X's family is marked exhausted
+for that session) and a continue prompt; a weekly/session account limit, an auth or billing error, a spent
+ladder, or a main-pane exit while the agent was mid-turn hands the task to another connected agent (default:
+the first of another kind, e.g. Codex) in a new `<name> → <agent>` session seeded with a brief built from the
+Claude transcript (last three prompts, last answer, transcript path); `overloaded`/`server_error` re-prompt
+after 20s up to three times. Every action posts a notification and a `failover` event, and reads back as the
+session node's `failover`. Host-free policy and transcript digest: `agtermCore/AgentFailover.swift`; the
+typing/spawning side: `agterm/AgentFailoverCoordinator.swift`. `docs/decisions/0002-agent-failover.md`.
+
 **Workspace defaults** — a workspace pins the directory new sessions open in and the connected agent
 they run, so opening a tab in `mmee` lands in `~/mmee` with Claude Code already running. Set from the
 sidebar's right-click ▸ Workspace Defaults… or over the control API:

@@ -6,7 +6,9 @@ import SwiftUI
 /// qualifies — the detected list is a shortcut, never a gate.
 ///
 /// The list is global (it lives in `settings.json`); WHERE an agent runs is per workspace, pinned in the
-/// sidebar's Workspace Defaults… sheet, which picks from exactly these rows.
+/// sidebar's Workspace Defaults… sheet, which picks from exactly these rows. The Failover section below it drives
+/// `AgentFailoverCoordinator`: the model ladder typed into a pane on "out of usage", and the peer agent a task
+/// is handed to when the ladder is spent or the agent process dies mid-turn.
 struct AgentsSettingsView: View {
     let model: SettingsModel
 
@@ -56,6 +58,29 @@ struct AgentsSettingsView: View {
                         .accessibilityIdentifier("settings-agents-rescan")
                 }
             }
+
+            Section("Failover") {
+                Toggle("Switch model and continue when an agent runs out of usage", isOn: failoverEnabled)
+                    .accessibilityIdentifier("settings-failover-enabled")
+                TextField("Model ladder", text: failoverModels, prompt: Text(FailoverPolicy.defaultModelLadder.joined(separator: ", ")))
+                    .accessibilityIdentifier("settings-failover-models")
+                    .disabled(!model.settings.effectiveFailoverEnabled)
+                SettingHint("Tried in order via /model when Claude Code reports “out of usage credits”; comma-separated, [1m] allowed.")
+                Toggle("Hand the task to another agent when the ladder is spent or the agent crashes", isOn: failoverHandoff)
+                    .accessibilityIdentifier("settings-failover-handoff")
+                    .disabled(!model.settings.effectiveFailoverEnabled)
+                Picker("Handoff agent", selection: failoverHandoffAgent) {
+                    Text("First other connected agent").tag("")
+                    ForEach(agents) { agent in Text(agent.name).tag(agent.id.uuidString) }
+                }
+                .accessibilityIdentifier("settings-failover-handoff-agent")
+                .disabled(!model.settings.effectiveFailoverEnabled || !model.settings.effectiveFailoverHandoffEnabled)
+                TextField("Continue prompt", text: failoverContinuePrompt, prompt: Text(FailoverPolicy.defaultContinuePrompt), axis: .vertical)
+                    .lineLimit(2...4)
+                    .accessibilityIdentifier("settings-failover-prompt")
+                    .disabled(!model.settings.effectiveFailoverEnabled)
+                SettingHint("Needs the StopFailure hook: Help ▸ Install Agent Status Hooks. A crash is also caught when the pane exits mid-turn.")
+            }
         }
         .formStyle(.grouped)
         .padding()
@@ -63,6 +88,32 @@ struct AgentsSettingsView: View {
     }
 
     private var agents: [AgentDefinition] { model.settings.agents ?? [] }
+
+    private var failoverEnabled: Binding<Bool> {
+        Binding(get: { model.settings.effectiveFailoverEnabled },
+                set: { model.setFailoverEnabled($0 ? nil : false) })
+    }
+
+    private var failoverHandoff: Binding<Bool> {
+        Binding(get: { model.settings.effectiveFailoverHandoffEnabled },
+                set: { model.setFailoverHandoffEnabled($0 ? nil : false) })
+    }
+
+    /// Stored as the agent's id; "" (the default row) stores nil so the first other agent is picked live.
+    private var failoverHandoffAgent: Binding<String> {
+        Binding(get: { model.settings.failoverHandoffAgent ?? "" },
+                set: { model.setFailoverHandoffAgent($0.isEmpty ? nil : $0) })
+    }
+
+    private var failoverModels: Binding<String> {
+        Binding(get: { (model.settings.failoverModels ?? []).joined(separator: ", ") },
+                set: { model.setFailoverModels($0) })
+    }
+
+    private var failoverContinuePrompt: Binding<String> {
+        Binding(get: { model.settings.failoverContinuePrompt ?? "" },
+                set: { model.setFailoverContinuePrompt($0.isEmpty ? nil : $0) })
+    }
 
     /// Detected agents not already connected — matched on the launch line, so re-adding `claude` after
     /// renaming its row to "Work Claude" is still recognized as connected.

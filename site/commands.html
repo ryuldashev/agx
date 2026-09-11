@@ -192,6 +192,7 @@
             <a href="#overlay" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session overlay</a>
             <a href="#hud" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session hud</a>
             <a href="#reader" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session reader</a>
+            <a href="#failure" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session failure</a>
             <a href="#schedule" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">schedule</a>
             <a href="#window" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">window</a>
             <a href="#surface" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">surface zoom</a>
@@ -1830,6 +1831,75 @@
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reader</span> object (<span style="font-family: &quot;JetBrains Mono&quot;, monospace">path</span>),
                 omitted when none is up; its width is the node's <span style="font-family: &quot;JetBrains Mono&quot;, monospace">splitRatio</span>. Reader state is
                 poll-only; no event announces it, and it is never persisted across a relaunch.
+              </p>
+            </div>
+          </section>
+
+          <!-- FAILURE -->
+          <section id="failure" style="scroll-margin-top: 88px; padding-top: 56px">
+            <h2
+              style="
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+                font-weight: 700;
+                font-size: 28px;
+                letter-spacing: -0.02em;
+                margin: 0 0 16px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              "
+            >
+              session failure
+            </h2>
+            <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0 0 16px">
+              An agent's failure report, and the app's answer to it: when a model's usage pool runs dry the pane is switched to
+              the next model and told to continue; when the whole account is out, the agent cannot authenticate, or the model
+              ladder is spent, the task is handed to another connected agent in a new session seeded with a brief built from the
+              transcript. Claude Code's <span style="font-family: &quot;JetBrains Mono&quot;, monospace">StopFailure</span> hook
+              (Help ▸ Install Agent Status Hooks) sends it for every API-error turn, so it normally runs without anyone typing it.
+            </p>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl session failure &lt;error&gt; [--message TEXT] [--transcript PATH] [--handoff] [--target T] [--window W]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.failure</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Report and act. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">error</span> is the agent's error type
+                (<span style="font-family: &quot;JetBrains Mono&quot;, monospace">rate_limit</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">overloaded</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">authentication_failed</span>, …), one shell token;
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--message</span> is the text it showed, which decides whether one
+                model's pool or the account ran dry. <strong style="color: #bfbab0">Returns</strong> the session's
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span> and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.failover</span> —
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">{lastAction, switchedTo?, switches, retries, exhausted, handedOffTo?}</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">lastAction</span> being one of
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">switch-model</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">retry</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">handoff</span> or
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">notify</span>. The same object sits on the session's tree
+                node as <span style="font-family: &quot;JetBrains Mono&quot;, monospace">failover</span> once anything happened, and every action
+                emits a <span style="font-family: &quot;JetBrains Mono&quot;, monospace">failover</span> event.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                "Out of usage credits … keep using X" marks X's family (fable / opus / sonnet / haiku) exhausted for this session and
+                types <span style="font-family: &quot;JetBrains Mono&quot;, monospace">/model &lt;next&gt;</span> from the Settings ▸ Agents ▸ Failover
+                ladder (default <span style="font-family: &quot;JetBrains Mono&quot;, monospace">opus[1m], sonnet[1m]</span>), then the continue
+                prompt 2.5 s later. A weekly or session account limit, an auth or billing error, a spent ladder, or
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--handoff</span> opens
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">&lt;name&gt; → &lt;agent&gt;</span> in the same workspace and cwd, running the
+                configured handoff agent (default: the first connected agent of another kind, e.g. Codex) with a brief as its first
+                message — the reason, the source session, the transcript path (<span style="font-family: &quot;JetBrains Mono&quot;, monospace">--transcript</span>,
+                else derived from the pane's <span style="font-family: &quot;JetBrains Mono&quot;, monospace">claude --resume</span> line), the last three
+                user prompts and the last answer. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">overloaded</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">server_error</span> and any other
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">rate_limit</span> re-prompt after 20 s, at most three times in 30 minutes,
+                then hand off; <span style="font-family: &quot;JetBrains Mono&quot;, monospace">invalid_request</span> and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">max_output_tokens</span> only notify. No other agent connected, or the
+                pane cannot be typed into, degrades to <span style="font-family: &quot;JetBrains Mono&quot;, monospace">notify</span>. A main-pane exit while
+                the agent's status is still <span style="font-family: &quot;JetBrains Mono&quot;, monospace">active</span> is treated as a crash and handed
+                off the same way, without any command. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agent failover not started</span>
+                before the app has finished launching.
               </p>
             </div>
           </section>

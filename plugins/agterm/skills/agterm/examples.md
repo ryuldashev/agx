@@ -1030,3 +1030,15 @@ Read the parse problems in full rather than just their count:
 ```bash
 agtermctl keymap list --json | jq -r '.result.keymap.diagnostics[] | "line \(.line): \(.message)"'
 ```
+
+## Hand a task to another agent when Claude runs dry
+
+The `StopFailure` hook does this on its own for "out of usage credits"; force it from a session when
+you want a different agent to take over now:
+
+```bash
+agtermctl session failure rate_limit --handoff --target "$AGTERM_SESSION_ID" --json
+# {"ok":true,"result":{"id":"…","failover":{"lastAction":"handoff","handedOffTo":"<new session id>",…}}}
+agtermctl events --kind failover
+# 12:01:03 failover "Курс Rocket" handoff source=… session=… reason=handoff requested
+```

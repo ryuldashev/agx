@@ -203,6 +203,9 @@ struct SocketClient {
         if let closed = response.result?.closed {
             return formatRecentClosed(closed)
         }
+        if let failover = response.result?.failover {
+            return formatFailover(failover)
+        }
         if let text = response.result?.text {
             return text
         }
@@ -224,6 +227,15 @@ struct SocketClient {
             return id
         }
         return "ok"
+    }
+
+    /// Render `session.failure`'s answer: the action, plus the model for a switch or the new session for a
+    /// handoff, so a hook's log line says what happened without `--json`.
+    static func formatFailover(_ failover: ControlFailoverNode) -> String {
+        var parts = [failover.lastAction]
+        if failover.lastAction == "switch-model", let model = failover.switchedTo { parts.append(model) }
+        if let session = failover.handedOffTo { parts.append("session " + session) }
+        return parts.joined(separator: " ")
     }
 
     /// Render the `restore.list` payload one entry per line: the index `restore open` takes, the entry id's

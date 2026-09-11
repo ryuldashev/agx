@@ -143,6 +143,9 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
     ^ your session already has a real, UNrestricted shell beside you. ssh tunnels, composer, artisan serve —
       run them here yourself (it is the user's own shell; you are operating their UI), don't ask the user to.
   new workspace              agtermctl workspace new "<NAME>"
+  hand YOUR task to another agent (Codex) NOW   agtermctl session failure rate_limit --handoff --target <self>
+    ^ opens "<name> → <agent>" beside you, seeded with a brief from your transcript. The app already does this
+      by itself when your model's usage pool is spent (/model ladder first) or the account limit hits.
   message another session    agtermctl session type --target <id|prefix> --select "<text>\\n"   (\\n submits)
   read another session       agtermctl session text --target <id|prefix> [--all] [--lines N]
   focus / bring to front     agtermctl session select --target <id> | agtermctl workspace select <id>

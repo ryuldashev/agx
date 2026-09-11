@@ -26,6 +26,9 @@ struct ControlEventProtocolTests {
             ControlEvent(seq: 9, ts: 9.5, kind: .scheduleCancelled, window: "win", payload: ControlEventPayload(name: "job")),
             ControlEvent(seq: 10, ts: 10.5, kind: .scheduleMissed, window: "win",
                          payload: ControlEventPayload(name: "job", at: "2026-09-04T09:00:00+05:00")),
+            ControlEvent(seq: 11, ts: 11.5, kind: .failover, window: "win", workspace: "work", session: "new",
+                         payload: ControlEventPayload(name: "agent", action: "handoff", reason: "account limit",
+                                                      source: "sess")),
         ]
 
         let data = try JSONEncoder().encode(events)

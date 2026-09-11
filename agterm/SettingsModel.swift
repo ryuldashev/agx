@@ -313,6 +313,19 @@ final class SettingsModel {
         settings.agents = agents.isEmpty ? nil : agents
         try? settingsStore.save(settings)
     }
+
+    /// Agent failover knobs. All read on demand by `AgentFailoverCoordinator` at the next failure, so they
+    /// just save; nil is the default in every case (on / built-in ladder / built-in prompt / first other agent).
+    func setFailoverEnabled(_ value: Bool?) { settings.failoverEnabled = value; try? settingsStore.save(settings) }
+    func setFailoverHandoffEnabled(_ value: Bool?) { settings.failoverHandoffEnabled = value; try? settingsStore.save(settings) }
+    func setFailoverHandoffAgent(_ value: String?) { settings.failoverHandoffAgent = value; try? settingsStore.save(settings) }
+    func setFailoverContinuePrompt(_ value: String?) { settings.failoverContinuePrompt = value; try? settingsStore.save(settings) }
+    /// The ladder as typed, one model per comma; blank entries are dropped and an empty list stored as nil.
+    func setFailoverModels(_ text: String) {
+        let models = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        settings.failoverModels = models.isEmpty ? nil : models
+        try? settingsStore.save(settings)
+    }
     /// Persist the user-idle auto-follow timeout (nil = off) and push it into every open window's `AppStore`
     /// (a newly opened window seeds itself via `applyAutoFollow(to:)`).
     func setAutoFollowAttention(_ value: String?) {
