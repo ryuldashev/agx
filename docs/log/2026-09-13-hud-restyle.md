@@ -33,3 +33,10 @@ only, both ways. Spinner frames cycle via `TimelineView` at `HudSpinner.interval
   hud.sh + project.yml resource removed; surface factory/GhosttySurfaceView HUD hooks removed. `make build` OK.
 - Gates: `make build` OK, `swift test` 2729 pass, `make test-app` 248 pass, `make lint` clean.
   Docs synced: site/commands.html, skill SKILL.md/reference.md, .claude/rules/control-api.md.
+- Committed `HUD: render natively as a plateless notice…` (31 files, +417/−1530), `make deploy` done.
+  Smoke in an isolated instance of the deployed build (`AGTERM_STATE_DIR=/tmp/hudx`): hud open (spinner,
+  top-center) → tree reads it back, update with text color, close, open with `--background-color`, close —
+  all ok, instance alive. Visual check needs Ruslan's relaunch (`agtermctl app relaunch`).
+
+### Next
+- [ ] Ruslan: relaunch, then `agtermctl session hud open "Ждёт тебя" --detail "mars · NMT: перезапуск" --position top-center --target "$AGTERM_SESSION_ID"`; feedback → tune 13/11pt, shadow strength, inset, 220/160ms.
