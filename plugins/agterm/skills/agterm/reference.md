@@ -57,6 +57,10 @@ The six event kinds and payloads are:
   lifecycle. Payload carries `name` and `at` (the job's fire time, ISO 8601 with the local offset); the
   event's `session` id is the JOB's own id for `.added`/`.cancelled`/`.missed`, but for `.fired` it is
   the NEW session the app just created. Human mode: `<time> <kind> <name> at=<iso> session=<id>`.
+- `update.available` / `update.installing`: the in-app updater's lifecycle. `update.available` fires once
+  per distinct version per app run, when a check finds a newer release; `update.installing` fires when an
+  install starts, and the app relaunches into that version next. Payload: `name` (`agx`) and `version`
+  (the available/installing version). Human mode: `<time> update.available 0.25.0`.
 
 Every event has `seq` (app-wide sequence), `ts` (Unix timestamp), `kind`, optional
 `window`/`workspace`/`session` ids, and `payload`. Human mode prints one compact line. `--json` emits
@@ -215,7 +219,7 @@ when expanded, so an all-expanded tree carries no `collapsed` keys). They also c
 new-session seed — `dir`, `agent`, `agentID` and the resolved `command`; the read side of
 `workspace defaults`, omitted when the workspace pins nothing).
 
-The tree object itself carries thirteen top-level read-only fields: `idleMs` (milliseconds since the last
+The tree object itself carries fourteen top-level read-only fields: `idleMs` (milliseconds since the last
 user input in the window, omitted before any activity), `autoFollowMs` (the window's Auto-follow
 timeout in milliseconds, omitted when the setting is Disabled), `sidebarVisible` (whether the
 window's sidebar is currently shown — the read side of the write-only `sidebar` command, so a script
@@ -242,12 +246,15 @@ the mode is `untouched`), and `dashboardFontMode` (`auto` for `--auto-size`, `fi
 window, omitted when none is pending), and `scheduled` (the read side of `schedule.*` — an array of
 `{id, name?, at, inSeconds, state, workspace?, workspaceID?, cwd?, launch?, foreground, brief}` nodes,
 one per pending or missed job, sorted by fire time; omitted when the queue is empty. It is APP-level
-like `quickVisible`, so every window reports the same array). `idleMs` is live
+like `quickVisible`, so every window reports the same array), and `update` (the read side of `update.*` —
+`{version, state, available?, lastChecked?, automatic, error?}`; APP-level like `scheduled`, so every
+window reports the same node; omitted entirely when the updater is disabled — a local 0.0.0 build, a
+Debug build, an isolated instance, hosted/UI tests, or `AGX_NO_UPDATE=1`). `idleMs` is live
 and grows while the window is idle, so it is on `tree` only, never `window.list`; `sidebarVisible` is on
 both; `sidebarMode`, `workspaceFilter`, `quickVisible`, `zoomedSurface`, the four `dashboard*` fields,
-`pickPending`, and `scheduled`
+`pickPending`, `scheduled`, and `update`
 are `tree`-only (a GUI/keyboard change would leave a cached copy stale).
-All thirteen are read-only projections of GUI state.
+All fourteen are read-only projections of GUI state.
 
 ## workspace
 
@@ -854,6 +861,36 @@ shell (no controlling terminal — `/dev/tty` errors). See examples.md for usage
 - `schedule.*` is control-native, like `session hud`: no menu item, chord, or palette entry — nothing
   here for a human to invoke by hand, so it is a deliberate exemption from the shared menu-actions seam.
   The GUI shows only the session the job eventually creates.
+
+## update
+
+App-global, no target or window — in-app auto-update via Sparkle.
+
+- `update check` — check the appcast feed in the background, no UI. Returns `result.update` immediately
+  with state `checking`; the outcome lands in `update status`.
+- `update status` — the running version and the last check's outcome. Returns `result.update`. Human
+  mode: `agx 0.24.0 — up to date (checked <iso>)`, `agx 0.24.0 — available: 0.25.0 available (agtermctl
+  update install)`, `agx 0.24.0 — not checked yet`, `agx 0.24.0 — checking`, or `agx 0.24.0 — error:
+  <msg>`, with a trailing `[automatic checks off]` when Sparkle's daily check is disabled.
+- `update install` — run a fresh check, then open Sparkle's standard update dialog (download, verify,
+  "Install and Relaunch" / "Install on Quit" / "Later"); also reports up to date when there is nothing to
+  install. Returns `result.update`. GUI twin: agx ▸ Check for Updates…. A relaunch keeps durable agent
+  panes (ADR 0001) — agents reattach after the update, they are not restarted.
+- `result.update` / the tree's top-level `update` node: `{version, state, available?, lastChecked?,
+  automatic, error?}` — `version` is the running `CFBundleShortVersionString`; `state` is one of
+  `idle|checking|available|downloading|ready|installing|error`; `available` is the newer version when
+  known; `lastChecked` is ISO 8601 with the local offset, nil until a check completes this app run;
+  `automatic` reports whether Sparkle's daily check is on; `error` carries the message for state `error`.
+- Errors: `updater not started` before the scene task wires it up; `an update check or install is already
+  in progress` while one is in flight; `updater disabled (local 0.0.0 or Debug build, isolated instance,
+  or AGX_NO_UPDATE=1)` when the updater is disabled — a local 0.0.0 build, a Debug build, an isolated
+  instance (`AGTERM_STATE_DIR` set), hosted/UI tests, or `AGX_NO_UPDATE=1`. In that case the tree's
+  top-level `update` node is omitted entirely.
+- Events `update.available` (once per distinct version per app run) and `update.installing` (install
+  started, the app relaunches into the new version next) announce lifecycle changes. The feed is the
+  appcast attached to the latest GitHub release
+  (`https://github.com/ryuldashev/agx/releases/latest/download/appcast.xml`); updates are EdDSA-signed and
+  code-signature-checked by Sparkle, and checks run once a day.
 
 ## window
 

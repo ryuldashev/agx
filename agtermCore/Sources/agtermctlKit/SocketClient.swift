@@ -200,6 +200,7 @@ struct SocketClient {
         if let scheduled = response.result?.scheduled, !(echoID && response.result?.id != nil) {
             return formatScheduled(scheduled)
         }
+        if let update = response.result?.update { return update.humanDescription }
         if let closed = response.result?.closed {
             return formatRecentClosed(closed)
         }

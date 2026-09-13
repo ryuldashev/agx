@@ -91,6 +91,9 @@ public enum Command: String, Codable, Sendable {
     case scheduleList = "schedule.list"
     case scheduleCancel = "schedule.cancel"
     case scheduleRun = "schedule.run"
+    case updateCheck = "update.check"
+    case updateStatus = "update.status"
+    case updateInstall = "update.install"
     /// UI-TEST-ONLY: forces the app-level appearance (`light`|`dark` via `args.name`) so an XCUITest can
     /// simulate a macOS light/dark flip; with NO name it READS the side the last config feed applied, so a
     /// test can assert the flip drove the reload. Refused outside an XCUITest launch, and EXEMPT from the
@@ -495,6 +498,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
     public var closed: [ControlRecentClosedNode]?
     /// What `session.failure` decided and did (the action name, the model switched to, the peer session).
     public var failover: ControlFailoverNode?
+    /// `update.*` and the in-app updater state (ADR 0003); nil when the updater is disabled.
+    public var update: ControlUpdateNode?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -504,7 +509,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 events: ControlEventBatch? = nil, keymap: ControlKeymap? = nil,
                 pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil,
                 scheduled: [ControlScheduledNode]? = nil,
-                closed: [ControlRecentClosedNode]? = nil, failover: ControlFailoverNode? = nil) {
+                closed: [ControlRecentClosedNode]? = nil, failover: ControlFailoverNode? = nil,
+                update: ControlUpdateNode? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -525,6 +531,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.scheduled = scheduled
         self.closed = closed
         self.failover = failover
+        self.update = update
     }
 }
 

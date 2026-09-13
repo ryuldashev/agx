@@ -98,6 +98,9 @@ final class MockControlActions: ControlActions {
         case scheduleCancel(target: String)
         case scheduleRun(target: String)
         case reportFailure(target: String?, options: ControlFailureOptions)
+        case updateCheck
+        case updateStatus
+        case updateInstall
     }
 
     var calls: [Call] = []
@@ -641,5 +644,22 @@ final class MockControlActions: ControlActions {
     func scheduleRun(_ target: String) -> ControlResponse {
         calls.append(.scheduleRun(target: target))
         return nextScheduleResponse
+    }
+
+    var nextUpdateResponse = ControlResponse(ok: true)
+
+    func updateCheck() -> ControlResponse {
+        calls.append(.updateCheck)
+        return nextUpdateResponse
+    }
+
+    func updateStatus() -> ControlResponse {
+        calls.append(.updateStatus)
+        return nextUpdateResponse
+    }
+
+    func updateInstall() -> ControlResponse {
+        calls.append(.updateInstall)
+        return nextUpdateResponse
     }
 }

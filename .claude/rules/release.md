@@ -21,3 +21,14 @@ paths:
 - Manually set `site/index.html`'s `SoftwareApplication.softwareVersion` in that same pre-release push;
   `release.sh` does not edit it. Cloudflare Pages deploys `site/` on push, and the DMG links already use
   GitHub's latest release.
+- **Auto-update rides on the release (ADR 0003).** `release.sh` EdDSA-signs the DMG with the keychain item
+  `agx` (`sign_update --account agx`; the Sparkle tools sit in
+  `build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin` after the build) and uploads the one-item
+  `build/appcast.xml` beside it; the app's `SUFeedURL` is GitHub's `releases/latest/download/appcast.xml`
+  redirect, so the newest non-prerelease release IS the feed. Never upload a DMG by hand — without the
+  matching appcast and signature it is invisible or refused to the updater. Never publish a broken build
+  as a plain release: `--prerelease` keeps it out of `releases/latest`. The key's backup is
+  `~/.secrets/agx-sparkle-ed25519.key`; a lost key means a new `SPARKLE_PUBLIC_ED_KEY` and a fleet that
+  must reinstall by hand once.
+- The CHANGELOG section for the version is also the in-app release notes (rendered through
+  `gh api markdown`), so write it for the person clicking "Install and Relaunch", not for git log.

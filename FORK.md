@@ -81,6 +81,16 @@ after 20s up to three times. Every action posts a notification and a `failover` 
 session node's `failover`. Host-free policy and transcript digest: `agtermCore/AgentFailover.swift`; the
 typing/spawning side: `agterm/AgentFailoverCoordinator.swift`. `docs/decisions/0002-agent-failover.md`.
 
+**Auto-update** — Sparkle 2, fed by the `appcast.xml` that `scripts/release.sh` signs (EdDSA, keychain item
+`agx`, backup `~/.secrets/agx-sparkle-ed25519.key` — losing it strands every install) and uploads beside the
+DMG; the app reads it through GitHub's `releases/latest/download/appcast.xml` redirect, so publishing a
+release is the whole rollout. Checks once a day and on agx ▸ Check for Updates…; the relaunch skips the
+quit alert and durable panes reattach, so an update costs no agent its context. Never runs in a local
+`0.0.0`/Debug build, an isolated instance (`AGTERM_STATE_DIR`), tests, or with `AGX_NO_UPDATE=1`
+(`AppUpdatePolicy`); `AGX_UPDATE_FEED=<url>` points a build at a staging appcast. Control-native: `update.check|status|install`, top-level `tree.update`,
+`update.available`/`update.installing` events; `agx context` names an available update on its version
+line. `docs/decisions/0003-sparkle-auto-update.md`.
+
 **Workspace defaults** — a workspace pins the directory new sessions open in and the connected agent
 they run, so opening a tab in `mmee` lands in `~/mmee` with Claude Code already running. Set from the
 sidebar's right-click ▸ Workspace Defaults… or over the control API:
@@ -162,7 +172,9 @@ agtermCore/Sources/agtermCore/AppStore+Defaults.swift  store read/write + shared
 agtermCore/Sources/agtermCore/AppStore+ControlTree.swift  extracted from AppStore.swift (line budget)
 agterm/Views/AgentsSettingsView.swift                  Settings ▸ Agents
 agterm/Views/WorkspaceDefaultsSheet.swift              the sidebar sheet
-agtermCore/Tests/…/WorkspaceDefaultsTests.swift, AgentCatalogTests.swift
+agtermCore/Sources/agtermCore/AppUpdate.swift          update policy + read-back node (ADR 0003)
+agterm/AppUpdater.swift, agterm/Control/ControlServer+Update.swift, agtermctlKit/UpdateCommands.swift
+agtermCore/Tests/…/WorkspaceDefaultsTests.swift, AgentCatalogTests.swift, AppUpdateTests.swift
 ```
 
 Touched upstream files, in rebase-risk order: `AppStore.swift`, `ControlServer.swift`,

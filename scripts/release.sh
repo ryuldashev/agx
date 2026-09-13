@@ -11,7 +11,9 @@
 # DMG (not notarized) — a dry run by default, but set AGTERM_ALLOW_UNSIGNED=1 to
 # --publish it as an unsigned release. Notary creds come from a keychain profile created
 # with `xcrun notarytool store-credentials` (default name: agterm-notary,
-# override with AGTERM_NOTARY_PROFILE).
+# override with AGTERM_NOTARY_PROFILE). The Sparkle EdDSA key (ADR 0003) is the
+# keychain item `generate_keys --account agx` created; `sign_update` reads it from
+# there, and a backup lives outside the repository (see FORK.md).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
@@ -132,6 +134,7 @@ Signed with a Developer ID certificate and notarized by Apple, so macOS Gatekeep
 
 - **Homebrew:** \`brew install --cask ryuldashev/agx/agx\`
 - **Direct download:** open the \`.dmg\` and drag \`agx.app\` into \`/Applications\`.
+- **Already installed:** agx checks for updates once a day and offers this one in-app (agx ▸ Check for Updates…).
 EOF
 }
 
@@ -161,6 +164,16 @@ if [ "$SIGNED" = "1" ]; then
   # the vendored abduco session server is a nested Mach-O too (durable panes, FORK.md): the notary
   # service rejects the archive unless it carries the same Developer ID + hardened runtime + timestamp.
   codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$APP/Contents/Resources/abduco/abduco"
+  # Sparkle (ADR 0003) ships its own helpers; each is a nested bundle the notary service checks on its
+  # own, so they are signed inside-out per Sparkle's sandboxing guide. Downloader.xpc keeps the
+  # network entitlement it was built with.
+  SPARKLE_FW="$APP/Contents/Frameworks/Sparkle.framework"
+  codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$SPARKLE_FW/Versions/B/XPCServices/Installer.xpc"
+  codesign --force --options runtime --timestamp --preserve-metadata=entitlements --sign "$SIGN_ID" \
+    "$SPARKLE_FW/Versions/B/XPCServices/Downloader.xpc"
+  codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$SPARKLE_FW/Versions/B/Autoupdate"
+  codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$SPARKLE_FW/Versions/B/Updater.app"
+  codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$SPARKLE_FW"
   codesign --force --options runtime --timestamp \
     --entitlements "$ROOT/agterm/agterm.entitlements" --sign "$SIGN_ID" "$APP"
   codesign --verify --deep --strict "$APP"
@@ -204,6 +217,45 @@ fi
 
 echo "==> built: $DMG"
 
+# ── appcast (ADR 0003) ────────────────────────────────────────────────────────
+# One-item feed uploaded beside the DMG; the app reads it through GitHub's
+# `releases/latest/download/appcast.xml` redirect, so the newest published release
+# IS the feed and nothing else needs deploying. The EdDSA signature over the DMG is
+# what the app verifies before installing (its public half is SPARKLE_PUBLIC_ED_KEY
+# in project.yml); an unsigned dry run gets a feed with no signature and would be
+# refused by a real install, which is the point.
+APPCAST="$BUILD_DIR/appcast.xml"
+SPARKLE_BIN="$BUILD_DIR/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin"
+GH_ORIGIN="$(git remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##')"
+ED_ATTRS=""
+if [ "$SIGNED" = "1" ]; then
+  ED_ATTRS="$("$SPARKLE_BIN/sign_update" --account agx "$DMG")"   # sparkle:edSignature="…" length="…"
+  [ -n "$ED_ATTRS" ] || { echo "sign_update produced no signature (keychain item 'agx' missing?)" >&2; exit 1; }
+fi
+appcast_notes() {
+  # the CHANGELOG section rendered by GitHub's markdown API, styled for Sparkle's notes pane
+  local section html
+  section="$(awk -v ver="v$VERSION" '$0 ~ "^## " ver "( |$)" {grab=1; next} grab && /^## / {exit} grab' "$ROOT/CHANGELOG.md")"
+  html="$(gh api -X POST markdown -f mode=gfm -f text="$section" 2>/dev/null || printf '<pre>%s</pre>' "$section")"
+  printf '<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="light dark">'
+  printf '<style>body{font:13px -apple-system,system-ui;padding:0 12px;line-height:1.45}h2,h3{font-size:14px}code{font-size:12px}</style>'
+  printf '</head><body>%s</body></html>' "$html"
+}
+{
+  printf '<?xml version="1.0" encoding="utf-8"?>\n'
+  printf '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">\n<channel>\n'
+  printf '<title>agx</title>\n<link>https://github.com/%s</link>\n<item>\n' "$GH_ORIGIN"
+  printf '<title>Version %s</title>\n<pubDate>%s</pubDate>\n' "$VERSION" "$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')"
+  printf '<sparkle:version>%s</sparkle:version>\n<sparkle:shortVersionString>%s</sparkle:shortVersionString>\n' "$VERSION" "$VERSION"
+  printf '<sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>\n'
+  printf '<description><![CDATA[%s]]></description>\n' "$(appcast_notes)"
+  printf '<enclosure url="https://github.com/%s/releases/download/%s/%s" type="application/octet-stream" %s/>\n' \
+    "$GH_ORIGIN" "$TAG" "$(basename "$DMG")" "$ED_ATTRS"
+  printf '</item>\n</channel>\n</rss>\n'
+} >"$APPCAST"
+xmllint --noout "$APPCAST"
+echo "==> appcast: $APPCAST"
+
 if [ "$PUBLISH" != "1" ]; then
   echo "==> dry run complete (pass --publish to upload + bump the cask)"
   exit 0
@@ -223,7 +275,7 @@ else
   gh release create "$TAG" --title "Version $VERSION" --notes-file "$NOTES_FILE"
 fi
 rm -f "$NOTES_FILE"
-gh release upload "$TAG" "$DMG" --clobber
+gh release upload "$TAG" "$DMG" "$APPCAST" --clobber
 
 SHA="$(shasum -a 256 "$DMG" | awk '{print $1}')"
 TAP_DIR="$(mktemp -d)"

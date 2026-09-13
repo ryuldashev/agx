@@ -24,6 +24,7 @@ struct agtermApp: App {
     @State private var wakeObserver: SystemWakeObserver
     @State private var scheduler: SessionScheduler
     @State private var failover: AgentFailoverCoordinator
+    @State private var updater: AppUpdater
 
     /// Whether this launch owes the user the first-run welcome. Decided in `init()`, because the first
     /// launch writes its own window snapshot moments after the scene appears and that write would read back
@@ -90,6 +91,7 @@ struct agtermApp: App {
         _scheduler = State(initialValue: SessionScheduler(directory: stateDirectory, library: library, actions: actions))
         _failover = State(initialValue: AgentFailoverCoordinator(directory: stateDirectory, library: library,
                                                                  settingsModel: settingsModel))
+        _updater = State(initialValue: AppUpdater(library: library))
     }
 
     var body: some Scene {
@@ -205,6 +207,9 @@ struct agtermApp: App {
                         appDelegate.scheduler = scheduler
                         scheduler.start()
                         actions.failover = failover
+                        // Sparkle arms its daily check on start; a disabled updater (AppUpdatePolicy) never starts.
+                        actions.updater = updater
+                        updater.start()
                         // last: a modal here blocks the rest of the task, and the window behind it should be
                         // fully wired before it opens. `presentOnce` latches, so the per-window .task is safe.
                         // the wall follows the welcome rather than opening beside it — see `presentOnce`.

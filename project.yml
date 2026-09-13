@@ -38,6 +38,10 @@ settings:
 packages:
   agtermCore:
     path: agtermCore
+  # auto-update (ADR 0003). SwiftPM binary; scripts/release.sh signs its nested helpers inside-out.
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.9.6
 
 targets:
   agterm:
@@ -132,6 +136,8 @@ targets:
         MARKETING_VERSION: "0.0.0"
         CURRENT_PROJECT_VERSION: "0.0.0"
         GIT_COMMIT: ""
+        # Sparkle EdDSA public key (ADR 0003); the private half lives in the maintainer keychain.
+        SPARKLE_PUBLIC_ED_KEY: "MlYdo4Q10ati/BUbEYzc0st5Bk1DhhW5miq1dabr/DM="
         ENABLE_HARDENED_RUNTIME: YES
         OTHER_LDFLAGS:
           - "-lc++"
@@ -194,6 +200,7 @@ targets:
       - framework: GhosttyKit.xcframework
         embed: false
       - package: agtermCore
+      - package: Sparkle
       - sdk: AppKit.framework
       # libghostty calls Text Input Source Services (TISCopyCurrentKeyboard…)
       # which live in Carbon; required to link the prebuilt xcframework.

@@ -140,6 +140,11 @@ public protocol ControlActions {
     func scheduleList() -> ControlResponse
     func scheduleCancel(_ target: String) -> ControlResponse
     func scheduleRun(_ target: String) -> ControlResponse
+    /// `update.*` (ADR 0003): a background check, the current node, and the user-visible install flow.
+    /// Each answers `result.update`, or an error when `AppUpdatePolicy` disabled the updater.
+    func updateCheck() -> ControlResponse
+    func updateStatus() -> ControlResponse
+    func updateInstall() -> ControlResponse
 }
 
 public extension ControlActions {
@@ -202,6 +207,12 @@ public struct ControlDispatcher {
             return dispatchFailureCommand(request)
         case .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun:
             return dispatchScheduleCommand(request)
+        case .updateCheck:
+            return actions.updateCheck()
+        case .updateStatus:
+            return actions.updateStatus()
+        case .updateInstall:
+            return actions.updateInstall()
         }
     }
 

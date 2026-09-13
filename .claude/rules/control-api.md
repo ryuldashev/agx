@@ -136,6 +136,7 @@ renumbering. Do not reintroduce a count anywhere.
 - `keymap.reload`, `keymap.list`, `config.reload`, `theme.set`, `theme.list`, `restore.clear`,
   `restore.list`, `restore.open`
 - `schedule.add`, `.list`, `.cancel`, `.run`
+- `update.check`, `.status`, `.install`
 
 `debug.appearance` is a private `Command` case, absent from the list above, used only by `AppearanceFlipUITests`.
 It accepts light/dark, sets `NSApp.appearance`, posts `.agtermSystemAppearanceChanged`, echoes the effective
