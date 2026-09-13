@@ -15,7 +15,6 @@ struct HudTests {
 
         #expect(box.columns == 1 + HudLayout.horizontalPadding * 2)
         #expect(box.rows == 1 + HudLayout.verticalPadding * 2)
-        #expect(HudLayout.renderedBody(for: HudSpec(message: ""), grid: box, ownerPid: 4242) == "5 3 0 4242 0.5 -\n")
     }
 
     @Test func longSingleWordIsBrokenAtMaxColumns() {
@@ -45,50 +44,27 @@ struct HudTests {
         let spec = HudSpec(message: "gathering options", detail: "scanning 4 repositories")
 
         let box = HudLayout.box(for: spec)
-        let body = HudLayout.renderedBody(for: spec, grid: box, ownerPid: 4242)
 
-        #expect(body == "27 5 0 4242 0.5 -\ngathering options\n\nscanning 4 repositories\n")
+        #expect(HudLayout.bodyLines(for: spec) == ["gathering options", "", "scanning 4 repositories"])
         #expect(box.columns == 23 + HudLayout.horizontalPadding * 2)
         #expect(box.rows == 3 + HudLayout.verticalPadding * 2)
     }
 
     @Test func emptyDetailAddsNoSeparator() {
         let spec = HudSpec(message: "working", detail: "   ")
-        let body = HudLayout.renderedBody(for: spec, grid: HudLayout.box(for: spec), ownerPid: 4242)
 
-        #expect(body == "11 3 0 4242 0.5 -\nworking\n")
+        #expect(HudLayout.bodyLines(for: spec) == ["working"])
     }
 
-    // the header is the whole reason `session.hud.update` can grow the panel or start the spinner without
-    // re-spawning the helper, which reads its environment once and would keep the grid it started with. The
-    // pid is the helper's second stop, for the teardown a hard-killed app never runs.
-    @Test func theHeaderCarriesTheGridTheSpinnerFlagAndTheOwningPid() {
-        let spec = HudSpec(message: "working", spinner: .braille)
-
-        let body = HudLayout.renderedBody(for: spec, grid: (columns: 30, rows: 9), ownerPid: 4242)
-
-        #expect(body == "30 9 1 4242 0.08 - ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏\nworking\n")
-    }
-
-    // the frames ride the header so the helper holds no table; a static panel sends none and only carries
-    // the slower tick it re-reads the file at.
-    @Test func aStaticPanelCarriesTheSlowIntervalAndNoFrames() {
-        let body = HudLayout.renderedBody(for: HudSpec(message: "working"), grid: (columns: 30, rows: 9),
-                                          ownerPid: 4242)
-
-        #expect(body == "30 9 0 4242 0.5 -\nworking\n")
-    }
-
-    // the header is word-split by the helper and `HudLayout.spinnerWidth` reserves exactly two cells, so a
-    // frame carrying a space would break the parse and a double-width glyph would overflow the panel.
+    // `HudLayout.spinnerWidth` reserves exactly two cells, so a frame carrying a space or a double-width
+    // glyph would shift the message beside it.
     @Test(arguments: HudSpinner.allCases) func everyFrameIsOneSpacelessScalar(style: HudSpinner) {
         #expect(!style.frames.isEmpty)
         for frame in style.frames {
             #expect(HudLayout.cellCount(frame) == 1, "\(style.rawValue) frame \(frame.debugDescription)")
             #expect(!frame.contains(" "), "\(style.rawValue) frame \(frame.debugDescription) would split")
         }
-        #expect(!style.interval.isEmpty)
-        #expect(style.interval.allSatisfy { $0.isNumber || $0 == "." })
+        #expect(style.interval > 0)
     }
 
     @Test func embeddedNewlinesBecomeHardBreaksWithNoBlankLines() {
@@ -162,86 +138,22 @@ struct HudTests {
         #expect(HudLayout.heightPercent(box: (columns: 10, rows: 3), pane: pane) == HudLayout.minSizePercent)
     }
 
-    // with both axes measured the panel comes out the size of its content, so the grid the helper centers
-    // in and the content box agree and the message sits in the middle of a frame that fits it.
-    @Test func theHeaderCarriesThePanelsOwnGrid() {
-        let pane = PaneMetrics(cellWidth: 7.8, cellHeight: 15, paneWidth: 1000, paneHeight: 700,
-                               paddingWidth: 8, paddingHeight: 6)
-        let spec = HudSpec(message: "gathering options…")
-        let box = HudLayout.box(for: spec)
-        let width = HudLayout.widthPercent(box: box, pane: pane)
-        let height = HudLayout.heightPercent(box: box, pane: pane)
-
-        let grid = HudLayout.paintGrid(for: spec, size: HudPanelSize(widthPercent: width, heightPercent: height), pane: pane)
-
-        #expect(width == 19)
-        #expect(height == 9)
-        #expect(grid.columns == Int((pane.paneWidth * 0.19 - 16) / 7.8))
-        #expect(grid.rows == Int((pane.paneHeight * 0.09 - 12) / 15))
-        #expect(grid.columns == 22)
-        #expect(grid.rows == 3)
-        #expect(box.columns == 22)
-        #expect(box.rows == 3)
-        #expect(HudLayout.renderedBody(for: spec, grid: grid, ownerPid: 4242).hasPrefix("22 3 0 4242 0.5 -\n"))
-
-        // one line centered in three rows: one above, one below, and no empty half-panel under it
-        #expect((grid.rows - HudLayout.bodyLines(for: spec).count) / 2 == 1)
-    }
-
-    // a caller's percent skips the message measurement on the WIDTH only, so the panel gets wide and stays
-    // as tall as the two words in it.
-    @Test func aCallerOverrideWidensThePanelWithoutHeighteningIt() {
-        let pane = PaneMetrics(cellWidth: 7.8, cellHeight: 15, paneWidth: 1000, paneHeight: 700,
-                               paddingWidth: 8, paddingHeight: 6)
-        let spec = HudSpec(message: "ok", sizePercent: HudLayout.maxSizePercent)
-        let size = HudLayout.panelSize(for: spec, pane: pane)
-
-        let grid = HudLayout.paintGrid(for: spec, size: size, pane: pane)
-
-        #expect(size.widthPercent == HudLayout.maxSizePercent, "the override reaches the width")
-        #expect(size.heightPercent == 9, "and not the height, which is still the message's three rows")
-        #expect(grid.columns == 100)
-        #expect(grid.rows == 3)
-        #expect(HudLayout.box(for: spec).columns == 6)
-        #expect(HudLayout.box(for: spec).rows == 3)
-    }
-
-    // a HUD opened over a session with nothing laid out has no panel grid to compute, and the box is the
-    // only grid there is.
-    @Test func paintGridFallsBackToTheBoxWithoutAMeasuredPane() {
-        let spec = HudSpec(message: "working")
-        let unmeasured = PaneMetrics(cellWidth: 8, cellHeight: 18, paneWidth: 0, paneHeight: 0)
-        let noCell = PaneMetrics(cellWidth: 0, cellHeight: 0, paneWidth: 1000, paneHeight: 700)
-
-        #expect(HudLayout.panelGrid(size: HudPanelSize(widthPercent: 40, heightPercent: 10), pane: unmeasured) == nil)
-        #expect(HudLayout.panelGrid(size: HudPanelSize(widthPercent: 40, heightPercent: 10), pane: noCell) == nil)
-        #expect(HudLayout.paintGrid(for: spec, size: HudPanelSize(widthPercent: 80, heightPercent: 10), pane: unmeasured).columns
-            == HudLayout.box(for: spec).columns)
-        #expect(HudLayout.paintGrid(for: spec, size: HudPanelSize(widthPercent: 80, heightPercent: 10), pane: unmeasured).rows
-            == HudLayout.box(for: spec).rows)
-        // a pane smaller than its own padding leaves no cells either, rather than a zero or negative grid
-        let tiny = PaneMetrics(cellWidth: 8, cellHeight: 18, paneWidth: 30, paneHeight: 30,
-                               paddingWidth: 8, paddingHeight: 6)
-        #expect(HudLayout.panelGrid(size: HudPanelSize(widthPercent: 40, heightPercent: 40), pane: tiny) == nil)
-    }
-
-    // the helper counts `${#line}` in code points under the UTF-8 locale it forces; `String.count` counts
-    // grapheme clusters, which disagree on every combining mark. macOS hands paths back decomposed, so the
-    // text is precomposed first and what is left measures the same on both sides.
-    @Test func widthIsCountedInTheUnitTheHelperCounts() {
+    // `String.count` counts grapheme clusters, which disagree with scalars on every combining mark. macOS
+    // hands text back decomposed, so it is precomposed first and what is left measures the same everywhere.
+    @Test func widthIsCountedInScalars() {
         let decomposed = "cafe\u{0301} au lait"
 
         let lines = HudLayout.bodyLines(for: HudSpec(message: decomposed))
 
         #expect(lines.count == 1)
-        #expect(lines[0].unicodeScalars.count == 12, "the bytes written must be precomposed, not NFD")
+        #expect(lines[0].unicodeScalars.count == 12, "the line must be precomposed, not NFD")
         #expect(HudLayout.cellCount(lines[0]) == 12)
         #expect(HudLayout.box(for: HudSpec(message: decomposed)).columns
             == 12 + HudLayout.horizontalPadding * 2)
     }
 
-    // a ZWJ sequence is ONE Character and FIVE code points; the box has to hold what the helper will count,
-    // even though neither side knows it renders as two display columns.
+    // a ZWJ sequence is ONE Character and FIVE code points; the box counts the latter, even though it
+    // renders as two display columns.
     @Test func aZwjSequenceIsMeasuredInCodePointsNotClusters() {
         let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F466}"
 
@@ -330,25 +242,5 @@ struct HudTests {
     @Test func edgeMarginLeavesRoomForTheLargestPanelOnBothAxes() {
         #expect(HudPosition.edgeMarginPercent * 2 + HudLayout.maxSizePercent <= 100)
         #expect(HudPosition.edgeMarginPercent * 2 + HudLayout.clampSizePercent(100) <= 100)
-    }
-
-    @Test(arguments: [("#000000", "38;2;0;0;0"), ("#ffffff", "38;2;255;255;255"),
-                      ("#7ec07e", "38;2;126;192;126"), ("e0e0e0", "38;2;224;224;224")])
-    func textColorEncodesAsTruecolorSGRParameters(hex: String, expected: String) {
-        #expect(HudLayout.foregroundSGR(hex) == expected)
-    }
-
-    @Test(arguments: [nil, "", "#12345", "#gggggg", "rebeccapurple"])
-    func absentOrMalformedTextColorFallsBackToTheTerminalForeground(hex: String?) {
-        #expect(HudLayout.foregroundSGR(hex) == HudLayout.noTextColor)
-    }
-
-    @Test func theHeaderCarriesTheTextColorBeforeTheFrames() {
-        let spec = HudSpec(message: "working", spinner: .circle, textColor: "#7ec07e")
-
-        let header = HudLayout.renderedBody(for: spec, grid: (columns: 30, rows: 9), ownerPid: 4242)
-            .split(separator: "\n")[0]
-
-        #expect(header == "30 9 1 4242 0.12 38;2;126;192;126 ◐ ◓ ◑ ◒")
     }
 }

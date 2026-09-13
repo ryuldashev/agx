@@ -7,13 +7,11 @@ public struct HudSpec: Codable, Equatable, Sendable {
     public let message: String
     public let detail: String?
     /// The spinner's style, nil for a static panel. An enum rather than a flag so `hud update` can switch
-    /// the look in place, which the header carries like every other repaintable field.
+    /// the look in place.
     public let spinner: HudSpinner?
-    /// `#rrggbb` background for the panel's surface; nil keeps the session's terminal background.
+    /// `#rrggbb` plate behind the panel; nil draws the message with no plate at all, over the session.
     public let backgroundColor: String?
-    /// `#rrggbb` for the panel's TEXT; nil keeps the terminal foreground. Unlike `backgroundColor`, which the
-    /// surface reads once at creation, this rides the body file's header as an SGR run, so `hud update` can
-    /// change it in place — `HudLayout.renderedBody` owns the encoding.
+    /// `#rrggbb` for the panel's TEXT; nil keeps the terminal foreground.
     public let textColor: String?
     /// Caller override for the panel's share of the pane WIDTH; nil lets `HudLayout` measure it from the
     /// message. There is no height counterpart — `HudLayout.heightPercent` owns why.
@@ -42,9 +40,8 @@ public struct HudSpec: Codable, Equatable, Sendable {
     }
 
     /// A copy carrying `color` in place of this spec's own background. `AppStore.updateHud` holds the LIVE
-    /// panel's color across an update with it: the surface reads that color once at creation, so a stored
-    /// spec carrying any other value would report a color the panel will never paint. `textColor` is NOT
-    /// held this way — it rides the header the helper re-reads, so an update's own value is what paints.
+    /// panel's color across an update with it: the slot's `overlayBackgroundColor` is set once at open, so a
+    /// stored spec carrying any other value would report a color the panel does not paint.
     func withBackgroundColor(_ color: String?) -> HudSpec {
         HudSpec(message: message, detail: detail, spinner: spinner, backgroundColor: color,
                 textColor: textColor, sizePercent: sizePercent, position: position)
@@ -63,10 +60,10 @@ public struct HudSpec: Codable, Equatable, Sendable {
 }
 
 /// The animated glyph a spinning panel shows beside its message. Every case owns its own frames and tick
-/// rate, and both ride the body file's header, so the helper holds no table of its own and a style is one
-/// edit here. `CaseIterable` so dispatcher validation and CLI help derive from the cases.
+/// rate, so a style is one edit here. `CaseIterable` so dispatcher validation and CLI help derive from the
+/// cases.
 ///
-/// Every frame must be ONE Unicode scalar that renders ONE column: both sides count scalars rather than
+/// Every frame must be ONE Unicode scalar that renders ONE column: the panel counts scalars rather than
 /// display width (`HudLayout.cellCount` states why), and `HudLayout.spinnerWidth` reserves exactly two
 /// cells, so a double-width glyph — any emoji, most of the CJK blocks — would overflow the frame.
 public enum HudSpinner: String, Codable, CaseIterable, Sendable {
@@ -102,36 +99,29 @@ public enum HudSpinner: String, Codable, CaseIterable, Sendable {
         (allCases.map(\.rawValue) + [noneName]).joined(separator: ", ")
     }
 
-    var frames: [String] {
+    public var frames: [String] {
         switch self {
         case .bar: return ["|", "/", "-", "\\"]
         case .braille: return ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         case .circle: return ["◐", "◓", "◑", "◒"]
         case .blocks: return ["▁", "▃", "▄", "▅", "▆", "▇", "▆", "▅", "▄", "▃"]
-        // the blank half of the blink is a NO-BREAK SPACE, not a space: the helper parses the frame list by
-        // word splitting, which would swallow a real space, and NBSP is not in its IFS. It still renders as
-        // one blank column and still counts as one scalar, so the glyph's cells stay reserved and the
-        // message does not shift left on the off frame.
+        // the blank half of the blink is a NO-BREAK SPACE, not a space, so a trimming layout cannot collapse
+        // it: it renders as one blank column and counts as one scalar, so the glyph's cells stay reserved
+        // and the message does not shift left on the off frame.
         case .dot: return ["●", "\u{00A0}"]
         }
     }
 
-    /// Seconds between frames, as the literal text the helper hands `sleep`. A STRING rather than a Double
-    /// because that text goes into a shell command line: a formatter honouring a comma decimal separator
-    /// would hand `sleep` an argument it rejects, and the panel would stop repainting.
-    var interval: String {
+    /// Seconds between frames.
+    public var interval: Double {
         switch self {
-        case .bar: return "0.1"
-        case .braille, .blocks: return "0.08"
-        case .circle: return "0.12"
+        case .bar: return 0.1
+        case .braille, .blocks: return 0.08
+        case .circle: return 0.12
         // a blink at an animation's rate reads as a flicker rather than a pulse
-        case .dot: return "0.45"
+        case .dot: return 0.45
         }
     }
-
-    /// The tick a panel with no spinner runs at. It repaints nothing while its frame is unchanged, so this
-    /// is only how often it re-reads the body file for an update.
-    public static let staticInterval = "0.5"
 }
 
 /// Where the panel sits in the pane: the nine anchors of a 3x3 grid, spelled exactly as
@@ -228,8 +218,8 @@ public struct PaneMetrics: Equatable, Sendable {
     public let cellHeight: Double
     public let paneWidth: Double
     public let paneHeight: Double
-    /// The terminal's own padding INSIDE the panel, per side: it holds no cells, so `panelGrid` owes it to
-    /// the grid math. Zero is the honest default for a caller that does not know the configured padding.
+    /// The terminal's own padding INSIDE the panel, per side: it holds no cells, so the percent math owes it
+    /// room. Zero is the honest default for a caller that does not know the configured padding.
     public let paddingWidth: Double
     public let paddingHeight: Double
 
@@ -258,18 +248,13 @@ public struct HudPanelSize: Equatable, Sendable {
 }
 
 /// Pure layout math for the HUD panel: message to a cell box, cell box to the pane percentages the overlay
-/// slot understands, and the exact bytes the helper script reads. Host-free (`Int`/`Double` only) so
+/// slot reports and the native panel takes as its width budget. Host-free (`Int`/`Double` only) so
 /// `swift test` covers it with no app host.
 public enum HudLayout {
     /// Widest content line before wrapping; the frame padding sits outside it.
     public static let maxColumns = 60
     public static let maxSizePercent = 80
     public static let minSizePercent = 10
-
-    /// The only HUD-SPECIFIC variable the app puts in the helper's environment (it also inherits the session
-    /// environment and the overlay wrapper's own two): the path to the body file. Everything an update may
-    /// change rides in that file's header line instead, for the reason `renderedBody` states.
-    public static let fileEnvKey = "AGTERM_HUD_FILE"
 
     /// Frame padding in cells, applied on both sides of the content.
     static let horizontalPadding = 2
@@ -287,8 +272,8 @@ public enum HudLayout {
     }
 
     /// box returns the cell box the panel needs for `spec`: the wrapped content plus the frame padding. It
-    /// decides how BIG the panel is (through `widthPercent` and `heightPercent`); `panelGrid` decides where
-    /// the text sits inside the panel that decision produced. Measured in `cellCount`'s unit.
+    /// decides how BIG the panel is (through `widthPercent` and `heightPercent`). Measured in `cellCount`'s
+    /// unit.
     public static func box(for spec: HudSpec) -> (columns: Int, rows: Int) {
         let lines = bodyLines(for: spec)
         let widest = lines.map(cellCount).max() ?? 0
@@ -330,80 +315,6 @@ public enum HudLayout {
         return min(max(measured, 1), maxSizePercent)
     }
 
-    /// panelGrid returns the cell grid the PANEL ITSELF gets: each percentage's share of its own pane
-    /// dimension, less the terminal's padding, over one cell. The two percentages are measured separately,
-    /// so the panel tracks the box on both axes and the helper centers in a frame the size of its content.
-    /// It still centers on THIS grid rather than the box, which the rounding to whole cells can differ from.
-    ///
-    /// Nil when the pane is not measured (an unrealized session, a zero cell): there is no panel grid to
-    /// compute, and `paintGrid` falls back to the box. The result is an ESTIMATE — libghostty reports no
-    /// cell metrics, and a user `window-padding-*` override is not tracked — so it can miss by a column.
-    public static func panelGrid(size: HudPanelSize, pane: PaneMetrics) -> (columns: Int, rows: Int)? {
-        guard pane.cellWidth > 0, pane.cellHeight > 0, pane.paneWidth > 0, pane.paneHeight > 0 else { return nil }
-        let columns = Int((pane.paneWidth * Double(size.widthPercent) / 100
-            - pane.paddingWidth * 2) / pane.cellWidth)
-        let rows = Int((pane.paneHeight * Double(size.heightPercent) / 100
-            - pane.paddingHeight * 2) / pane.cellHeight)
-        guard columns > 0, rows > 0 else { return nil }
-        return (columns: columns, rows: rows)
-    }
-
-    /// paintGrid is the grid the body's header carries: the panel's own, or the content box when nothing
-    /// was measured. `size` must be the EFFECTIVE one the panel took, or the header describes a frame the
-    /// panel does not have.
-    public static func paintGrid(for spec: HudSpec, size: HudPanelSize,
-                                 pane: PaneMetrics) -> (columns: Int, rows: Int) {
-        panelGrid(size: size, pane: pane) ?? box(for: spec)
-    }
-
-    /// The header's spelling for "no text color", and the reason the field is never empty: the helper parses
-    /// the header by word splitting, which would swallow a blank field and shift every field after it.
-    static let noTextColor = "-"
-
-    /// foregroundSGR encodes `hex` as the SGR PARAMETERS of a truecolor foreground (`38;2;<r>;<g>;<b>`), or
-    /// `noTextColor` when there is no color to set. Parameters only — the helper wraps them in the escape —
-    /// so the shell never converts hex and the panel's color is decided entirely here. A malformed hex
-    /// resolves to `noTextColor` rather than a partial run: the dispatcher already rejects one, and painting
-    /// the terminal foreground is the honest fallback for a value that reached here anyway.
-    static func foregroundSGR(_ hex: String?) -> String {
-        guard let hex, WatermarkConfig.isValidColorHex(hex) else { return noTextColor }
-        let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
-        let channels = stride(from: 0, to: 6, by: 2).compactMap { offset -> Int? in
-            let start = digits.index(digits.startIndex, offsetBy: offset)
-            return Int(digits[start..<digits.index(start, offsetBy: 2)], radix: 16)
-        }
-        guard channels.count == 3 else { return noTextColor }
-        return "38;2;" + channels.map(String.init).joined(separator: ";")
-    }
-
-    /// renderedBody returns the bytes written to `fileEnvKey`'s file: a
-    /// `<columns> <rows> <spinner> <pid> <interval> <textcolor> [frame...]` header line, then the wrapped
-    /// message block, a single empty line, and the wrapped detail block. Content lines are never empty, so
-    /// that one empty line is what tells the helper where the dimmed detail starts. The header is what lets
-    /// an update change the grid, the spinner or the text color without a re-spawn — the helper re-reads this
-    /// file every tick and never consults its own environment for any of them.
-    ///
-    /// The FRAMES ride the header rather than living in the helper, so a new `HudSpinner` case is one edit in
-    /// this file and an update can switch style mid-flight. They are last because they are the only
-    /// variable-length part, which lets the helper `shift` the fixed fields off and take what remains — so
-    /// every fixed field, the text color included, must be added BEFORE them and matched by the helper's
-    /// shift count. A static panel writes no frames at all, only the slower interval it re-reads the file at.
-    ///
-    /// `grid` is the panel's own cell grid from `paintGrid`, which is what the helper centers in; every
-    /// path that RESIZES the panel owes it a rewritten header for the same reason an update does.
-    ///
-    /// `ownerPid` is the pid of the process WRITING the file, and it is how a hard-killed app (crash,
-    /// `kill -9`) stops its painter: that path runs no surface teardown, so the file survives and no SIGHUP
-    /// reaches the helper, whose pty session leader is `login` rather than the app.
-    public static func renderedBody(for spec: HudSpec, grid: (columns: Int, rows: Int),
-                                    ownerPid: Int32) -> String {
-        let interval = spec.spinner?.interval ?? HudSpinner.staticInterval
-        let frames = (spec.spinner?.frames ?? []).map { " " + $0 }.joined()
-        let header = "\(grid.columns) \(grid.rows) \(spec.spinner != nil ? 1 : 0) \(ownerPid) "
-            + interval + " " + foregroundSGR(spec.textColor) + frames + "\n"
-        return header + bodyLines(for: spec).map { $0 + "\n" }.joined()
-    }
-
     static func bodyLines(for spec: HudSpec) -> [String] {
         var lines = wrap(spec.message, columns: maxColumns)
         let detail = wrap(spec.detail ?? "", columns: maxColumns)
@@ -415,7 +326,7 @@ public enum HudLayout {
 
     /// wrap breaks `text` into lines of at most `columns` cells, treating a newline as a hard break and
     /// splitting a word longer than the line. Blank lines are dropped, which is what keeps the single empty
-    /// line in `renderedBody` unambiguous as the message/detail separator. The text is PRECOMPOSED first:
+    /// line in `bodyLines` unambiguous as the message/detail separator. The text is PRECOMPOSED first:
     /// macOS hands back decomposed (NFD) strings, and a combining accent counts as its own cell otherwise.
     static func wrap(_ text: String, columns: Int) -> [String] {
         let width = max(columns, 1)
@@ -444,12 +355,10 @@ public enum HudLayout {
         return lines
     }
 
-    /// The unit BOTH halves count in: Unicode scalars. The helper's `${#line}` counts code points under the
-    /// UTF-8 locale it forces, which `String.count` does not match — it counts grapheme clusters, so one
-    /// accented cluster is one Character but two scalars, and a ZWJ emoji is one against five. Neither side
-    /// counts DISPLAY columns, so a double-width glyph (CJK, most emoji) still advances two columns against
-    /// a cell counted as one and overflows the frame — accepted, since correcting it needs an
-    /// East-Asian-width table on both sides of the file.
+    /// The unit the box counts in: Unicode scalars, not `String.count`'s grapheme clusters (one accented
+    /// cluster is one Character but two scalars, a ZWJ emoji one against five) and not DISPLAY columns, so
+    /// a double-width glyph (CJK, most emoji) is counted as one cell — accepted as an estimate of a width
+    /// budget the native panel wraps inside anyway.
     static func cellCount(_ text: String) -> Int { text.unicodeScalars.count }
 
     /// textLength measures `HudSpec.maxTextLength`'s cap in the SAME unit and on the same precomposed form

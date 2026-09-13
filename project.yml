@@ -52,7 +52,6 @@ targets:
           - "Resources/ghostty"
           - "Resources/terminfo"
           - "Resources/agent-status"
-          - "Resources/hud"
           - "Resources/reader"
           - "Resources/abduco"
           # committed SOURCE for agterm's own bundled theme(s); setup.sh stages it
@@ -82,12 +81,6 @@ targets:
       # Lands at Contents/Resources/agent-status — the installer copies it from
       # there to ~/.config/agterm/agent-status.
       - path: agterm/Resources/agent-status
-        type: folder
-        buildPhase: resources
-      # The session.hud panel painter. Folder reference (not the default "group") so hud.sh keeps its
-      # exec bit. Lands at Contents/Resources/hud — ControlServer.helperCommand() resolves it there and
-      # shell-escapes it into the overlay command.
-      - path: agterm/Resources/hud
         type: folder
         buildPhase: resources
       # The session.reader panel's page (markdown-it + vendored libs), mirrored from ~/mmee/reader/web

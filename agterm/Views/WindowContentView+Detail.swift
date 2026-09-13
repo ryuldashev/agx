@@ -205,10 +205,10 @@ extension WindowContentView {
 
     /// The overlay — FULL, FLOATING, or a HUD — rendered IN-DECK as ONE ALWAYS-PRESENT sibling of each
     /// session's `sessionDetail` ZStack, its content gated INSIDE the GeometryReader so the child count never
-    /// changes (the constant-shape rule). All three share this one surface host, so `session.overlay.resize`
+    /// changes (the constant-shape rule). Both program variants share one surface host, so `session.overlay.resize`
     /// switching full<->% only re-flows the frame and never re-parents the NSView (which would blank its
-    /// Metal drawable). `OverlayPanelStyle` supplies every per-occupant parameter, so the chain below is the
-    /// same chain whichever one is up.
+    /// Metal drawable). A HUD is no surface at all: `HudNoticeView` draws it natively, so the slot spawns
+    /// nothing for it. `OverlayPanelStyle` supplies every per-occupant parameter.
     @ViewBuilder private func overlayPanel(session: Session, isActive: Bool) -> some View {
         let style = OverlayPanelStyle.resolve(session)
         // a HUD is passive: it neither takes first responder nor absorbs the clicks around it, so the panel
@@ -216,7 +216,17 @@ extension WindowContentView {
         let live = isActive && style.interactive
         GeometryReader { geo in
             ZStack {
-                if session.overlayActive, deckHostsSurface(session: session, surface: .overlay) {
+                if let spec = session.hudSpec, session.hudActive {
+                    HudNoticeView(spec: spec, foreground: chromeText,
+                                  overDark: HudNoticeView.isDark(GhosttyApp.shared.terminalBackgroundColor))
+                        .frame(maxWidth: geo.size.width * style.sizeFraction)
+                        .padding(HudNoticeView.edgeInset)
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: style.position.alignment)
+                        // a replacement (HUD→HUD) keeps `hudActive` true across the swap; the generation
+                        // makes it a fresh view so the notice arrives again rather than morphing.
+                        .id("\(session.id.uuidString)-hud-\(session.overlaySlotGeneration)")
+                        .transition(hudTransition(for: spec.position))
+                } else if session.overlayActive, deckHostsSurface(session: session, surface: .overlay) {
                     // absorbs clicks AROUND a floating panel so they can't reach the hit-testable panes and
                     // steal the overlay's first responder (the full variant hides the panes anyway), and
                     // carries the backdrop mute: a floating panel leaves the session live behind it, so the
@@ -224,69 +234,60 @@ extension WindowContentView {
                     // clear — its panes are already hidden, and a wash would tint the window backing.
                     (style.backdrop ? washColor(for: session).opacity(muteWashOpacity) : Color.clear)
                         .contentShape(Rectangle())
-                    // `viewOnly` is the NSView-level half of the same passivity, and the layer that OWNS it:
-                    // `mouseDown` makes the surface first responder, which would swallow every keystroke the
-                    // user meant for the session, and the dashboard learned that `.allowsHitTesting(false)`
-                    // alone is not what stops AppKit routing a click there. `deckVisible: live` is deliberate
-                    // too — a passive panel registers no drag types and writes no mouse cursor, so a file drop
-                    // keeps reaching the pane behind it.
                     TerminalView(session: session, surfaceKeyPath: \.overlaySurface,
                                  makeSurface: { makeOverlaySurface($0, nil) },
-                                 isActive: live, deckVisible: live, viewOnly: !style.interactive)
-                        .frame(width: geo.size.width * style.widthFraction,
-                               height: geo.size.height * style.heightFraction)
+                                 isActive: live, deckVisible: live)
+                        .frame(width: geo.size.width * style.sizeFraction,
+                               height: geo.size.height * style.sizeFraction)
                         // floating = opaque backing + frame + shadow so it reads as a distinct window over the
                         // still-visible session; full = translucent and chromeless (libghostty draws only the
-                        // terminal, so the window backing shows through); a HUD keeps the backing but drops
-                        // the shadow for a stronger border, so it reads as part of the terminal. The CHAIN is
-                        // constant across all three, only the parameters change.
-                        .background(overlayBacking(style))
+                        // terminal, so the window backing shows through). The CHAIN is constant across both,
+                        // only the parameters change.
+                        .background(style.framed ? terminalColor : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: style.cornerRadius))
                         .overlay(
                             RoundedRectangle(cornerRadius: style.cornerRadius)
                                 .strokeBorder(Color.white.opacity(style.borderOpacity), lineWidth: 1)
                         )
                         .shadow(radius: style.shadowRadius)
-                        .offset(x: style.horizontalOffset(paneWidth: geo.size.width),
-                                y: style.verticalOffset(paneHeight: geo.size.height))
-                        // a replacement (HUD→HUD, HUD→program) keeps `overlayActive` true across the swap, so
+                        // a replacement (HUD→program) keeps `overlayActive` true across the swap, so
                         // without the generation SwiftUI reuses the host: `makeNSView` never re-runs and
                         // `updateNSView` hits a torn-down view with `overlaySurface` nil.
                         .id("\(session.id.uuidString)-overlay-\(session.overlaySlotGeneration)")
-                        // a HUD eases in and out like a notice rather than snapping like a program window:
-                        // the transition is keyed to `hudActive`, so a program overlay's open/close (which
-                        // never flips it) stays instant and its Metal drawable is never faded mid-frame.
-                        .transition(hudTransition)
+                        // a program window snaps: its Metal drawable must never be faded mid-frame, and the
+                        // HUD's animation below would otherwise hand it the default fade on a HUD→program swap.
+                        .transition(.identity)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.28), value: session.hudActive)
+            .animation(.default, value: session.hudActive)
         }
         // with no overlay up this is an empty full-frame GeometryReader; keep it inert so it never
         // intercepts clicks meant for the pane(s).
         .allowsHitTesting(live && session.overlayActive && deckHostsSurface(session: session, surface: .overlay))
     }
 
-    /// The panel's backing per `OverlayPanelStyle`: glass for a colorless HUD (opaque under Reduce
-    /// Transparency, as every other material panel in the app), the terminal color for a framed program
-    /// overlay, nothing for the chromeless full one.
-    @ViewBuilder private func overlayBacking(_ style: OverlayPanelStyle) -> some View {
-        if style.glass {
-            if reduceTransparency {
-                Color(nsColor: .windowBackgroundColor)
-            } else {
-                Rectangle().fill(.regularMaterial)
-            }
-        } else if style.framed {
-            terminalColor
-        } else {
-            Color.clear
+    /// How a notice arrives and leaves: a fade with a short drift in from its anchored edge and a hair of
+    /// scale, on a strong ease-out so the first frames move; the exit is shorter than the entry, as the
+    /// system's own notices do. Reduce Motion keeps the fade alone, both ways.
+    private func hudTransition(for position: HudPosition) -> AnyTransition {
+        let curve = { (duration: Double) in Animation.timingCurve(0.23, 1, 0.32, 1, duration: duration) }
+        if reduceMotion {
+            return .asymmetric(insertion: .opacity.animation(curve(0.2)), removal: .opacity.animation(curve(0.16)))
         }
-    }
-
-    /// Fade with a short drift, the way a system notice arrives; `reduceMotion` keeps the fade alone.
-    private var hudTransition: AnyTransition {
-        reduceMotion ? .opacity : .opacity.combined(with: .offset(y: -6)).combined(with: .scale(scale: 0.98))
+        let drift: CGFloat = switch position.verticalBand {
+        case .leading: -6
+        case .middle: -4
+        case .trailing: 6
+        }
+        let enter = AnyTransition.opacity
+            .combined(with: .offset(y: drift))
+            .combined(with: .scale(scale: 0.98, anchor: position.unitPoint))
+            .animation(curve(0.22))
+        let exit = AnyTransition.opacity
+            .combined(with: .offset(y: drift * 0.5))
+            .animation(curve(0.16))
+        return .asymmetric(insertion: enter, removal: exit)
     }
 
     /// ONE split pane's overlay, always FULL-PANE (no size percent, no framed chrome — a floating variant
@@ -374,18 +375,13 @@ struct DeckPaneGates {
 /// a full one. A value type so the deck flips PARAMETERS only and the modifier chain stays constant, per the
 /// rule `sessionDetail` states.
 struct OverlayPanelStyle: Equatable {
-    /// pane fraction the panel occupies horizontally; 1 for a full overlay.
-    let widthFraction: CGFloat
-    /// pane fraction the panel occupies vertically. A program overlay takes the same value on both axes —
-    /// it is a terminal, and a square-ish region is what it wants — while a HUD measures this one from its
-    /// message alone, so a two-line panel is two lines tall however wide it had to be.
-    let heightFraction: CGFloat
-    /// opaque backing: both framed variants, never the chromeless full overlay.
+    /// pane fraction the panel occupies: a program overlay on both axes — it is a terminal, and a square-ish
+    /// region is what it wants — a HUD as the WIDTH its text may take, its height being the text's own.
+    /// 1 for a full overlay.
+    let sizeFraction: CGFloat
+    /// opaque backing and chrome: the floating program overlay only. The full one is chromeless and a HUD
+    /// draws its own plate, or none.
     let framed: Bool
-    /// glass backing instead of the opaque one: a HUD with no `--background-color` of its own, whose
-    /// surface renders transparent (`WatermarkConfig.hudOverlayText`) so the material reads through the
-    /// message rather than a cropped copy of the wallpaper.
-    let glass: Bool
     let cornerRadius: CGFloat
     let borderOpacity: Double
     let shadowRadius: CGFloat
@@ -393,8 +389,7 @@ struct OverlayPanelStyle: Equatable {
     let backdrop: Bool
     /// whether the panel takes clicks and first responder at all.
     let interactive: Bool
-    /// which of the pane's nine anchors the panel sits on, read on both axes; program overlays are always
-    /// centered.
+    /// which of the pane's nine anchors the panel sits on; program overlays are always centered.
     let position: HudPosition
 
     /// The floating program overlay's chrome: a window hovering over the session, so a wide radius and a
@@ -403,63 +398,52 @@ struct OverlayPanelStyle: Equatable {
     private static let floatingBorderOpacity = 0.18
     private static let floatingShadowRadius: CGFloat = 24
 
-    /// A HUD keeps the opaque backing but drops the shadow for a stronger border and a tighter radius:
-    /// neither a shadow nor a backdrop wash separates it from the text behind, so the border does that work
-    /// alone and the panel reads as part of the terminal rather than a window hovering over it.
-    private static let hudCornerRadius: CGFloat = 10
-    private static let hudBorderOpacity = 0.30
-    /// the glass backing separates itself by blur, so its edge is only a hairline.
-    private static let hudGlassBorderOpacity = 0.14
-
     @MainActor static func resolve(_ session: Session) -> OverlayPanelStyle {
         let fraction = session.overlaySizePercent.map { CGFloat($0) / 100 } ?? 1
         guard session.hudActive else {
             // the full overlay is chromeless: no radius, no border, no shadow.
             let floating = session.overlaySizePercent != nil
-            return OverlayPanelStyle(widthFraction: fraction, heightFraction: fraction, framed: floating, glass: false,
+            return OverlayPanelStyle(sizeFraction: fraction, framed: floating,
                                      cornerRadius: floating ? floatingCornerRadius : 0,
                                      borderOpacity: floating ? floatingBorderOpacity : 0,
                                      shadowRadius: floating ? floatingShadowRadius : 0,
                                      backdrop: floating, interactive: true, position: .center)
         }
-        // a HUD with no measured height has not been through `openHud` yet; falling back to the width would
-        // put the square back for exactly the frame that would be seen first.
-        let height = session.hudHeightPercent.map { CGFloat($0) / 100 }
-            ?? CGFloat(HudLayout.minSizePercent) / 100
-        let glass = session.overlayBackgroundColor == nil
-        return OverlayPanelStyle(widthFraction: fraction, heightFraction: height, framed: true, glass: glass,
-                                 cornerRadius: hudCornerRadius, borderOpacity: glass ? hudGlassBorderOpacity : hudBorderOpacity,
+        return OverlayPanelStyle(sizeFraction: fraction, framed: false, cornerRadius: 0, borderOpacity: 0,
                                  shadowRadius: 0, backdrop: false, interactive: false,
                                  position: session.hudSpec?.position ?? .center)
     }
+}
 
-    /// The panel's offset from the pane's center, positive downward. A `top`/`bottom` anchor holds
-    /// `HudPosition.edgeMarginPercent` of the pane clear at that edge. It is the HEIGHT that decides how far
-    /// the panel can travel, and every height a HUD can reach fits that margin — `HudLayout.heightPercent`
-    /// caps it at `maxSizePercent`, where two margins exactly fill the rest — so `max(0,` is defensive only,
-    /// for a panel no supported path can produce. A message-sized panel leaves most of the pane free, so the
-    /// edge anchors reach the edge instead of barely clearing center.
-    func verticalOffset(paneHeight: CGFloat) -> CGFloat {
-        Self.offset(along: paneHeight, fraction: heightFraction, band: position.verticalBand)
-    }
-
-    /// The same math across the pane's WIDTH, positive rightward, off the anchor's column. The invariant that
-    /// makes the margin always fit holds identically here: `HudLayout.clampSizePercent` bounds every width,
-    /// the caller's `--size-percent` included, at the same `maxSizePercent` two margins fill the rest of.
-    func horizontalOffset(paneWidth: CGFloat) -> CGFloat {
-        Self.offset(along: paneWidth, fraction: widthFraction, band: position.horizontalBand)
-    }
-
-    /// One axis' travel: half the free room left after the panel and its edge margin, signed by the band.
-    private static func offset(along extent: CGFloat, fraction: CGFloat,
-                               band: HudPosition.Band) -> CGFloat {
-        let margin = CGFloat(HudPosition.edgeMarginPercent) / 100
-        let free = max(0, extent * ((1 - fraction) / 2 - margin))
-        switch band {
-        case .middle: return 0
-        case .leading: return -free
-        case .trailing: return free
+extension HudPosition {
+    /// The anchor as the alignment a full-pane frame places the notice with.
+    var alignment: Alignment {
+        let horizontal: HorizontalAlignment = switch horizontalBand {
+        case .leading: .leading
+        case .middle: .center
+        case .trailing: .trailing
         }
+        let vertical: VerticalAlignment = switch verticalBand {
+        case .leading: .top
+        case .middle: .center
+        case .trailing: .bottom
+        }
+        return Alignment(horizontal: horizontal, vertical: vertical)
+    }
+
+    /// The same anchor as the point a scale transition grows from.
+    var unitPoint: UnitPoint {
+        let x: CGFloat = switch horizontalBand {
+        case .leading: 0
+        case .middle: 0.5
+        case .trailing: 1
+        }
+        let y: CGFloat = switch verticalBand {
+        case .leading: 0
+        case .middle: 0.5
+        case .trailing: 1
+        }
+        return UnitPoint(x: x, y: y)
     }
 }
 

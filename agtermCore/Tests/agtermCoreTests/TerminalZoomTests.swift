@@ -229,8 +229,8 @@ struct TerminalZoomTests {
         let ws = store.addWorkspace(name: "work")
         let session = store.addSession(toWorkspace: ws.id, cwd: "/a")!
 
-        #expect(store.openHud(session.id, command: "/bin/sh /hud.sh", spec: HudSpec(message: "gathering options"),
-                              file: "/tmp/agterm-hud.txt", size: HudPanelSize(widthPercent: 30, heightPercent: 9)))
+        #expect(store.openHud(session.id, spec: HudSpec(message: "gathering options"),
+                              size: HudPanelSize(widthPercent: 30, heightPercent: 9)))
 
         #expect(TerminalZoomSurface.allCases.filter { $0.isActive(in: session) } == [.primary])
         #expect(TerminalZoomSurface.primary.isVisible(in: session))
@@ -254,8 +254,8 @@ struct TerminalZoomTests {
         let session = store.addSession(toWorkspace: ws.id, cwd: "/a")!
         session.surface = SpySurface()
 
-        #expect(store.openHud(session.id, command: "/bin/sh /hud.sh", spec: HudSpec(message: "working"),
-                              file: "/tmp/agterm-hud.txt", size: HudPanelSize(widthPercent: 30, heightPercent: 9)))
+        #expect(store.openHud(session.id, spec: HudSpec(message: "working"),
+                              size: HudPanelSize(widthPercent: 30, heightPercent: 9)))
 
         store.toggleScratch(session.id)
         #expect(TerminalZoomSurface.allCases.filter { $0.isActive(in: session) } == [.scratch])
@@ -276,8 +276,8 @@ struct TerminalZoomTests {
         let ws = store.addWorkspace(name: "work")
         let session = store.addSession(toWorkspace: ws.id, cwd: "/a")!
 
-        #expect(store.openHud(session.id, command: "/bin/sh /hud.sh", spec: HudSpec(message: "working"),
-                              file: "/tmp/agterm-hud.txt", size: HudPanelSize(widthPercent: 30, heightPercent: 9)))
+        #expect(store.openHud(session.id, spec: HudSpec(message: "working"),
+                              size: HudPanelSize(widthPercent: 30, heightPercent: 9)))
         // ⌘W's cover ladder takes the HUD through the ordinary overlay teardown.
         #expect(store.closeOverlay(session.id))
         #expect(session.hudSpec == nil)

@@ -270,25 +270,10 @@ final class ControlServerSessionActionsTests: XCTestCase {
         let store = try XCTUnwrap(library.activeStore)
         let owner = try XCTUnwrap(store.currentWorkspaceID)
         let session = try XCTUnwrap(store.addSession(toWorkspace: owner, cwd: NSHomeDirectory()))
-        addTeardownBlock { try? FileManager.default.removeItem(atPath: ControlServer.bodyFile(for: session.id)) }
         return (store, session)
     }
 
-    private func bodyText(_ session: Session) -> String? {
-        try? String(contentsOfFile: ControlServer.bodyFile(for: session.id), encoding: .utf8)
-    }
-
-    /// The pid the helper watches. These tests run inside the app process, so asserting against it is what
-    /// pins that the header names the WRITER — a pid from anywhere else would never die with the app.
-    private static var ownerPid: Int32 { ProcessInfo.processInfo.processIdentifier }
-
-    /// The body these tests expect: nothing is laid out here, so the pane measures zero and the header's
-    /// grid falls back to the content box. A measured pane's grid is `HudLayout`'s to get right.
-    private func expectedBody(_ spec: HudSpec) -> String {
-        HudLayout.renderedBody(for: spec, grid: HudLayout.box(for: spec), ownerPid: Self.ownerPid)
-    }
-
-    func testHudOpenPointsTheSlotAtTheBundledHelperAndWritesTheBody() throws {
+    func testHudOpenOccupiesTheSlotWithNoProgram() throws {
         let (_, session) = try makeHudSession()
         let spec = HudSpec(message: "gathering options", detail: "scanning 4 repositories", spinner: .braille)
 
@@ -296,13 +281,7 @@ final class ControlServerSessionActionsTests: XCTestCase {
 
         XCTAssertTrue(response.ok, response.error ?? "")
         XCTAssertEqual(session.hudSpec, spec)
-        XCTAssertEqual(session.hudFile, ControlServer.bodyFile(for: session.id))
-        XCTAssertEqual(bodyText(session), expectedBody(spec))
-        // the command is eval'd by the overlay wrapper, so the bundled path must arrive shell-escaped
-        let command = try XCTUnwrap(session.overlayCommand)
-        XCTAssertEqual(command, ControlServer.helperCommand())
-        let helper = try XCTUnwrap(Bundle.main.resourceURL?.appendingPathComponent("hud/hud.sh").path)
-        XCTAssertEqual(command, "/bin/sh " + ShellEscape.path(helper), "the eval'd path must arrive escaped")
+        XCTAssertNil(session.overlayCommand, "a HUD is drawn by the deck, not run as a program")
         XCTAssertTrue(session.hudActive)
         XCTAssertFalse(session.programOverlayActive, "a HUD must never read back as a caller's program")
     }
@@ -353,92 +332,32 @@ final class ControlServerSessionActionsTests: XCTestCase {
         XCTAssertEqual(ControlServer.cellSize(family: "Menlo", size: 26).width, menlo.width * 2, accuracy: 0.01)
     }
 
-    // an unwritable body means the panel would paint nothing or stale text, so neither open nor update may
-    // leave the store claiming a message the helper cannot read.
-    func testAFailedBodyWriteRollsTheStoreBack() throws {
-        let (_, session) = try makeHudSession()
-        XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "first")).ok)
-        let live = try XCTUnwrap(session.hudSpec)
-        let painted = bodyText(session)
-
-        // an immutable body file is a write the app cannot complete: the atomic rename onto it fails, and it
-        // outlives the removal a replacing open runs, which is what keeps the open arm below reachable
-        let path = ControlServer.bodyFile(for: session.id)
-        try FileManager.default.setAttributes([.immutable: true], ofItemAtPath: path)
-        addTeardownBlock { try? FileManager.default.setAttributes([.immutable: false], ofItemAtPath: path) }
-
-        let update = server.updateHud(session.id.uuidString, window: nil, spec: HudSpec(message: "unwritable"))
-        XCTAssertFalse(update.ok)
-        XCTAssertEqual(update.error, OverlayHudError.writeFailed)
-        XCTAssertEqual(session.hudSpec, live, "a failed update must leave the live message in the tree")
-
-        let size = try XCTUnwrap(session.overlaySizePercent)
-        let resize = server.resizeSessionOverlay(session.id.uuidString, window: nil, sizePercent: 20)
-        XCTAssertFalse(resize.ok)
-        XCTAssertEqual(resize.error, OverlayHudError.writeFailed)
-        XCTAssertEqual(session.overlaySizePercent, size,
-                       "a panel whose header cannot be rewritten must not move away from it")
-
-        let open = server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "also unwritable"))
-        XCTAssertFalse(open.ok)
-        XCTAssertEqual(open.error, OverlayHudError.writeFailed)
-        XCTAssertFalse(session.hudActive, "a failed open must roll the slot back rather than leave it empty")
-        XCTAssertFalse(session.overlayActive)
-        XCTAssertEqual(bodyText(session), painted,
-                       "the panel keeps painting the message it last read, so nothing may claim another one")
-    }
-
-    // the no-blink contract: an update rewrites the same file and resizes the same surface, so the slot
-    // generation (which drives the panel's SwiftUI identity) must not move.
-    func testHudUpdateRewritesTheBodyInPlaceWithoutRespawning() throws {
+    // the no-blink contract: an update changes the spec in place, so the slot generation (which drives the
+    // panel's SwiftUI identity) must not move.
+    func testHudUpdateChangesTheSpecInPlaceWithoutReopening() throws {
         let (_, session) = try makeHudSession()
         XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "first")).ok)
         let generation = session.overlaySlotGeneration
-        let file = session.hudFile
 
-        let update = HudSpec(message: "a considerably longer second message", sizePercent: 40)
+        let update = HudSpec(message: "a considerably longer second message", textColor: "#7ec07e",
+                             sizePercent: 40)
         let response = server.updateHud(session.id.uuidString, window: nil, spec: update)
 
         XCTAssertTrue(response.ok, response.error ?? "")
         XCTAssertEqual(session.overlaySlotGeneration, generation, "an update must not re-open the slot")
-        XCTAssertEqual(session.hudFile, file)
-        XCTAssertEqual(bodyText(session), expectedBody(update))
+        XCTAssertEqual(session.hudSpec, update)
         XCTAssertEqual(session.overlaySizePercent, 40)
-        // the grid rides in the body's header line, which is what lets a running helper re-centre. The
-        // trailing `-` is the no-text-color sentinel, spelled out because this pins the wire format.
-        XCTAssertEqual(bodyText(session)?.split(separator: "\n").first.map(String.init),
-                       "\(HudLayout.box(for: update).columns) \(HudLayout.box(for: update).rows) 0 "
-                           + "\(Self.ownerPid) \(HudSpinner.staticInterval) -")
     }
 
-    // the text color rides that same header, so an update recolors the live panel without re-opening the
-    // slot — the half of a HUD's color an update can change, unlike the surface-read background.
-    func testHudUpdateRecolorsTheTextThroughTheHeaderInPlace() throws {
-        let (_, session) = try makeHudSession()
-        XCTAssertTrue(server.openHud(session.id.uuidString, window: nil,
-                                     spec: HudSpec(message: "first", textColor: "#e0e0e0")).ok)
-        let generation = session.overlaySlotGeneration
-
-        let update = HudSpec(message: "second", textColor: "#7ec07e")
-        XCTAssertTrue(server.updateHud(session.id.uuidString, window: nil, spec: update).ok)
-
-        XCTAssertEqual(session.overlaySlotGeneration, generation, "a recolor must not re-open the slot")
-        XCTAssertEqual(bodyText(session)?.split(separator: "\n").first.map(String.init)?
-            .hasSuffix(" 38;2;126;192;126"), true)
-        XCTAssertEqual(session.hudSpec?.textColor, "#7ec07e")
-    }
-
-    func testHudCloseClearsTheSlotAndRemovesTheBodyFile() throws {
+    func testHudCloseClearsTheSlot() throws {
         let (_, session) = try makeHudSession()
         XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "working")).ok)
-        let file = try XCTUnwrap(session.hudFile)
 
         let response = server.closeHud(session.id.uuidString, window: nil)
 
         XCTAssertTrue(response.ok, response.error ?? "")
         XCTAssertNil(session.hudSpec)
         XCTAssertFalse(session.overlayActive)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: file), "the body file must not outlive the hud")
     }
 
     func testHudUpdateAndCloseWithoutAHudReportNoHud() throws {
@@ -455,7 +374,7 @@ final class ControlServerSessionActionsTests: XCTestCase {
         XCTAssertTrue(session.overlayActive, "a refused hud command must leave the program overlay alone")
     }
 
-    func testHudOverALiveProgramOverlayIsRefusedAndWritesNothing() throws {
+    func testHudOverALiveProgramOverlayIsRefused() throws {
         let (store, session) = try makeHudSession()
         XCTAssertTrue(store.openOverlay(session.id, command: "true"))
 
@@ -463,12 +382,10 @@ final class ControlServerSessionActionsTests: XCTestCase {
 
         XCTAssertFalse(response.ok)
         XCTAssertEqual(response.error, "overlay already open")
-        XCTAssertNil(bodyText(session), "a refused open must leave no temp file behind")
+        XCTAssertEqual(session.overlayCommand, "true")
     }
 
-    // a replacement tears the first helper's surface down, and that teardown deletes the body file at this
-    // same per-session path — so the body must be written after the store call, never before.
-    func testASecondHudReplacesTheFirstAndKeepsItsBody() throws {
+    func testASecondHudReplacesTheFirst() throws {
         let (_, session) = try makeHudSession()
         XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "first")).ok)
         let generation = session.overlaySlotGeneration
@@ -477,7 +394,6 @@ final class ControlServerSessionActionsTests: XCTestCase {
         XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: second).ok)
 
         XCTAssertEqual(session.hudSpec, second)
-        XCTAssertEqual(bodyText(session), expectedBody(second))
         XCTAssertGreaterThan(session.overlaySlotGeneration, generation, "a replacement must remount the panel")
     }
 
@@ -520,17 +436,15 @@ final class ControlServerSessionActionsTests: XCTestCase {
                        "no overlay")
     }
 
-    func testOverlayCloseClosesAHudAndRemovesItsBody() throws {
+    func testOverlayCloseClosesAHud() throws {
         let (_, session) = try makeHudSession()
         XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "working")).ok)
-        let file = try XCTUnwrap(session.hudFile)
 
         let response = server.closeSessionOverlay(session.id.uuidString, window: nil, pane: nil)
 
         XCTAssertTrue(response.ok, response.error ?? "")
         XCTAssertNil(session.hudSpec)
         XCTAssertFalse(session.overlayActive)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: file), "the body file must not outlive the hud")
         XCTAssertEqual(server.closeSessionOverlay(session.id.uuidString, window: nil, pane: nil).error, "no overlay")
     }
 
@@ -636,19 +550,5 @@ final class ControlServerSessionActionsTests: XCTestCase {
         let response = server.closeSessionSplit(UUID().uuidString, window: nil)
 
         XCTAssertFalse(response.ok)
-    }
-
-    // the helper centers on the grid in the body's header, so a resize that changes the panel must rewrite
-    // that file rather than wait for the next `hud.update` to re-center the message.
-    func testOverlayResizeRewritesTheHudBody() throws {
-        let (_, session) = try makeHudSession()
-        XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "working")).ok)
-        let body = try XCTUnwrap(bodyText(session))
-        try "stale".write(toFile: ControlServer.bodyFile(for: session.id), atomically: true, encoding: .utf8)
-
-        let resized = server.resizeSessionOverlay(session.id.uuidString, window: nil, sizePercent: 35)
-
-        XCTAssertTrue(resized.ok, resized.error ?? "")
-        XCTAssertEqual(bodyText(session), body, "a resize must rewrite the header the helper reads")
     }
 }

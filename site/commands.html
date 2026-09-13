@@ -1564,7 +1564,7 @@
                 for the session-wide one.
               </p>
               <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
-                A <a href="#hud" style="color: #6d82f3">HUD</a> runs the app's own painter, not a caller's program, so there is no
+                A <a href="#hud" style="color: #6d82f3">HUD</a> is a message the app draws, not a caller's program, so there is no
                 status to report and the session-wide arm errors
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no overlay result: the slot holds a hud</span>. The
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--pane</span> arm is unaffected — a HUD only ever takes
@@ -1679,16 +1679,17 @@
                 stays inside the pane, and a corner keeps a long-lived panel clear of the text being read. The bare
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">top</span> and
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">bottom</span> this argument shipped with are still
-                accepted for the middle column, and the read-back reports the canonical anchor. The panel is measured from the message
-                against the session's terminal font on BOTH axes separately — width from the longest wrapped line, height from
-                the number of them — so a title and a subtitle give a wide, short panel rather than a square one.
+                accepted for the middle column, and the read-back reports the canonical anchor. The panel is drawn natively — the message
+                in the system face at the weight of a macOS notice, the detail a size down and dimmed, no plate unless one is
+                asked for — and sized from its text: width from the longest line, height from the number of them. It fades in
+                with a short drift from its anchored edge and fades out again (Reduce Motion keeps the fade alone).
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">--size-percent N</span> (1–100)
                 overrides the WIDTH only; the height always follows the message, since a caller-set height could only strand it
                 in an empty box. The effective width is bounded to 10–80% of the pane, so a message never covers the session
-                it is about and a requested 100 reads back as 80. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--background-color</span> gives the
-                panel its own solid background, read once when the panel is created, while
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--text-color</span> colors the TEXT and rides the
-                panel's body file, so an update can change it. Both effective shares read back, as
+                it is about and a requested 100 reads back as 80. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--background-color</span> puts a solid
+                plate behind the text, set once when the panel is created, while
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--text-color</span> colors the TEXT and an update
+                can change it. Both effective shares read back, as
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">sizePercent</span> and
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">heightPercent</span>, and both colors as
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">backgroundColor</span> and
@@ -1716,7 +1717,7 @@
               </div>
               <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.hud.update</div>
               <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
-                Repaint the live panel in place — no re-spawn, no blink. It REPLACES the whole spec rather than patching it, so
+                Repaint the live panel in place — no blink. It REPLACES the whole spec rather than patching it, so
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--detail</span>,
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--spinner</span>,
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--position</span>, and
@@ -3291,32 +3292,6 @@
                     white-space: nowrap;
                   "
                   >session.hud.open: --size-percent must be 1...100</span
-                >
-                <span
-                  style="
-                    font-family: &quot;JetBrains Mono&quot;, monospace;
-                    font-size: 12.5px;
-                    color: #cbc6bc;
-                    background: #191d20;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 6px;
-                    padding: 4px 9px;
-                    white-space: nowrap;
-                  "
-                  >hud helper is not bundled in this build</span
-                >
-                <span
-                  style="
-                    font-family: &quot;JetBrains Mono&quot;, monospace;
-                    font-size: 12.5px;
-                    color: #cbc6bc;
-                    background: #191d20;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 6px;
-                    padding: 4px 9px;
-                    white-space: nowrap;
-                  "
-                  >could not write the hud message</span
                 >
                 <span
                   style="

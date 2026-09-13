@@ -371,7 +371,6 @@ struct SnapshotRoundTripTests {
         session.overlayActive = true
         session.overlaySizePercent = 30
         session.hudSpec = HudSpec(message: "gathering options", detail: "scanning /a", spinner: .bar)
-        session.hudFile = "/tmp/agterm-hud-test.txt"
 
         let snap = store.snapshot()
         let json = String(decoding: try JSONEncoder().encode(snap), as: UTF8.self)
@@ -382,7 +381,6 @@ struct SnapshotRoundTripTests {
         restored.restore(from: snap)
         let r = restored.workspaces[0].sessions[0]
         #expect(r.hudSpec == nil)
-        #expect(r.hudFile == nil)
         #expect(r.hudActive == false)
         #expect(r.overlayActive == false)
     }

@@ -415,12 +415,12 @@ omitted when expanded).
   width from the longest line, height from the number of them — so a title and a subtitle give a wide, short
   panel, not a square one. `--size-percent N` (1-100) overrides the WIDTH only, bounded to 10-80% of the
   pane, since a message must never cover the session it is about, so a requested 100 reads back as 80. The
-  height always follows the message. `--text-color` colors the panel's TEXT and `--background-color` its
-  backing, independently. `hud update` repaints in place with no re-spawn and no blink,
+  height always follows the message. The panel is drawn natively — system face, notice weight, no plate unless `--background-color`
+  asks for one — and fades in and out. `--text-color` colors the TEXT. `hud update` repaints in place with no blink,
   and REPLACES the whole spec — repeat `--detail`/`--spinner`/`--text-color` to keep them, since an omitted
-  one drops. It takes no `--background-color`: the surface reads that once at creation, so only a fresh
-  `hud` changes it and `tree` keeps reporting the creation color across updates, while the text color rides
-  the panel's body file and an update recolors it in place. Message and detail are capped at 256 characters and reject control characters, newline included.
+  one drops. It takes no `--background-color`: the plate is set once at creation, so only a fresh
+  `hud` changes it and `tree` keeps reporting the creation color across updates, while an update recolors
+  the text in place. Message and detail are capped at 256 characters and reject control characters, newline included.
   It occupies the SAME slot as `overlay open`, so: a second `hud` replaces the first, `overlay open`
   replaces a HUD (a running program is never replaced), `overlay close` and ⌘W take a HUD down,
   `overlay result` refuses with `no overlay result: the slot holds a hud`, `overlay resize --size-percent`

@@ -136,22 +136,6 @@ final class GhosttySurfaceViewTrackingTests: XCTestCase {
 
     // MARK: - teardown
 
-    /// The HUD's body file has no status to read, so deleting it IS the teardown — and it is also how a
-    /// helper whose app never ran teardown learns to stop. Every path through `destroySurface` owes it.
-    func testTeardownRemovesTheHudBodyFile() throws {
-        let body = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("agterm-hud-teardown-\(UUID().uuidString).txt")
-        try "40 3 0 0\nworking\n".write(to: body, atomically: true, encoding: .utf8)
-        let view = GhosttySurfaceView(workingDirectory: NSTemporaryDirectory())
-        view.hudBodyFile = body.path
-
-        view.destroySurface()
-
-        XCTAssertFalse(FileManager.default.fileExists(atPath: body.path),
-                       "a torn-down hud surface must not leave its painter a file to keep reading")
-        XCTAssertNil(view.hudBodyFile)
-    }
-
     /// #443: libghostty's layer holds a display callback into the renderer `destroySurface` frees, so the
     /// next CoreAnimation display of that layer aborts the process on a corrupt lock.
     func testTeardownDropsTheLayerLibghosttyInstalled() {

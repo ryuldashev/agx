@@ -354,7 +354,7 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   `makeNSView` and `updateNSView` hits a torn-down view.
 - The same predicate governs focus routing: `Session.topmostSurface`, `focusTarget(wantSplit:)`,
   `onScreenSurface`, `AppActions.searchTarget`'s scratch rung, and the scratch factory's `suppressAutoFocus`.
-  A raw `overlayActive` read at any of them hands first responder or a buffer read to the HUD painter.
+  A raw `overlayActive` read at any of them hands first responder or a buffer read to the HUD.
 - One slot, asymmetric replacement: a second `hud.open` replaces the first, `overlay.open` closes a HUD and
   proceeds, and a HUD over a RUNNING program is refused `overlay already open`. `overlay.close`, Command-W,
   and session close tear a HUD down. `overlay.result` refuses with `OverlayHudError.noResult` because
@@ -396,13 +396,10 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   nothing and the dispatcher validates one thing. `noneName` is ACCEPTED by both, not just the socket —
   refusing it in the CLI would fail a value `tree` had just handed the caller — and beats a bare
   `--spinner` beside it. Rejection messages list it through `acceptedNamesList`, never the styles alone.
-- The panel's two colors are owned by different layers, which is why only one is updatable:
-  `backgroundColor` is a per-surface config the factory reads ONCE at creation, `textColor` rides the body
-  file's header as SGR PARAMETERS the helper re-reads every tick. So `hud.update` recolors text in place and
-  cannot touch the backing, and the CLI's `update` takes `--text-color` but no `--background-color`.
-  `HudLayout.foregroundSGR` owns the encoding, host-free, and resolves a malformed hex to the
-  `noTextColor` sentinel rather than a partial run; the helper converts nothing and wraps only digits and
-  semicolons, so a malformed header cannot emit an arbitrary escape into the pane.
+- The panel's two colors differ in what an update may change: `backgroundColor` is the slot's
+  `overlayBackgroundColor`, set ONCE at open (`updateHud` carries the live one forward), `textColor` is the
+  spec's own. So `hud.update` recolors text in place and cannot touch the plate, and the CLI's `update`
+  takes `--text-color` but no `--background-color`.
 - Read back `ControlSessionNode.hud` with BOTH shares, `sizePercent` and `heightPercent`, `overlay` false
   and `overlaySizePercent` omitted beside it, plus `textColor` (omitted when the panel keeps the terminal
   foreground, and tracking the LATEST update unlike `backgroundColor`);
@@ -410,38 +407,16 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   and spells a static panel `HudSpinner.noneName`, which the dispatcher accepts back as "no spinner" so a
   caller can round-trip what `tree` gave it. HUD state is poll-only.
   `openOverlay`/`closeOverlay` emit no `scheduleTreeChanged()` and neither does a HUD, so document no event.
-- The panel is a pty running bundled `Resources/hud/hud.sh`, spawned `autoFocus: false` with
-  `AGTERM_HUD_FILE` as its only HUD-SPECIFIC variable (the surface still inherits the session environment
-  and the overlay wrapper's `AGTERM_OVL_*` pair) and capturing no exit code. Grid, spinner (flag, interval
-  and frames), text color and the APP'S PID
-  ride the body file's HEADER line and are re-read every tick, so `hud.update` repaints in place with no
-  respawn; write that file atomically. The frames are LAST because they alone are variable-length and the
-  helper shifts the fixed fields off to reach them, so a new fixed field goes before them and owes the
-  helper a matching shift count. It is per SESSION, so an update rewrites the path the running helper
-  already opened. `Session.discardHudBody` is the only deleter and every store teardown runs it — close,
-  ⌘W, session/workspace/window teardown — so a HUD closed before its surface realized cannot strand the
-  message text in `/tmp`. An update carries the OPEN's background color forward, the factory reading it once
-  at creation, so `hud.backgroundColor` never names a color the panel will not paint.
-- The header's grid is `HudLayout.paintGrid` — the PANEL's own cells (`panelGrid`: the effective percent of
-  the pane, less `window-padding-*`, over the measured cell), NOT `HudLayout.box`, which only decides the
-  size. Both now measure the same message, so the two usually agree, but the panel is whole CELLS of a
-  rounded percent and the box is not — centering on the box can still strand the message by a column or a
-  row, and a `--size-percent` width detaches them outright. `box` remains the fallback when nothing is
-  measured. Every path that changes the panel's size — open, update, `overlay.resize` — must rewrite the
-  header through `ControlServer.writeHudBody`, which reads the size the STORE resolved; a window resize is
-  the one skew left, until the next update.
-- The helper forces `LC_CTYPE=UTF-8` on itself: `${#line}` counts BYTES otherwise, and a Dock-launched app
-  inherits launchd's locale-less environment. Under it `${#line}` counts CODE POINTS, so the app measures in
-  `HudLayout.cellCount` (Unicode scalars, precomposed first) rather than `String.count`, whose grapheme
-  clusters disagree on every combining mark and ZWJ emoji. Neither side counts display columns, so a
-  double-width glyph overflows the frame — accepted, not fixed.
-- It skips a repaint whose frame is byte-identical to the last, so a spinner-less panel writes once and
-  stops waking the renderer, and traps WINCH to invalidate that cache. This is a cache, not a measurement:
-  the box still comes only from the body file.
-- The helper stops on either the file disappearing or a builtin `kill -0` on that pid failing. The pid is
-  the only stop a HARD-killed app has: `destroySurface` never runs, so the body file survives, and no SIGHUP
-  arrives because the pty's session leader is the surviving `login`. Without it every crash, `kill -9` and
-  XCUITest `terminate()` leaves a 2-10 Hz repaint loop running forever.
+- The panel is NOT a surface: `overlayPanel` renders `HudNoticeView` (system face, 13pt semibold message,
+  11pt dimmed detail, two-layer text shadow in the terminal background's polarity, a plate only for
+  `--background-color`) in the slot instead of the overlay `TerminalView`, so `openHud` claims the slot with
+  `overlayCommand` nil and the factory never runs for it. The spinner is a `TimelineView` at
+  `HudSpinner.interval`. Placement is `HudPosition.alignment` on a full-pane frame with a fixed
+  `HudNoticeView.edgeInset`; `sizePercent` is only the text's width budget (`.frame(maxWidth:)`), still
+  measured by `HudLayout.panelSize` against the terminal font so the read-back keeps its meaning.
+- Motion is `hudTransition(for:)`: enter opacity + drift from the anchored edge + 0.98 scale on a strong
+  ease-out (220 ms), exit shorter (160 ms), opacity alone under Reduce Motion. The program branch carries
+  `.transition(.identity)` so a HUD→program swap never hands the Metal drawable the default fade.
 - `surface.zoom show|hide|toggle` reparents exactly one surface below a slim titlebar. Explicit IDs are
   `surface:<session-id>:<left|right|scratch|overlay|overlay-left|overlay-right>`, including hidden live
   panes. The active target is the single case `TerminalZoomSurface.isActive` accepts: the session overlay,

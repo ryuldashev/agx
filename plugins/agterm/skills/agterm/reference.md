@@ -686,7 +686,7 @@ error keeps those names for compatibility.
   as a courtesy — the slot is the same one.
 - `session overlay result [--pane left|right] [--target] [--window W]` — returns `result.exitCode` once
   the overlay has closed. Errors `overlay still running` while up, `no overlay result` if none ran.
-  `--pane` reads that pane's overlay; omit it for the session-wide one. A HUD runs the app's own painter,
+  `--pane` reads that pane's overlay; omit it for the session-wide one. A HUD is a message the app draws,
   not a caller's program, so there is no status to report and the session-wide arm errors
   `no overlay result: the slot holds a hud`; the `--pane` arm is unaffected, since a HUD only ever takes
   the session-wide slot.
@@ -723,18 +723,18 @@ error keeps those names for compatibility.
   margin off that pane edge on each axis it names, so a panel at the largest allowed size never overhangs.
   A corner is what keeps a long-lived panel out of the text the user is reading. The bare `top`/`bottom`
   this argument shipped with are still accepted for `top-center`/`bottom-center`, and `hud.position` reports
-  the canonical anchor whichever spelling was sent. The panel is measured from the message against the session's terminal font on BOTH
-  axes separately — width from the longest wrapped line, height from the number of them — so a title and a
-  subtitle give a wide, short panel rather than a square one. `--size-percent N` (1–100) overrides the WIDTH
+  the canonical anchor whichever spelling was sent. The panel is drawn natively — the message in the system face at the weight of a
+  macOS notice, the detail a size down and dimmed, no plate unless one is asked for — and sized from its
+  text: width from the longest line, height from the number of them. It fades in with a short drift from
+  its anchored edge and fades out again (Reduce Motion keeps the fade alone). `--size-percent N` (1–100) overrides the WIDTH
   only; the height always follows the message, since a caller-set height could only strand it in an empty
   box. The effective width is bounded to 10–80% of the pane, the same invariant that makes
   `session overlay resize --full` a refusal, so a requested 100 reads back as 80. Both effective shares read
-  back, as `hud.sizePercent` and `hud.heightPercent`. `--background-color #rrggbb` gives the panel its own solid
-  background, read once when the panel is created; `--text-color #rrggbb` colors the TEXT and, unlike the
-  background, rides the panel's body file, so an update can change it. Both read back, as
+  back, as `hud.sizePercent` and `hud.heightPercent`. `--background-color #rrggbb` puts a solid plate behind the
+  text, set once when the panel is created; `--text-color #rrggbb` colors the TEXT and, unlike the
+  plate, an update can change it. Both read back, as
   `hud.backgroundColor` and `hud.textColor`. Message and detail are capped at 256 characters and
-  reject control characters — newline included, since the panel prints straight into a live terminal and
-  `--detail` is the second line on offer. Errors `session.hud.open requires a message` on a missing or
+  reject control characters — newline included; `--detail` is the second line on offer. Errors `session.hud.open requires a message` on a missing or
   empty message, `hud text must not contain control characters`, `hud message too long (max 256
   characters)` / `hud detail too long (max 256 characters)`, `invalid color: <value> (#rrggbb)`,
   `invalid text color: <value> (#rrggbb)`,
@@ -1354,7 +1354,6 @@ prompt — `applicationWillTerminate` still saves windows, sessions, and capture
 `hud text must not contain control characters` /
 `hud message too long (max 256 characters)` / `hud detail too long (max 256 characters)` /
 `session.hud.open: --size-percent must be 1...100` /
-`hud helper is not bundled in this build` / `could not write the hud message` /
 `invalid position: <value> (top-left|top-center|top-right|center-left|center|center-right|bottom-left|bottom-center|bottom-right|top|bottom)`
 (session hud over the raw socket; the `agtermctl` CLI rejects the same value locally with
 `position must be one of: top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right, top, bottom`),
