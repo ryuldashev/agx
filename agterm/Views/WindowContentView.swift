@@ -34,7 +34,8 @@ struct WindowContentView: View {
     let palette: PaletteController
     let sessionSwitcher: SessionSwitcher
     /// Mirrors `WindowAppearance`'s other opaque-forcing condition; SwiftUI keeps it current by itself.
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceTransparency) var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
     /// The app's one quick terminal, which lives in its own detached panel rather than in any window. Read
     /// here so the deck's gates still follow its visibility — a panel with key steals it from every window,
     /// not just this one. `agtermApp` owns its providers.

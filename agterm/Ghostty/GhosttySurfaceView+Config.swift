@@ -131,6 +131,21 @@ extension GhosttySurfaceView {
         ownedConfigs = [config]
     }
 
+    /// Apply the HUD's transparent per-surface config (`WatermarkConfig.hudOverlayText`) so the panel's glass
+    /// backing shows through instead of the inherited wallpaper. A HUD opened with `--background-color`
+    /// takes the solid `applyOverlayBackgroundColor` path instead, and never reaches here.
+    func applyHudSurfaceConfig() {
+        guard let surface else { return }
+        let overlay = WatermarkConfig.hudOverlayText(fontSize: currentEffectiveFontSize())
+        guard let config = GhosttyApp.shared.configWithOverlay(overlay) else {
+            NSLog("hud background: per-surface config build failed")
+            return
+        }
+        ghostty_surface_update_config(surface, config)
+        ownedConfigs.forEach { ghostty_config_free($0) }
+        ownedConfigs = [config]
+    }
+
     /// Route a dynamic background color libghostty reported for THIS surface (`GHOSTTY_ACTION_COLOR_CHANGE`,
     /// kind background). The action carries no set-vs-reset flag — OSC 111 just reports the terminal's
     /// default background — so the surface's own baseline identifies a reset. `OSCBackgroundPolicy` owns
@@ -196,6 +211,7 @@ extension GhosttySurfaceView {
         oscBackgroundColorHex = nil
         if session != nil || watermarkSession != nil { applyWatermarkFromSession(); return }
         if overlayBackgroundColorHex != nil { applyOverlayBackgroundColor(); return }
+        if hudBodyFile != nil { applyHudSurfaceConfig(); return }
         guard let surface else { return }
         let overlay = WatermarkConfig.overlayText(watermark: nil, resolvedImagePath: nil,
                                                   fontSize: currentEffectiveFontSize())

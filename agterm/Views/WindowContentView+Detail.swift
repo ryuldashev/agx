@@ -240,7 +240,7 @@ extension WindowContentView {
                         // terminal, so the window backing shows through); a HUD keeps the backing but drops
                         // the shadow for a stronger border, so it reads as part of the terminal. The CHAIN is
                         // constant across all three, only the parameters change.
-                        .background(style.framed ? terminalColor : Color.clear)
+                        .background(overlayBacking(style))
                         .clipShape(RoundedRectangle(cornerRadius: style.cornerRadius))
                         .overlay(
                             RoundedRectangle(cornerRadius: style.cornerRadius)
@@ -253,13 +253,40 @@ extension WindowContentView {
                         // without the generation SwiftUI reuses the host: `makeNSView` never re-runs and
                         // `updateNSView` hits a torn-down view with `overlaySurface` nil.
                         .id("\(session.id.uuidString)-overlay-\(session.overlaySlotGeneration)")
+                        // a HUD eases in and out like a notice rather than snapping like a program window:
+                        // the transition is keyed to `hudActive`, so a program overlay's open/close (which
+                        // never flips it) stays instant and its Metal drawable is never faded mid-frame.
+                        .transition(hudTransition)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.28), value: session.hudActive)
         }
         // with no overlay up this is an empty full-frame GeometryReader; keep it inert so it never
         // intercepts clicks meant for the pane(s).
         .allowsHitTesting(live && session.overlayActive && deckHostsSurface(session: session, surface: .overlay))
+    }
+
+    /// The panel's backing per `OverlayPanelStyle`: glass for a colorless HUD (opaque under Reduce
+    /// Transparency, as every other material panel in the app), the terminal color for a framed program
+    /// overlay, nothing for the chromeless full one.
+    @ViewBuilder private func overlayBacking(_ style: OverlayPanelStyle) -> some View {
+        if style.glass {
+            if reduceTransparency {
+                Color(nsColor: .windowBackgroundColor)
+            } else {
+                Rectangle().fill(.regularMaterial)
+            }
+        } else if style.framed {
+            terminalColor
+        } else {
+            Color.clear
+        }
+    }
+
+    /// Fade with a short drift, the way a system notice arrives; `reduceMotion` keeps the fade alone.
+    private var hudTransition: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .offset(y: -6)).combined(with: .scale(scale: 0.98))
     }
 
     /// ONE split pane's overlay, always FULL-PANE (no size percent, no framed chrome — a floating variant
@@ -355,6 +382,10 @@ struct OverlayPanelStyle: Equatable {
     let heightFraction: CGFloat
     /// opaque backing: both framed variants, never the chromeless full overlay.
     let framed: Bool
+    /// glass backing instead of the opaque one: a HUD with no `--background-color` of its own, whose
+    /// surface renders transparent (`WatermarkConfig.hudOverlayText`) so the material reads through the
+    /// message rather than a cropped copy of the wallpaper.
+    let glass: Bool
     let cornerRadius: CGFloat
     let borderOpacity: Double
     let shadowRadius: CGFloat
@@ -375,15 +406,17 @@ struct OverlayPanelStyle: Equatable {
     /// A HUD keeps the opaque backing but drops the shadow for a stronger border and a tighter radius:
     /// neither a shadow nor a backdrop wash separates it from the text behind, so the border does that work
     /// alone and the panel reads as part of the terminal rather than a window hovering over it.
-    private static let hudCornerRadius: CGFloat = 8
+    private static let hudCornerRadius: CGFloat = 10
     private static let hudBorderOpacity = 0.30
+    /// the glass backing separates itself by blur, so its edge is only a hairline.
+    private static let hudGlassBorderOpacity = 0.14
 
     @MainActor static func resolve(_ session: Session) -> OverlayPanelStyle {
         let fraction = session.overlaySizePercent.map { CGFloat($0) / 100 } ?? 1
         guard session.hudActive else {
             // the full overlay is chromeless: no radius, no border, no shadow.
             let floating = session.overlaySizePercent != nil
-            return OverlayPanelStyle(widthFraction: fraction, heightFraction: fraction, framed: floating,
+            return OverlayPanelStyle(widthFraction: fraction, heightFraction: fraction, framed: floating, glass: false,
                                      cornerRadius: floating ? floatingCornerRadius : 0,
                                      borderOpacity: floating ? floatingBorderOpacity : 0,
                                      shadowRadius: floating ? floatingShadowRadius : 0,
@@ -393,8 +426,9 @@ struct OverlayPanelStyle: Equatable {
         // put the square back for exactly the frame that would be seen first.
         let height = session.hudHeightPercent.map { CGFloat($0) / 100 }
             ?? CGFloat(HudLayout.minSizePercent) / 100
-        return OverlayPanelStyle(widthFraction: fraction, heightFraction: height, framed: true,
-                                 cornerRadius: hudCornerRadius, borderOpacity: hudBorderOpacity,
+        let glass = session.overlayBackgroundColor == nil
+        return OverlayPanelStyle(widthFraction: fraction, heightFraction: height, framed: true, glass: glass,
+                                 cornerRadius: hudCornerRadius, borderOpacity: glass ? hudGlassBorderOpacity : hudBorderOpacity,
                                  shadowRadius: 0, backdrop: false, interactive: false,
                                  position: session.hudSpec?.position ?? .center)
     }

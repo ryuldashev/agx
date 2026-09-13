@@ -99,6 +99,16 @@ public enum WatermarkConfig {
         return lines.joined(separator: "\n") + "\n"
     }
 
+    /// The per-surface overlay a HUD draws under: a fully transparent terminal with the base config's
+    /// `background-image` cleared, so only the glyphs composite and the panel's own glass backing (drawn by
+    /// the deck) supplies the tint. Without this the helper inherits the window's background picture and the
+    /// message sits on a second copy of the wallpaper, cropped to the panel. `font-size` keeps the zoom.
+    public static func hudOverlayText(fontSize: Double?) -> String {
+        var lines = ["background-opacity = 0", "background-image = "]
+        if let fontSize { lines.append("font-size = \(formatted(fontSize))") }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
     /// The overlay a split pane needs to restyle the background image it INHERITS from the base config —
     /// the user's own `background-image`, with no session watermark in play. Only the image keys are
     /// restated, so window translucency, theme and every other base value stay untouched; `path` is what the

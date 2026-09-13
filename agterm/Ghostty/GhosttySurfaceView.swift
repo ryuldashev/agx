@@ -631,6 +631,8 @@ final class GhosttySurfaceView: NSView, TerminalSurface {
         // an overlay surface with its own background color applies it here too — the overlay is sessionless,
         // so the watermark path above skips it.
         if overlayBackgroundColorHex != nil { applyOverlayBackgroundColor() }
+        // a HUD without its own color renders transparent over the deck's glass backing.
+        else if hudBodyFile != nil { applyHudSurfaceConfig() }
 
         // the overlay grabs first responder itself (TerminalView's once-on-attach grab misses the deferred
         // overlay surface); a bounded run-loop retry beats the SwiftUI/AppKit responder race.
