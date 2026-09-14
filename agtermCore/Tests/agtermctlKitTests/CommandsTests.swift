@@ -1492,6 +1492,24 @@ struct CommandsTests {
         #expect(throws: (any Error).self) { try Agtermctl.parseAsRoot(["session", "flag", "bogus"]) }
     }
 
+    @Test func sessionPrivateDefaultsToggle() throws {
+        #expect(try request(["session", "private"]) == ControlRequest(cmd: .sessionPrivate, target: "active", args: ControlArgs(mode: "toggle")))
+    }
+
+    @Test func sessionPrivateOnWithTarget() throws {
+        let expected = ControlRequest(cmd: .sessionPrivate, target: "9f3c", args: ControlArgs(mode: "on"))
+        #expect(try request(["session", "private", "on", "--target", "9f3c"]) == expected)
+    }
+
+    @Test func sessionPrivateRejectsBadMode() {
+        #expect(throws: (any Error).self) { try Agtermctl.parseAsRoot(["session", "private", "clear"]) }
+    }
+
+    @Test func sessionNewPrivate() throws {
+        let expected = ControlRequest(cmd: .sessionNew, args: ControlArgs(command: "claude", private: true))
+        #expect(try request(["session", "new", "--command", "claude", "--private"]) == expected)
+    }
+
     @Test func fontInc() throws {
         #expect(try request(["font", "inc", "--target", "s1"]) == ControlRequest(cmd: .fontInc, target: "s1"))
     }

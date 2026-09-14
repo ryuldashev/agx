@@ -55,6 +55,15 @@ unfinished turn instead of coming back as a `claude --resume … --fork-session`
 kills its server; a program that exited while agx was away is replaced on the next launch by the restore
 command. Design, lifecycle and the one vendored patch: `docs/decisions/0001-abduco-durable-panes.md`.
 
+**Private sessions** — a session flagged private (🔒; File ▸ New Private Session ⌘⇧P, the row's context
+menu, `session new --private`, `agx spawn --private`, `session private on|off`) is never written to
+`workspaces.json`, window snapshots or Open Recent, never runs under a durable server, and on close the app
+erases the agent transcript that ran in it (Claude Code's project record, archive copy, `history.jsonl`
+lines, debug/todos/scratch; Codex's rollout and history lines) by the exact session id the SessionStart hook
+reported. Sessions that went down with the app are swept on the next launch from `<stateDir>/private-cleanup.json`.
+`agx context` tells the agent inside not to copy the conversation anywhere. The claude.ai copy is out of
+reach. Design and limits: `docs/decisions/0003-private-sessions.md`.
+
 **The `agx` CLI and its SessionStart hooks, shipped in the app** — `scripts/agx` (python3) is the
 agent-facing side of the control API: `agx context` describes the UI an in-pane agent lives in, `agx spawn`
 opens a peer session seeded with a brief, `agx schedule` wraps scheduled sessions, `agx run` runs a command in

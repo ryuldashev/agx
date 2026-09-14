@@ -507,6 +507,24 @@ extension ControlServer: ControlActions {
         }
     }
 
+    /// Mark the target private or public (ADR 0003). `toggle` is computed against `isPrivate`, so on/off are
+    /// idempotent like `session.flag`; the store's `setPrivate` is a no-op for a matching value.
+    func setSessionPrivate(_ target: String?, window: String?, mode: ControlToggleMode) -> ControlResponse {
+        resolver.resolveSession(target, window: window) { store, id in
+            guard let session = store.session(withID: id) else {
+                return ControlResponse(ok: false, error: "no such session: \(target ?? "active")")
+            }
+            let want: Bool
+            switch mode {
+            case .on: want = true
+            case .off: want = false
+            case .toggle: want = !session.isPrivate
+            }
+            store.setPrivate(want, forSession: id)
+            return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
+        }
+    }
+
     /// Clear a session's unseen-notification badge without touching selection, focus, or agent status — the
     /// counterpart to `notify`, whose badge nothing else lowers without visiting. Idempotent, and the count
     /// is ephemeral so it triggers no save.

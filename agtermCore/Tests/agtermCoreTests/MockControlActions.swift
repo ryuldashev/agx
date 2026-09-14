@@ -32,6 +32,7 @@ final class MockControlActions: ControlActions {
         case workspaceExpansion(target: String?, window: String?, expanded: Bool)
         case workspaceDefaults(target: String?, window: String?, update: ControlWorkspaceDefaultsUpdate?)
         case sessionFlag(target: String?, window: String?, String?)
+        case sessionPrivate(target: String?, window: String?, ControlToggleMode)
         case markSessionSeen(target: String?, window: String?)
         case sessionStatus(target: String?, window: String?, ControlSessionStatusUpdate)
         case sessionRestore(target: String?, window: String?, ControlSessionRestoreUpdate)
@@ -292,6 +293,11 @@ final class MockControlActions: ControlActions {
 
     func setSessionFlag(_ target: String?, window: String?, mode: String?) -> ControlResponse {
         calls.append(.sessionFlag(target: target, window: window, mode))
+        return ControlResponse(ok: true)
+    }
+
+    func setSessionPrivate(_ target: String?, window: String?, mode: ControlToggleMode) -> ControlResponse {
+        calls.append(.sessionPrivate(target: target, window: window, mode))
         return ControlResponse(ok: true)
     }
 

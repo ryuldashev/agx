@@ -25,7 +25,8 @@ enum DurableSpawn {
         let serverExists = FileManager.default.fileExists(atPath: socket)
         guard let line = DurablePane.programLine(base, serverExists: serverExists) else { return base }
         guard DurablePane.shouldWrap(settingOn: GhosttyApp.shared.durablePanes, requested: session.durableRequested,
-                                     serverExists: serverExists, line: line) else { return base }
+                                     serverExists: serverExists, line: line,
+                                     isPrivate: session.isPrivate) else { return base }
         guard let abduco = abducoPath else {
             logger.error("abduco missing from the bundle; spawning unwrapped")
             return base

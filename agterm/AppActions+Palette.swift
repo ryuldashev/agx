@@ -27,6 +27,7 @@ extension AppActions {
             sidebarShowsWorkspaceTree: activeStore?.sidebarMode == .tree,
             sidebarShowsFlaggedOnly: activeStore?.sidebarMode == .flagged,
             activeSessionFlagged: activeStore?.activeSession?.flagged == true,
+            activeSessionPrivate: activeStore?.activeSession?.isPrivate == true,
             hasMarkedWorkspaces: activeStore?.focusedWorkspaceIDs.isEmpty == false,
             activeWorkspaceMarked: activeStore?.isCurrentWorkspaceFocusMember == true,
             activeWorkspaceCollapsed: activeStore?.isCurrentWorkspaceCollapsed == true,
@@ -67,6 +68,7 @@ extension AppActions {
     private func dispatch(_ command: PaletteCommand) {
         switch command {
         case .newSession: newSession()
+        case .newPrivateSession: newPrivateSession()
         case .newWorkspace: newWorkspace()
         case .openDirectory: openDirectory()
         case .renameSession: renameActiveSession()
@@ -92,6 +94,7 @@ extension AppActions {
         case .toggleTerminalZoom: toggleTerminalZoom()
         case .toggleSidebar: toggleSidebar()
         case .toggleFlag: toggleFlagActiveSession()
+        case .togglePrivate: togglePrivateActiveSession()
         case .focusWorkspace: focusActiveWorkspace()
         case .find: toggleSearch()
         case .quickTerminal: toggleQuickTerminal()

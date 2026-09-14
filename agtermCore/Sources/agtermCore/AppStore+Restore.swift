@@ -33,6 +33,7 @@ extension AppStore {
         case .scratch: return false
         }
         let previous = session[keyPath: field]
+        if pane == .left { noteAgentSession(fromRestoreCommand: value, forSession: session) }
         guard previous != value else { return true }
         session[keyPath: field] = value
         guard saveChecked() else {

@@ -118,6 +118,16 @@ public final class Session: Identifiable {
     /// flagged view with a filled row icon. Persisted, surviving a relaunch and a workspace move.
     public var flagged: Bool = false
 
+    /// A private session (ADR 0003) is never persisted: no snapshot, no recent-closed entry, no durable
+    /// server, and closing it erases what its agent wrote under `~/.claude` / `~/.codex` by exact session id.
+    /// Observed: the sidebar row and the title bar carry the marker.
+    public var isPrivate: Bool = false
+
+    /// The agent session ids seen on this pane, in arrival order — parsed from every `session.restore` pin
+    /// (`claude --resume <id>`, `codex resume <id>`), so a `/clear` or resume mid-session leaves every id
+    /// a private close has to erase. Ephemeral: a private session's copy lives in the pending-cleanup list.
+    @ObservationIgnored public var agentSessionTargets: [PrivateSessionCleanup.Target] = []
+
     /// Changes only when one live primary-slot surface replaces another; SwiftUI hosts fold it into their
     /// identity, so lazy nil→first creation stays at zero while split-survivor promotion remounts the view.
     @ObservationIgnored public private(set) var primarySurfaceHostRevision = 0

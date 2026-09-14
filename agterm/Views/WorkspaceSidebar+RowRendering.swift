@@ -77,8 +77,9 @@ extension WorkspaceSidebar.Coordinator {
             // so the fill would be noise.
             let showSplitIcon = session?.hasSplit == true
             let flagged = store.sidebarMode == .tree && session?.flagged == true
-            cell.imageView?.image = iconForSession(split: showSplitIcon, axis: session?.splitAxis ?? .leftRight,
-                                                   flagged: flagged)
+            cell.imageView?.image = session?.isPrivate == true
+                ? privateSessionIcon
+                : iconForSession(split: showSplitIcon, axis: session?.splitAxis ?? .leftRight, flagged: flagged)
             cell.imageView?.setAccessibilityIdentifier("session-icon")
         }
         // text/icon colors track the terminal theme; a selected row uses the selection foreground.

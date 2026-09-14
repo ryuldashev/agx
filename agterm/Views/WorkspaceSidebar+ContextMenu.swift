@@ -126,6 +126,15 @@ extension WorkspaceSidebar.Coordinator {
             flag.target = self
             flag.representedObject = SessionBatchRequest(sessionIDs: sessionTargets)
             menu.addItem(flag)
+            if sessionCount == 1, let target = sessionTargets.first {
+                // "Private Session" is a checkmark toggle: on = never persisted, erased on close (ADR 0003).
+                let privateItem = NSMenuItem(title: "Private Session", action: #selector(menuTogglePrivate(_:)),
+                                             keyEquivalent: "")
+                privateItem.target = self
+                privateItem.state = store.session(withID: target)?.isPrivate == true ? .on : .off
+                privateItem.representedObject = SessionBatchRequest(sessionIDs: [target])
+                menu.addItem(privateItem)
+            }
             if sessionCount == 1 {
                 let reveal = NSMenuItem(title: "Reveal in Finder", action: #selector(menuRevealInFinder(_:)), keyEquivalent: "")
                 reveal.target = self
@@ -234,6 +243,11 @@ extension WorkspaceSidebar.Coordinator {
     @objc private func menuToggleFlag(_ sender: NSMenuItem) {
         guard let request = sender.representedObject as? SessionBatchRequest else { return }
         actions.toggleFlags(request.sessionIDs, in: store)
+    }
+
+    @objc private func menuTogglePrivate(_ sender: NSMenuItem) {
+        guard let request = sender.representedObject as? SessionBatchRequest, let id = request.sessionIDs.first else { return }
+        actions.togglePrivate(id, in: store)
     }
 
     @objc private func menuDuplicate(_ sender: NSMenuItem) {

@@ -174,7 +174,8 @@ public final class AppStore {
                 recentClosedStore: RecentClosedStore? = nil,
                 recentClosedDidChange: (() -> Void)? = nil,
                 controlEventSink: ((ControlEventDraft) -> Void)? = nil,
-                sessionDiscardSink: ((Session) -> Void)? = nil) {
+                sessionDiscardSink: ((Session) -> Void)? = nil,
+                privateSessionSink: ((Session) -> Void)? = nil) {
         self.workspaces = workspaces
         self.selectedSessionID = selectedSessionID
         self.persistence = persistence
@@ -182,12 +183,17 @@ public final class AppStore {
         self.recentClosedDidChange = recentClosedDidChange
         self.controlEventSink = controlEventSink
         self.sessionDiscardSink = sessionDiscardSink
+        self.privateSessionSink = privateSessionSink
     }
 
     /// Called for a session that is closed for good — `closeSession`, a grace close finalizing, a workspace
     /// removal — and NOT for a window closing or the app quitting, whose sessions come back. The app side
     /// kills a durable session's abduco server here; the quit path leaves it running on purpose (ADR 0001).
     let sessionDiscardSink: ((Session) -> Void)?
+
+    /// Called when a session's private state or its known agent session ids change (ADR 0003): the app side
+    /// keeps the pending-cleanup list in step so a crash still leaves the next launch something to sweep.
+    let privateSessionSink: ((Session) -> Void)?
 
     /// The currently selected session, derived from `selectedSessionID`.
     public var activeSession: Session? {
@@ -307,7 +313,7 @@ public final class AppStore {
     @discardableResult
     public func addSession(toWorkspace workspaceID: UUID, cwd: String, command: String? = nil,
                            name: String? = nil, wait: Bool = false, durable: Bool = false,
-                           at index: Int? = nil, select: Bool = true) -> Session? {
+                           isPrivate: Bool = false, at index: Int? = nil, select: Bool = true) -> Session? {
         guard let wsIndex = workspaces.firstIndex(where: { $0.id == workspaceID }) else { return nil }
         // cwd feeds {AGT_SESSION_PWD} through initialCwd → effectiveCwd until OSC 7 reports; name feeds
         // {AGT_SESSION_NAME}. See TerminalText.
@@ -316,6 +322,7 @@ public final class AppStore {
         session.initialCommand = command
         session.commandWait = wait
         session.durableRequested = durable
+        session.isPrivate = isPrivate
         // the workspace's visual identity rides along at CREATION only: the session then owns the spec, so
         // restyling one session never edits the workspace default and editing the default never restyles the
         // sessions already open in it.

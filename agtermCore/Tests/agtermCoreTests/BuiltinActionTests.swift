@@ -33,7 +33,7 @@ struct BuiltinActionTests {
         #expect(BuiltinAction.previousWorkspace.rawValue == "previous_workspace")
         #expect(BuiltinAction.nextWorkspace.rawValue == "next_workspace")
         #expect(BuiltinAction.toggleWorkspaceCollapse.rawValue == "toggle_workspace_collapse")
-        #expect(BuiltinAction.allCases.count == 46)
+        #expect(BuiltinAction.allCases.count == 48)
     }
 
     @Test func rejectsUnknownName() {
@@ -105,6 +105,8 @@ struct BuiltinActionTests {
             .toggleFlaggedView: nil,
             .toggleWorkspaceFilter: nil,
             .toggleFlag: Chord(mods: [.command, .shift], key: "f"),
+            .newPrivateSession: Chord(mods: [.command, .shift], key: "p"),
+            .togglePrivate: nil,
             .focusWorkspace: nil,
             .previousWorkspace: nil,
             .nextWorkspace: nil,
@@ -179,7 +181,7 @@ struct BuiltinActionTests {
         let keyless: Set<BuiltinAction> = [
             .renameWindow, .deleteWindow, .renameWorkspace, .deleteWorkspace, .renameSession, .duplicateSession,
             .clearStatus, .firstSession, .lastSession, .selectTheme, .toggleFlaggedView, .focusWorkspace,
-            .toggleWorkspaceFilter, .previousWorkspace, .nextWorkspace, .toggleWorkspaceCollapse,
+            .toggleWorkspaceFilter, .previousWorkspace, .nextWorkspace, .toggleWorkspaceCollapse, .togglePrivate,
         ]
         for action in keyless {
             #expect(action.defaultChord == nil, "expected nil default for \(action.rawValue)")

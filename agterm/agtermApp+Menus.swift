@@ -109,6 +109,9 @@ extension agtermApp {
                 Button("New Session") { actions.newSession() }
                     .keyboardShortcut(shortcut(for: .newSession))
                     .disabled(!PaletteCommand.newSession.isEnabled(in: context))
+                Button("New Private Session") { actions.newPrivateSession() }
+                    .keyboardShortcut(shortcut(for: .newPrivateSession))
+                    .disabled(!PaletteCommand.newPrivateSession.isEnabled(in: context))
                 Button("Open Directory…") { actions.openDirectory() }
                     .keyboardShortcut(shortcut(for: .openDirectory))
                     .disabled(!PaletteCommand.openDirectory.isEnabled(in: context))
@@ -255,6 +258,13 @@ extension agtermApp {
                 .disabled(!PaletteCommand.toggleFlag.isEnabled(in: context))
                 Button { actions.clearFlags() } label: { Label("Clear Flagged", systemImage: "flag.slash") }
                     .disabled(!PaletteCommand.clearFlagged.isEnabled(in: context))
+                let sessionPrivate = library.activeStore?.activeSession?.isPrivate == true
+                Button { actions.togglePrivateActiveSession() } label: {
+                    Label(sessionPrivate ? "Make Session Public" : "Make Session Private",
+                          systemImage: sessionPrivate ? "lock.open" : "lock")
+                }
+                .keyboardShortcut(shortcut(for: .togglePrivate))
+                .disabled(!PaletteCommand.togglePrivate.isEnabled(in: context))
                 // collapse the tree to the current workspace's subtree (or unfocus when already focused).
                 // keyless, rebindable via focus_workspace; control workspace.focus. the label tracks the toggle.
                 let focusStore = library.activeStore

@@ -644,6 +644,36 @@ struct ControlDispatcherTests {
         ])
     }
 
+    @Test func sessionPrivateParsesModeAndRoutesTargetAndWindow() async {
+        let actions = MockControlActions()
+        let dispatcher = ControlDispatcher(actions: actions)
+
+        let on = await dispatcher.dispatch(ControlRequest(
+            cmd: .sessionPrivate, target: "session", args: ControlArgs(mode: "on", window: "win")))
+        let toggled = await dispatcher.dispatch(ControlRequest(cmd: .sessionPrivate))
+        let bad = await dispatcher.dispatch(ControlRequest(cmd: .sessionPrivate, args: ControlArgs(mode: "clear")))
+
+        #expect(on == ControlResponse(ok: true))
+        #expect(toggled == ControlResponse(ok: true))
+        #expect(bad == ControlResponse(ok: false, error: "invalid private mode: clear"))
+        #expect(actions.calls == [
+            .sessionPrivate(target: "session", window: "win", .on),
+            .sessionPrivate(target: nil, window: nil, .toggle)
+        ])
+    }
+
+    @Test func sessionNewForwardsPrivate() async {
+        let actions = MockControlActions()
+        let dispatcher = ControlDispatcher(actions: actions)
+
+        _ = await dispatcher.dispatch(ControlRequest(cmd: .sessionNew, args: ControlArgs(private: true)))
+
+        #expect(actions.calls == [
+            .sessionNew(ControlSessionCreateOptions(window: nil, cwd: nil, workspace: nil, workspaceName: nil,
+                                                    createWorkspace: nil, command: nil, private: true, name: nil))
+        ])
+    }
+
     @Test func sessionSeenRoutesTargetAndWindow() async {
         let actions = MockControlActions()
         let dispatcher = ControlDispatcher(actions: actions)

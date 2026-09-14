@@ -117,12 +117,12 @@ final class AppActions {
         store.addWorkspace(name: store.defaultWorkspaceName)
     }
 
-    func newSession() {
+    func newSession(isPrivate: Bool = false) {
         guard uiActionsEnabled else { return }
         guard let store, let workspaceID = store.currentWorkspaceID else { return }
         // the workspace's own directory/agent seed the tab; only its fallback comes from the global setting.
         let seed = newSessionSeed(in: store, workspaceID: workspaceID)
-        guard let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd, command: seed.command)
+        guard let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd, command: seed.command, isPrivate: isPrivate)
         else { return }
         // note activity so the new session buys the full idle grace before auto-follow moves the selection.
         store.noteUserActivity()

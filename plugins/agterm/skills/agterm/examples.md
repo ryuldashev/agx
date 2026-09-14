@@ -405,6 +405,19 @@ agtermctl sidebar mode tree                               # back to the full tre
 agtermctl session flag clear                              # unflag everything in the window
 ```
 
+## Work on something that must leave no trace
+
+A private session is never persisted and its agent transcript is erased when it closes. Spawn the
+agent private, or flip an existing session; `tree` tags it `(private)`.
+
+```bash
+agx spawn --private --brief "<task>" --name "<title>" --cwd ~/proj   # a fresh private agent
+agtermctl session new --private --command "zsh -lc 'exec claude'"      # the raw form
+agtermctl session private on --target "$AGTERM_SESSION_ID"            # make this one private
+agtermctl session private off --target "$AGTERM_SESSION_ID"           # back to public (keeps the transcript)
+agtermctl tree --json | jq '.. | objects | select(.private == true) | .id'
+```
+
 ## Acknowledge a driven session's notifications without stealing focus
 
 An orchestrator relaying a session's output elsewhere (Telegram, another agent) fires `notify` to signal

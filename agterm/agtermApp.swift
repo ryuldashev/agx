@@ -242,8 +242,15 @@ struct agtermApp: App {
         library.sessionDiscardSink = { [weak library] session in
             guard let library else { return }
             DurableSpawn.discard(session: session, stateDirectory: library.directory.path)
+            // a private session's agent files go once its process has had a moment to exit (ADR 0003)
+            PrivateSessionSweeper.shared.sessionDiscarded(session)
         }
+        library.privateSessionSink = { session in PrivateSessionSweeper.shared.sessionChanged(session) }
         DurableSpawn.reapOrphans(stateDirectory: library.directory.path, known: library.persistedSessionIDs())
+        // sessions closed by a crash or a hard kill: their entries outlived the app, the orphan reap above
+        // has just killed any server still writing for them.
+        PrivateSessionSweeper.shared.configure(stateDirectory: library.directory)
+        PrivateSessionSweeper.shared.sweepPendingAfterLaunch()
         return library
     }
 

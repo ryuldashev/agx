@@ -21,7 +21,7 @@ description: >
 when_to_use: >
   Trigger on: agterm, agtermctl, agterm control socket, session.new, session.close, session.type,
   session.split, session.split.close, session.scratch, session.focus, session.resize, surface.zoom, dashboard, pick, pick.open, pick.result, pick.cancel, native picker, session.go, session.copy, session.paste, session.selectall, session.text, session.search, session.status,
-  session.flag, session.seen, session.reveal, session.duplicate, session.background, session.overlay,
+  session.flag, session.private, private session, incognito session, session.seen, session.reveal, session.duplicate, session.background, session.overlay,
   session.hud, hud panel, show a message over a session, session.reader, reader panel, show a markdown file beside a session, render markdown in the terminal, schedule.add, schedule.list, schedule.cancel,
   schedule.run, scheduled session, run this later, remind me tomorrow, continue at 09:00,
   session.failure, agent failover, out of usage credits, switch model and continue, hand the task to another agent,

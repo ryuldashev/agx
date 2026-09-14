@@ -162,6 +162,19 @@ final class NotificationManager: NSObject, @preconcurrency UNUserNotificationCen
         }
     }
 
+    /// One line after a private session's files were swept (ADR 0003): counts only, never a path or a name.
+    /// App-level like `notifyCommandFailure`; the identifier is the agx session id, so a re-run coalesces.
+    func notifyPrivateSweep(sessionID: UUID, summary: String) {
+        guard bannersEnabled else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "Private session closed"
+        content.body = summary
+        let request = UNNotificationRequest(identifier: "private-sweep:\(sessionID.uuidString)", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error { logger.error("private-sweep banner add failed: \(error.localizedDescription, privacy: .public)") }
+        }
+    }
+
     func notifyKeymapDiagnostics(count: Int) {
         guard bannersEnabled else { return }
         let content = UNMutableNotificationContent()

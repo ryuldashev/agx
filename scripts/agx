@@ -65,6 +65,8 @@ def _flags(sess):
         f.append("scratch")
     if sess.get("flagged"):
         f.append("flagged")
+    if sess.get("private"):
+        f.append("private")
     u = sess.get("unseen")
     if u:
         f.append(f"{u} unseen")
@@ -121,7 +123,7 @@ def gather():
 
 MANIFEST = """you can drive this UI (agtermctl — the app's control socket, already reachable here):
   see everything again      agx context            (this call; --json for structured)
-  DELEGATE to a fresh agent  agx spawn --brief "<task>" --name "<title>" [--workspace-name <W>] [--cwd <PATH>] [--agent claude|codex] [--foreground]
+  DELEGATE to a fresh agent  agx spawn --brief "<task>" --name "<title>" [--workspace-name <W>] [--cwd <PATH>] [--agent claude|codex] [--foreground] [--private]
     ^ makes the session and launches the agent with the brief as its FIRST MESSAGE (no TUI-typing race).
       A spawned pane is a FULL peer Claude Code session (it already gets CLAUDE.md, skills, and this
       UI-context hook) — so the brief is a self-contained TASK, not a context dump: goal, constraints,
@@ -168,6 +170,12 @@ you cannot (be honest about this):
   - a session spawned with --command execs that argv; a bare binary not on the GUI PATH exits 127."""
 
 
+PRIVATE_NOTICE = ("THIS SESSION IS PRIVATE: it is never persisted and the app erases its transcript when it "
+                  "closes. Do not write to amem/memory, do not call sessionize-mark, do not append to project "
+                  "docs/logs or CLAUDE.md, do not leave files outside the scratchpad, do not spawn or schedule "
+                  "non-private sessions carrying its content.")
+
+
 def render(ctx):
     if not ctx["inside"]:
         return "Not inside AGX (AGTERM_ENABLED is unset). This shell is not in an AGX pane."
@@ -181,6 +189,9 @@ def render(ctx):
         L.append(f'me: "{me.get("title") or me.get("name")}" [{(me.get("id") or "")[:8]}] '
                  f'· workspace {me.get("_ws")} · pane {e["pane"]} · cwd {me.get("cwd")} '
                  f'· running {run}{flss}')
+        if me.get("private"):
+            # the app erases this session's transcript when it closes; the agent must not copy it elsewhere.
+            L.append(PRIVATE_NOTICE)
     else:
         L.append(f'me: session {(e["session_id"] or "?")[:8]} (not found in tree) · pane {e["pane"]}')
     L.append(f'AGX v{e["version"]}  ·  socket ok' if e["socket"] else 'AGX')
@@ -308,7 +319,7 @@ def cmd_spawn(argv):
     almost always to hand it work. This does the compound act atomically: create, wait until the
     agent is ready, inject the brief (newline submits)."""
     opts = {"brief": None, "name": None, "cwd": None, "workspace": None,
-            "workspace_name": None, "agent": "claude", "foreground": False, "json": False}
+            "workspace_name": None, "agent": "claude", "foreground": False, "json": False, "private": False}
     a = argv[2:]; i = 0
     flags = {"--brief": "brief", "--name": "name", "--cwd": "cwd",
              "--workspace": "workspace", "--workspace-name": "workspace_name", "--agent": "agent"}
@@ -320,6 +331,8 @@ def cmd_spawn(argv):
             opts[flags[t]] = a[i + 1]; i += 2
         elif t == "--foreground":
             opts["foreground"] = True; i += 1
+        elif t == "--private":
+            opts["private"] = True; i += 1
         elif t == "--json":
             opts["json"] = True; i += 1
         else:
@@ -340,6 +353,8 @@ def cmd_spawn(argv):
     args = ["session", "new", "--command", command]
     if not opts["foreground"]:
         args.append("--no-select")
+    if opts["private"]:
+        args.append("--private")
     if opts["cwd"]:
         args += ["--cwd", opts["cwd"]]
     if opts["name"]:
@@ -361,7 +376,7 @@ def cmd_spawn(argv):
     trusted = _agent_trusts(opts["agent"], opts["cwd"])
     if opts["json"]:
         print(json.dumps({"id": sid, "seeded": True, "foreground": opts["foreground"],
-                          "cwd_trusted": trusted}, ensure_ascii=False))
+                          "private": opts["private"], "cwd_trusted": trusted}, ensure_ascii=False))
     else:
         where = opts["workspace"] or opts["workspace_name"] or os.environ.get("AGTERM_WORKSPACE_ID", "current workspace")
         tail = f' — "{opts["name"]}"' if opts["name"] else ""
@@ -521,7 +536,7 @@ def main(argv):
               "  agx reader <path.md> [--target ID]   show a markdown file, live-reloading, in THIS session's right pane\n"
               "  agx reader close [--target ID]      give the pane back\n"
               "  agx spawn --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID]\n"
-              "            [--cwd PATH] [--agent claude|codex] [--foreground] [--json]\n"
+              "            [--cwd PATH] [--agent claude|codex] [--foreground] [--private] [--json]\n"
               "            create an agent session AND seed it with the brief as its first message\n"
               "  agx schedule add --at <time> --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID] [--cwd PATH]\n"
               "  agx schedule list | cancel <id> | run <id>\n"
