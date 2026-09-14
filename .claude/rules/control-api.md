@@ -408,12 +408,14 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   caller can round-trip what `tree` gave it. HUD state is poll-only.
   `openOverlay`/`closeOverlay` emit no `scheduleTreeChanged()` and neither does a HUD, so document no event.
 - The panel is NOT a surface: `overlayPanel` renders `HudNoticeView` (system face, 15pt semibold message,
-  13pt dimmed detail, on Liquid Glass — `glassEffect` needs macOS 26 and the target is 14, so it is guarded
-  and falls back to `.regularMaterial`; Reduce Transparency takes an opaque `windowBackgroundColor`; a
-  solid plate for `--background-color`) in the slot instead of the overlay `TerminalView`, so `openHud` claims the slot with
+  13pt dimmed detail, on a glass plate SYNTHESIZED from the terminal colors — `HudNoticeView.glass`, the
+  background lifted 10% toward its far luminance side at 0.9 opacity, opaque under Reduce Transparency.
+  NOT `glassEffect`/`.regularMaterial`: a backdrop layer does not sample libghostty's Metal layer, so over
+  a pane both render an opaque white slab (verified on macOS 26). A solid plate for
+  `--background-color`) in the slot instead of the overlay `TerminalView`, so `openHud` claims the slot with
   `overlayCommand` nil and the factory never runs for it. The spinner is a `TimelineView` at
   `HudSpinner.interval`. Placement is `HudPosition.alignment` on a full-pane frame with a fixed
-  `HudNoticeView.edgeInset` (40pt top so a top notice clears the first prompt lines); `sizePercent` is only the text's width budget (`.frame(maxWidth:)`), still
+  `HudNoticeView.inset(paneHeight:)` (the top row a quarter of the pane down, where a sheet sits); `sizePercent` is only the text's width budget (`.frame(maxWidth:)`), still
   measured by `HudLayout.panelSize` against the terminal font so the read-back keeps its meaning.
 - Motion is `hudTransition(for:)`: enter opacity + drift from the anchored edge + 0.98 scale on a strong
   ease-out (220 ms), exit shorter (160 ms), opacity alone under Reduce Motion. The program branch carries

@@ -217,9 +217,10 @@ extension WindowContentView {
         GeometryReader { geo in
             ZStack {
                 if let spec = session.hudSpec, session.hudActive {
-                    HudNoticeView(spec: spec, foreground: chromeText)
+                    HudNoticeView(spec: spec, foreground: chromeText,
+                                  background: GhosttyApp.shared.terminalBackgroundColor)
                         .frame(maxWidth: geo.size.width * style.sizeFraction)
-                        .padding(HudNoticeView.edgeInset)
+                        .padding(HudNoticeView.inset(paneHeight: geo.size.height))
                         .frame(width: geo.size.width, height: geo.size.height, alignment: style.position.alignment)
                         // a replacement (HUD→HUD) keeps `hudActive` true across the swap; the generation
                         // makes it a fresh view so the notice arrives again rather than morphing.

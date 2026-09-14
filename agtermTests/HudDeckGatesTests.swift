@@ -130,3 +130,21 @@ final class HudDeckGatesTests: XCTestCase {
         XCTAssertEqual(HudPosition.bottomRight.unitPoint, .bottomTrailing)
     }
 }
+
+extension HudDeckGatesTests {
+    func testGlassLiftsADarkTerminalAndSinksALightOne() {
+        let overDark = HudNoticeView.glass(over: NSColor(agtermHex: "#202020")).usingColorSpace(.sRGB)!
+        let overLight = HudNoticeView.glass(over: NSColor(agtermHex: "#f0f0f0")).usingColorSpace(.sRGB)!
+        XCTAssertGreaterThan(overDark.redComponent, 0x20 / 255.0)
+        XCTAssertLessThan(overLight.redComponent, 0xF0 / 255.0)
+        XCTAssertGreaterThan(HudNoticeView.glass(over: nil).usingColorSpace(.sRGB)!.redComponent, 0)
+    }
+}
+
+extension HudDeckGatesTests {
+    func testTopRowSitsAQuarterOfThePaneDown() {
+        let inset = HudNoticeView.inset(paneHeight: 800)
+        XCTAssertEqual(inset.top, 200)
+        XCTAssertEqual(inset.bottom, HudNoticeView.edgeInset.bottom)
+    }
+}

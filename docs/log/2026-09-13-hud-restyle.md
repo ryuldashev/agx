@@ -40,3 +40,17 @@ only, both ways. Spinner frames cycle via `TimelineView` at `HudSpinner.interval
 
 ### Next
 - [ ] Ruslan: relaunch, then `agtermctl session hud open "Ждёт тебя" --detail "mars · NMT: перезапуск" --position top-center --target "$AGTERM_SESSION_ID"`; feedback → tune 13/11pt, shadow strength, inset, 220/160ms.
+
+### Round 2 (2026-09-14) — feedback «ниже, ликвид гласс, крупнее»
+- Type 15/13pt, plate 16×10 padding, radius 14; top row now sits at 25% of the pane height
+  (`HudNoticeView.inset(paneHeight:)`), bottom row keeps a 28pt toast margin.
+- **`.glassEffect` / `.regularMaterial` do NOT work over the terminal**: they render an opaque white slab
+  (screenshots `hud4`, and the picker palette shows the same). Within-window backdrop effects cannot sample
+  libghostty's Metal layer. The plate is therefore SYNTHESIZED (`HudNoticeView.glass`): terminal background
+  lifted 10% toward its far luminance side, 0.9 opacity, 1px foreground hairline, soft shadow.
+- Real Liquid Glass would need a child window with behind-window blending (the quick terminal's shape):
+  frame tracked to the pane, hidden with the session, fullscreen/Spaces/zoom handling. Asked Ruslan.
+- Observation, not fixed: `hud update` without `--position` resets the anchor to `center` (the update
+  spec replaces the whole spec). The caller must repeat `--position`.
+- Showing: the isolated instance pops a window Ruslan closes with ⌘W (journal shows the chord), which
+  quits the single-session instance — capture in one shot and SIGTERM right after.
