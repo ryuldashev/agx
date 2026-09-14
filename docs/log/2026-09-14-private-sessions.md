@@ -64,3 +64,14 @@ seeds targets from the persisted pin (`noteAgentSession`), test
 `aRestoredSessionKeepsThePersistedPinAsAnAgentTarget`. The running (old) build cannot be fixed in
 place; for the already-private session the workaround is to re-pin the same line through
 `session restore`, which routes through `noteAgentSession` before the equality guard.
+
+`PrivateCleanupStore.upsert` now MERGES targets (a close that learned no id keeps what an earlier pin
+or launch recorded) and returns what it wrote; the sweeper runs that.
+
+Live check pending (Ruslan closes it, we verify): agx session `FEB43D13-03CF-44E2-9397-2B820B54CD21`
+("✳ Ранняя эякуляция и сексуальность", private, durable), Claude id
+`805748e8-b320-4417-92ea-def52010ab9f`. Entry hand-written into `private-cleanup.json`; on disk before:
+`~/.claude/projects/-Users-rus-me/805748e8….jsonl`, `~/.claude/session-env/805748e8…/`,
+`/private/tmp/claude-501/-Users-rus-me/805748e8…/`, `~/.claude/agx-usage/FEB43D13….json`, 11 lines in
+`~/.claude/history.jsonl`; no archive copy yet. The OLD running build would overwrite the entry with
+empty targets on a tab close, so the close must be a relaunch: the new build sweeps it 3 s after launch.

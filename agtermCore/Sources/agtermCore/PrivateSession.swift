@@ -266,11 +266,20 @@ public struct PrivateCleanupStore: Sendable {
         return items
     }
 
-    /// Replaces the entry for `pending.id`, or appends it.
-    public func upsert(_ pending: PrivateSessionCleanup.Pending) {
-        var items = load().filter { $0.id != pending.id }
-        items.append(pending)
+    /// Merges the entry for `pending.id` (ids already on disk are kept: a close that learned none must not
+    /// forget what an earlier pin or launch recorded), or appends it. Returns what was written.
+    @discardableResult
+    public func upsert(_ pending: PrivateSessionCleanup.Pending) -> PrivateSessionCleanup.Pending {
+        var items = load()
+        var merged = pending
+        if let index = items.firstIndex(where: { $0.id == pending.id }) {
+            merged.targets = items[index].targets + pending.targets.filter { !items[index].targets.contains($0) }
+            merged.createdAt = items[index].createdAt
+            items.remove(at: index)
+        }
+        items.append(merged)
         save(items)
+        return merged
     }
 
     public func remove(_ id: UUID) {

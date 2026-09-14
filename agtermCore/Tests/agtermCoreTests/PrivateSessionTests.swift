@@ -145,6 +145,9 @@ struct PrivateSessionCleanupTests {
         store.upsert(.init(id: id, targets: [target, second], createdAt: Date(timeIntervalSince1970: 1)))
         #expect(store.load().count == 2)
         #expect(store.load().first { $0.id == id }?.targets == [target, second])
+        let emptied = store.upsert(.init(id: id, targets: []))
+        #expect(emptied.targets == [target, second], "a close that learned no id keeps what was recorded")
+        #expect(store.load().first { $0.id == id }?.createdAt == Date(timeIntervalSince1970: 1))
         let file = dir.appendingPathComponent("private-cleanup.json").path
         #expect(FileManager.default.fileExists(atPath: file))
         let text = try String(contentsOfFile: file, encoding: .utf8)

@@ -33,8 +33,7 @@ final class PrivateSessionSweeper {
     /// The session is closed for good. The entry is (re)written first: the grace is where a crash would lose it.
     func sessionDiscarded(_ session: Session) {
         guard session.isPrivate else { return }
-        let pending = PrivateSessionCleanup.Pending(id: session.id, targets: session.agentSessionTargets)
-        store.upsert(pending)
+        let pending = store.upsert(PrivateSessionCleanup.Pending(id: session.id, targets: session.agentSessionTargets))
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.closeGrace) { [weak self] in
             self?.run(pending)
         }
