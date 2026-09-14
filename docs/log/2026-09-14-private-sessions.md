@@ -75,3 +75,13 @@ Live check pending (Ruslan closes it, we verify): agx session `FEB43D13-03CF-44E
 `/private/tmp/claude-501/-Users-rus-me/805748e8…/`, `~/.claude/agx-usage/FEB43D13….json`, 11 lines in
 `~/.claude/history.jsonl`; no archive copy yet. The OLD running build would overwrite the entry with
 empty targets on a tab close, so the close must be a relaunch: the new build sweeps it 3 s after launch.
+
+**Live check passed (2026-09-15, after relaunch on `599b452`):** every file listed above is gone, the 11
+history lines are dropped (file intact, 18 285 lines), `private-cleanup.json` removed, no abduco socket,
+session absent from `tree`. The only remaining `history.jsonl` match for the id is a line of ANOTHER
+session whose prompt text quoted it — correct, deletion is by `sessionId`, not substring. The
+"Private session closed" notification was not observed by Ruslan (unverified, not known broken).
+
+## Next
+- Merge `worktree-private-sessions-2026-09-14` (3 commits) into master, then remove the worktree.
+- Verify the close notification once by closing a private tab in the running build.
