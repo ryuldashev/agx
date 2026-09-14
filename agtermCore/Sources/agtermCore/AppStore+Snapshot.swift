@@ -93,6 +93,8 @@ extension AppStore {
         session.backgroundWatermark = snapshot.backgroundWatermark
         session.restoreCommand = snapshot.restoreCommand
         session.splitRestoreCommand = session.isSplit ? snapshot.splitRestoreCommand : nil
+        // a reattached durable pane never re-pins, so the persisted pin is the only source of its agent id.
+        noteAgentSession(fromRestoreCommand: snapshot.restoreCommand, forSession: session)
         session.pendingTitle = snapshot.title
         // into the TRANSIENT slots, leaving the persisted fields nil: `snapshot()` serializes those, so
         // arming them would let any save before the surface spawns rewrite the argv the launch strip

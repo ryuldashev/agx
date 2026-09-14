@@ -54,3 +54,13 @@ by a crash.
 
 ## Not done / limits
 - The copy on claude.ai (cloud sync of the session) is out of reach of the app — stays on the user.
+
+## 2026-09-15 follow-up: id lost after relaunch
+
+Ruslan relaunched, made `FEB43D13` private → no `private-cleanup.json`. `agentSessionTargets` were
+filled only in `setRestoreCommand` (the hook's pin); a durable pane reattaches without re-running the
+hook, so a restored session carried the pin in `restoreCommand` but no target. Fix: `session(from:)`
+seeds targets from the persisted pin (`noteAgentSession`), test
+`aRestoredSessionKeepsThePersistedPinAsAnAgentTarget`. The running (old) build cannot be fixed in
+place; for the already-private session the workaround is to re-pin the same line through
+`session restore`, which routes through `noteAgentSession` before the equality guard.

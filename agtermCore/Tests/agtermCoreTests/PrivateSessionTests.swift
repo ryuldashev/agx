@@ -219,6 +219,21 @@ struct PrivateSessionStoreTests {
         #expect(session.agentSessionTargets.map(\.sessionID) == ["aaa", "bbb"])
     }
 
+    @Test func aRestoredSessionKeepsThePersistedPinAsAnAgentTarget() throws {
+        let (store, _, persistence) = makeStoreWithRecentClosed()
+        let workspace = store.addWorkspace(name: "w")
+        let session = try #require(store.addSession(toWorkspace: workspace.id, cwd: "/tmp/a"))
+        _ = store.setRestoreCommand("zsh -lc 'exec claude --resume old-id --fork-session'", pane: .left,
+                                    forSession: session.id)
+        let reloaded = AppStore(persistence: persistence)
+        reloaded.restore(from: persistence.load())
+        let restored = try #require(reloaded.session(withID: session.id))
+        #expect(restored.agentSessionTargets.map(\.sessionID) == ["old-id"])
+        _ = reloaded.setRestoreCommand("zsh -lc 'exec claude --resume new-id --fork-session'", pane: .left,
+                                       forSession: session.id)
+        #expect(restored.agentSessionTargets.map(\.sessionID) == ["old-id", "new-id"])
+    }
+
     @Test func privateSessionIsNeverWrappedDurable() {
         #expect(!DurablePane.shouldWrap(settingOn: true, requested: true, serverExists: true, line: "claude", isPrivate: true))
         #expect(DurablePane.shouldWrap(settingOn: true, requested: false, serverExists: false, line: "claude"))

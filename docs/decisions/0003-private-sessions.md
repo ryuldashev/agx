@@ -36,8 +36,10 @@ Facts that shaped the design:
 - Private sessions are filtered out of `snapshot()` (workspaces, selection, recency), never recorded
   in recent-closed, and `DurablePane.shouldWrap` returns false for them, so no abduco server exists to
   reattach or to leak the command line.
-- Agent session ids are captured on every `session.restore` pin of the main pane
-  (`Session.agentSessionTargets`, not persisted). For a private session they are written at once to
+- Agent session ids are captured on every `session.restore` pin of the main pane and from the
+  persisted pin when a session is rebuilt from a snapshot (`Session.agentSessionTargets`, not
+  persisted itself): a reattached durable pane never re-pins, so without the seed a session made
+  private after a relaunch would have nothing to erase. For a private session they are written at once to
   `<stateDir>/private-cleanup.json` (`PrivateCleanupStore`: agx session id + agent + id, nothing else).
 - Cleanup (`PrivateSessionCleanup.sweep`, host-free) removes only files whose name is the exact agent
   session id under the known roots, rewrites `history.jsonl` through a temp file and `rename(2)`
