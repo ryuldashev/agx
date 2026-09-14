@@ -146,6 +146,9 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
   hand YOUR task to another agent (Codex) NOW   agtermctl session failure rate_limit --handoff --target <self>
     ^ opens "<name> → <agent>" beside you, seeded with a brief from your transcript. The app already does this
       by itself when your model's usage pool is spent (/model ladder first) or the account limit hits.
+  keep a session's prompts for the user   agtermctl session autoanswer off --target <id>   (on | status)
+    ^ by default a permission prompt nobody answers for 45 s gets a Yes from the app (Return / Codex y);
+      a prompt showing rm -rf, push --force, sudo, reset --hard, DROP … is never answered, only notified.
   message another session    agtermctl session type --target <id|prefix> --select "<text>\\n"   (\\n submits)
   read another session       agtermctl session text --target <id|prefix> [--all] [--lines N]
   focus / bring to front     agtermctl session select --target <id> | agtermctl workspace select <id>
@@ -301,6 +304,22 @@ def _agent_trusts(agent, path):
     return None
 
 
+CODEX_SPAWN_FLAGS = "-a on-request -s workspace-write"
+
+
+def _agent_launch(agent):
+    """The exec line for `--agent`. A bare `codex` gets the flags a peer session needs to get on with a
+    brief unattended: approval only when the model asks for it (`-a on-request`; codex-cli 0.154 dropped
+    `on-failure`) and a sandbox that can write the workspace (`-s workspace-write`). Those prompts are
+    what auto-answer then handles. An agent line that already spells its own flags is left alone."""
+    parts = agent.split()
+    if parts and os.path.basename(parts[0]) == "codex" and not any(
+            t in ("-a", "--ask-for-approval", "-s", "--sandbox", "--full-auto", "--yolo",
+                  "--dangerously-bypass-approvals-and-sandbox") for t in parts[1:]):
+        return agent + " " + CODEX_SPAWN_FLAGS
+    return agent
+
+
 def cmd_spawn(argv):
     """Create an agent session AND seed it with a brief — the smart 'delegate to a fresh agent'.
 
@@ -335,7 +354,7 @@ def cmd_spawn(argv):
     with os.fdopen(fd, "w") as f:
         f.write(opts["brief"])
     # brief lives in the file, never inline, so its quotes/newlines/$ can't break the command string.
-    body = 'b="$(cat %s)"; rm -f %s; exec %s "$b"' % (briefpath, briefpath, opts["agent"])
+    body = 'b="$(cat %s)"; rm -f %s; exec %s "$b"' % (briefpath, briefpath, _agent_launch(opts["agent"]))
     command = "zsh -lc '" + body + "'"
     args = ["session", "new", "--command", command]
     if not opts["foreground"]:

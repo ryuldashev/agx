@@ -1042,3 +1042,19 @@ agtermctl session failure rate_limit --handoff --target "$AGTERM_SESSION_ID" --j
 agtermctl events --kind failover
 # 12:01:03 failover "Курс Rocket" handoff source=… session=… reason=handoff requested
 ```
+
+**Keeping a session's prompts for yourself.** The app answers an unattended permission prompt after
+the Settings grace (45 s by default). A review session where every prompt matters:
+
+```sh
+agtermctl session autoanswer off --target "$AGTERM_SESSION_ID"
+# off (session) 45s
+agtermctl session autoanswer status --target 3F2A --json
+# {"ok":true,"result":{"id":"…","autoAnswer":{"enabled":false,"source":"session","delaySeconds":45}}}
+agtermctl events --kind auto_answer
+# 12:04:51 auto_answer "Курс Rocket" answered agent=codex session=…
+# 12:07:10 auto_answer "deploy" held agent=claude session=… reason=destructive: git push --force
+```
+
+The second event is the one to act on: the app never answers a destructive prompt, it only notifies.
+

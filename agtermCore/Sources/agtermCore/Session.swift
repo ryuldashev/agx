@@ -258,6 +258,9 @@ public final class Session: Identifiable {
     /// Failover memory for the agent in the main pane (`session.failure`): pools run dry, the model it was
     /// switched to, retries, the session it was handed off to. Ephemeral, never persisted.
     @ObservationIgnored public var failover = FailoverState()
+    /// Per-session auto-answer memory (`session.autoanswer`): the on/off override, the running grace and
+    /// the last decision. Ephemeral.
+    @ObservationIgnored public var autoAnswer = AutoAnswerState()
     /// The agent's transcript file as its failure hook last reported it, so a handoff can carry the
     /// conversation even when the restore command was never pinned. Ephemeral.
     @ObservationIgnored public var agentTranscriptPath: String?

@@ -8,7 +8,8 @@ import SwiftUI
 /// The list is global (it lives in `settings.json`); WHERE an agent runs is per workspace, pinned in the
 /// sidebar's Workspace Defaults… sheet, which picks from exactly these rows. The Failover section below it drives
 /// `AgentFailoverCoordinator`: the model ladder typed into a pane on "out of usage", and the peer agent a task
-/// is handed to when the ladder is spent or the agent process dies mid-turn.
+/// is handed to when the ladder is spent or the agent process dies mid-turn. Auto-answer drives
+/// `AutoAnswerCoordinator`: the grace after which a `blocked` permission prompt is answered by the app.
 struct AgentsSettingsView: View {
     let model: SettingsModel
 
@@ -81,6 +82,23 @@ struct AgentsSettingsView: View {
                     .disabled(!model.settings.effectiveFailoverEnabled)
                 SettingHint("Needs the StopFailure hook: Help ▸ Install Agent Status Hooks. A crash is also caught when the pane exits mid-turn.")
             }
+
+            Section("Auto-answer") {
+                Toggle("Answer a permission prompt nobody answered", isOn: autoAnswerEnabled)
+                    .accessibilityIdentifier("settings-autoanswer-enabled")
+                Stepper(value: autoAnswerDelay, in: AutoAnswerPolicy.delayRange, step: 5) {
+                    HStack {
+                        Text("Wait before answering")
+                        Spacer()
+                        Text("\(model.settings.effectiveAutoAnswerDelaySeconds) s").foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityIdentifier("settings-autoanswer-delay")
+                .disabled(!model.settings.effectiveAutoAnswerEnabled)
+                SettingHint("A session left blocked for this long gets Return (Claude Code) or y (Codex), and a notification. "
+                            + "A prompt showing rm -rf, git push --force, sudo, git reset --hard, DROP … is never answered — only notified. "
+                            + "Per session: agtermctl session autoanswer on|off.")
+            }
         }
         .formStyle(.grouped)
         .padding()
@@ -108,6 +126,17 @@ struct AgentsSettingsView: View {
     private var failoverModels: Binding<String> {
         Binding(get: { (model.settings.failoverModels ?? []).joined(separator: ", ") },
                 set: { model.setFailoverModels($0) })
+    }
+
+    private var autoAnswerEnabled: Binding<Bool> {
+        Binding(get: { model.settings.effectiveAutoAnswerEnabled },
+                set: { model.setAutoAnswerEnabled($0 ? nil : false) })
+    }
+
+    /// The default delay stores nil so `settings.json` stays minimal; anything else stores the number.
+    private var autoAnswerDelay: Binding<Int> {
+        Binding(get: { model.settings.effectiveAutoAnswerDelaySeconds },
+                set: { model.setAutoAnswerDelaySeconds($0 == AutoAnswerPolicy.defaultDelaySeconds ? nil : $0) })
     }
 
     private var failoverContinuePrompt: Binding<String> {

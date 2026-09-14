@@ -26,3 +26,19 @@ extension ControlDispatcher {
             transcript: args?.transcript.trimmedOrNilValue, forceHandoff: args?.handoff == true))
     }
 }
+
+extension ControlDispatcher {
+    /// Validates `session.autoanswer` host-free: `mode` is `on|off|status` (omitted = `status`). The
+    /// session's memory and the Settings side live app-side.
+    func dispatchAutoAnswerCommand(_ request: ControlRequest) -> ControlResponse {
+        let enable: Bool?
+        switch request.args?.mode ?? "status" {
+        case "on": enable = true
+        case "off": enable = false
+        case "status": enable = nil
+        case let other: return ControlResponse(ok: false, error: "session.autoanswer mode must be on|off|status, not \(other)")
+        }
+        return actions.setSessionAutoAnswer(request.target, options: ControlAutoAnswerOptions(
+            window: request.args?.window, enable: enable))
+    }
+}

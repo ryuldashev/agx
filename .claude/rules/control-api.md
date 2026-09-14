@@ -718,3 +718,25 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   changes the user's default, so the notification names the model it switched to.
 - Read-back: the session node's `failover`, the `failover` event, `result.failover` on the command.
   Knobs: Settings ▸ Agents ▸ Failover (`failoverEnabled/Models/ContinuePrompt/HandoffEnabled/HandoffAgent`).
+
+## Auto-answer
+
+- A session that enters `blocked` (the agent status hooks) and stays there for the Settings grace
+  (default 45 s) gets the affirmative key from the app: Return for Claude Code, `y` for Codex, through
+  `GhosttySurfaceView.inject` — the `session type` path, which does NOT clear the status (only `keyDown`
+  does), so the agent's next hook owns the status after the answer. `docs/decisions/0003-auto-answer.md`.
+- Detection is the status, never a buffer scan. The screen is read ONCE, at fire time, for the decision:
+  `AutoAnswerPolicy.decide(screen:agent:)` (host-free, `agtermCore/AutoAnswer.swift`) holds on an unknown
+  agent, an unreadable pane, no prompt marker, or a `DestructiveCommand` inside the dialog region
+  (`AutoAnswerAgent.dialogRegion`: Codex from its question line, Claude from the rule/box line above the
+  tool box; no opening line → whole screen, which errs toward holding). One key, no safety repeat.
+- Presence: at fire time the session on screen in the frontmost window of the active app re-arms for
+  `delay - store.idleSeconds` while the user is moving (`AutoAnswerPresence.remainingGrace`); a background
+  session gets the plain grace. `AutoAnswerCoordinator` (app) owns timers (UUID token per session, stale
+  fires are no-ops), the top-right countdown HUD (own HUD only — `AutoAnswerHud.owns`; a program overlay
+  or a foreign HUD is left alone), the keystroke, and the notice.
+- `session.autoanswer on|off|status` sets `Session.autoAnswer.enabledOverride` (nil = Settings); `off`
+  cancels a running grace, `on` while blocked arms one. Read-back: the session node's `autoAnswer`
+  (`enabled`, `source: settings|session`, `delaySeconds`, `dueAt` only while blocked, counters, `lastAction`,
+  `lastReason`), `result.autoAnswer`, the `auto_answer` event (`action`, `reason`, `agent`). Knobs:
+  Settings ▸ Agents ▸ Auto-answer (`autoAnswerEnabled`, `autoAnswerDelaySeconds` 5…600).

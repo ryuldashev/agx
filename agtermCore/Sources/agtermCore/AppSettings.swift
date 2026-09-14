@@ -323,6 +323,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// The connected agent (name or id) that takes over; nil = the first connected agent whose binary
     /// differs from the failed session's.
     public var failoverHandoffAgent: String?
+    /// Auto-answer: whether a pane left `blocked` on a permission prompt for `autoAnswerDelaySeconds` gets
+    /// the affirmative key typed by the app. nil = ON.
+    public var autoAnswerEnabled: Bool?
+    /// The grace in seconds before the app answers; nil = `AutoAnswerPolicy.defaultDelaySeconds`.
+    public var autoAnswerDelaySeconds: Int?
 
     public init(fontFamily: String? = nil, fontSize: Double? = nil, theme: String? = nil,
                 darkTheme: String? = nil, followSystemAppearance: Bool? = nil,
@@ -348,7 +353,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
                 permissionsPrimerShown: Bool? = nil,
                 agents: [AgentDefinition]? = nil, failoverEnabled: Bool? = nil,
                 failoverModels: [String]? = nil, failoverContinuePrompt: String? = nil,
-                failoverHandoffEnabled: Bool? = nil, failoverHandoffAgent: String? = nil) {
+                failoverHandoffEnabled: Bool? = nil, failoverHandoffAgent: String? = nil,
+                autoAnswerEnabled: Bool? = nil, autoAnswerDelaySeconds: Int? = nil) {
         self.fontFamily = fontFamily
         self.fontSize = fontSize
         self.theme = theme
@@ -397,6 +403,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.failoverContinuePrompt = failoverContinuePrompt
         self.failoverHandoffEnabled = failoverHandoffEnabled
         self.failoverHandoffAgent = failoverHandoffAgent
+        self.autoAnswerEnabled = autoAnswerEnabled
+        self.autoAnswerDelaySeconds = autoAnswerDelaySeconds
     }
 
     public var effectiveFailoverEnabled: Bool { failoverEnabled ?? true }
@@ -409,6 +417,13 @@ public struct AppSettings: Codable, Equatable, Sendable {
     }
     public var effectiveFailoverContinuePrompt: String {
         failoverContinuePrompt?.trimmedOrNil ?? FailoverPolicy.defaultContinuePrompt
+    }
+
+    public var effectiveAutoAnswerEnabled: Bool { autoAnswerEnabled ?? true }
+    /// The grace clamped into `AutoAnswerPolicy.delayRange`, so a hand-edited 0 cannot answer instantly.
+    public var effectiveAutoAnswerDelaySeconds: Int {
+        let range = AutoAnswerPolicy.delayRange
+        return min(max(autoAnswerDelaySeconds ?? AutoAnswerPolicy.defaultDelaySeconds, range.lowerBound), range.upperBound)
     }
 
     /// The agent that takes over a failed session running `sourceBinary` (`claude`, …): the configured one

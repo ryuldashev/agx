@@ -214,6 +214,9 @@ created by a scheduled job overnight stays unrealized until the displays wake an
 Poll this after an unattended create),
 `failover` (what the app last did about the agent's failure — `{lastAction, switchedTo?, switches, retries,
 exhausted, handedOffTo?}`, the read side of `session failure`; omitted until anything happened),
+`autoAnswer` (whether the app will answer an unattended permission prompt in this session and what it
+last did — `{enabled, source: settings|session, delaySeconds, dueAt?, answered?, held?, lastAction?,
+lastReason?}`, the read side of `session autoanswer`; `dueAt` only while a grace is running),
 `hasSplit` (whether a second pane exists at all, shown or hidden; omitted when there is none — read this
 rather than `split`, which is false for a split hidden with ⌘D even though its pane is still alive),
 `splitAxis` (`vertical` for left/right or `horizontal` for top/bottom; omitted without a split),
@@ -236,7 +239,7 @@ that window, omitted when no pick is pending.
 
 **events**: continuously print control events, subscribing from the current tail when no cursor is
 given. Use `--json` for one bare event object per line; filter with repeatable or comma-separated
-`--kind status|notify|session.created|session.closed|session.durable|tree.changed|schedule.added|schedule.fired|schedule.cancelled|schedule.missed|failover`; resume with paired
+`--kind status|notify|session.created|session.closed|session.durable|tree.changed|schedule.added|schedule.fired|schedule.cancelled|schedule.missed|failover|auto_answer`; resume with paired
 `--run RUN --after SEQ`; and set page size with `--limit 1...1000`. The app retains 4,096 events for
 one process run. Cursor run changes, expiry, and ahead-of-tail errors are fatal and are never silently
 rebaselined. There is no terminal-output event stream.
@@ -441,6 +444,17 @@ omitted when expanded).
   Claude Code's `StopFailure` hook (installed by Help ▸ Install Agent Status Hooks) calls this itself, so
   an agent normally never has to; a main-pane exit while the status is still `active` is treated as a
   crash and handed off the same way. Every action emits a `failover` event.
+· `autoanswer [on|off|status]` — whether the app answers a permission prompt nobody attends in this
+  session. By default (Settings ▸ Agents ▸ Auto-answer, on, 45 s) a session that goes `blocked` and stays
+  there for the grace gets a Yes typed by the app — Return for Claude Code, `y` for Codex — unless the
+  dialog shows a destructive command (`rm -rf`, `git push --force`, `sudo`, `git reset --hard`, `DROP …`,
+  and the rest of the catalog), in which case the user is notified instead. A countdown HUD warns over
+  the pane; the grace restarts from the user's last keystroke while they are IN that session, so it never
+  answers over someone reading the prompt. `off` keeps this session's prompts for the user (and drops a
+  running countdown), `on` restores it (and starts one if the session is blocked now); either is a
+  per-session override that survives a Settings flip. Prints `on|off (settings|session) <delay>s [due
+  <iso>] [last answered|held (reason)]`; `--json` returns `result.autoAnswer`, the same object the
+  session's tree node carries. Every decision emits an `auto_answer` event and a notification.
 
 **schedule** — `add --at TIME (--brief TEXT | --brief-file PATH) [--name N] [--workspace W |
 --workspace-name N] [--cwd DIR] [--agent A | --command CMD] [--background] [--window W]` (add a

@@ -206,6 +206,9 @@ struct SocketClient {
         if let failover = response.result?.failover {
             return formatFailover(failover)
         }
+        if let autoAnswer = response.result?.autoAnswer {
+            return formatAutoAnswer(autoAnswer)
+        }
         if let text = response.result?.text {
             return text
         }
@@ -235,6 +238,18 @@ struct SocketClient {
         var parts = [failover.lastAction]
         if failover.lastAction == "switch-model", let model = failover.switchedTo { parts.append(model) }
         if let session = failover.handedOffTo { parts.append("session " + session) }
+        return parts.joined(separator: " ")
+    }
+
+    /// Render `session.autoanswer`'s answer on one line: `on (settings) 45s`, plus the running grace and
+    /// the last decision when there is one.
+    static func formatAutoAnswer(_ node: ControlAutoAnswerNode) -> String {
+        var parts = [node.enabled ? "on" : "off", "(\(node.source))", "\(node.delaySeconds)s"]
+        if let dueAt = node.dueAt { parts.append("due " + dueAt) }
+        if let last = node.lastAction {
+            parts.append("last " + last)
+            if let reason = node.lastReason { parts.append("(" + reason + ")") }
+        }
         return parts.joined(separator: " ")
     }
 

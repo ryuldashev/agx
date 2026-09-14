@@ -144,6 +144,12 @@ extension AppStore {
         return max(0, Int(now.timeIntervalSince(lastActivityAt) * 1000))
     }
 
+    /// Seconds since `lastActivityAt`, or nil before any input this run — the app-side auto-answer presence
+    /// check reads it, the same metric `idleMs` projects into the tree.
+    public var idleSeconds: TimeInterval? {
+        lastActivityAt.map { max(0, Date().timeIntervalSince($0)) }
+    }
+
     /// The auto-follow timeout in milliseconds, nil when disabled — the projection `tree` (this store) and
     /// `window.list` (`WindowLibrary` per open store) share, so the `* 1000` scaling lives in one place.
     var autoFollowMs: Int? { autoFollowTimeout.map { Int($0 * 1000) } }

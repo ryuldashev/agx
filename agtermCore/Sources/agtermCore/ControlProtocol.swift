@@ -52,6 +52,7 @@ public enum Command: String, Codable, Sendable {
     case sessionReaderOpen = "session.reader.open"
     case sessionReaderClose = "session.reader.close"
     case sessionFailure = "session.failure"
+    case sessionAutoAnswer = "session.autoanswer"
     case quick
     case quickType = "quick.type"
     case quickText = "quick.text"
@@ -144,8 +145,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// Mode for `session.split` (`on|off|toggle`), `quick`/`surface.zoom` (`show|hide|toggle`),
     /// `session.flag` (`on|off|toggle|clear`), `sidebar.mode` (`tree|flagged|toggle`),
     /// `workspace.focus` (`on|off|toggle|add`), `workspace.filter`/`window.minimize` (`on|off|toggle`),
-    /// `session.background` (`image|text|color|clear`), and `session.restore` (`set|none|clear` — pin
-    /// `command`, pin nothing, or drop the pin).
+    /// `session.background` (`image|text|color|clear`), `session.restore` (`set|none|clear` — pin
+    /// `command`, pin nothing, or drop the pin), and `session.autoanswer` (`on|off|status`).
     public var mode: String?
     /// Optional divider direction for `session.split`: `vertical` (left/right) or `horizontal` (top/bottom).
     /// Omitted preserves the original axis-agnostic show/hide behavior.
@@ -495,6 +496,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
     public var closed: [ControlRecentClosedNode]?
     /// What `session.failure` decided and did (the action name, the model switched to, the peer session).
     public var failover: ControlFailoverNode?
+    /// The session's auto-answer state, for `session.autoanswer` (both the read and the write's echo).
+    public var autoAnswer: ControlAutoAnswerNode?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -504,7 +507,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 events: ControlEventBatch? = nil, keymap: ControlKeymap? = nil,
                 pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil,
                 scheduled: [ControlScheduledNode]? = nil,
-                closed: [ControlRecentClosedNode]? = nil, failover: ControlFailoverNode? = nil) {
+                closed: [ControlRecentClosedNode]? = nil, failover: ControlFailoverNode? = nil,
+                autoAnswer: ControlAutoAnswerNode? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -525,6 +529,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.scheduled = scheduled
         self.closed = closed
         self.failover = failover
+        self.autoAnswer = autoAnswer
     }
 }
 

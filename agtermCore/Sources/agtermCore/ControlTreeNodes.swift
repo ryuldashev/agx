@@ -117,6 +117,9 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
     public let reader: ControlReaderNode?
     /// The main pane agent's failover memory (`session.failure`); nil/omitted until the app acted once.
     public let failover: ControlFailoverNode?
+    /// The read side of `session.autoanswer`: whether a `blocked` prompt here is answered after the grace,
+    /// where that comes from, the delay, and the running grace / last decision. Always present.
+    public let autoAnswer: ControlAutoAnswerNode?
     public let scratch: Bool
     public let flagged: Bool
     /// For a `--command` session, whether it HOLDS its surface after the command exits (`session.new
@@ -196,7 +199,7 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
                 splitRatio: Double? = nil, splitFocused: Bool? = nil,
                 overlay: Bool = false, overlaySizePercent: Int? = nil, paneOverlays: [String]? = nil,
                 hud: ControlHudNode? = nil, reader: ControlReaderNode? = nil,
-                failover: ControlFailoverNode? = nil,
+                failover: ControlFailoverNode? = nil, autoAnswer: ControlAutoAnswerNode? = nil,
                 scratch: Bool = false, flagged: Bool = false,
                 commandWait: Bool? = nil, durable: Bool? = nil, attached: Bool? = nil,
                 foreground: [String]? = nil, splitForeground: [String]? = nil,
@@ -222,6 +225,7 @@ public struct ControlSessionNode: Codable, Sendable, Equatable {
         self.hud = hud
         self.reader = reader
         self.failover = failover
+        self.autoAnswer = autoAnswer
         self.scratch = scratch
         self.flagged = flagged
         self.commandWait = commandWait

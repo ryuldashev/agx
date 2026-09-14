@@ -56,6 +56,7 @@ extension AppStore {
                                           hud: hudNode(session),
                                           reader: readerNode(session),
                                           failover: ControlFailoverNode.project(session.failover),
+                                          autoAnswer: autoAnswerNode(session),
                                           scratch: session.scratchActive, flagged: session.flagged,
                                           commandWait: (session.initialCommand != nil && session.commandWait) ? true : nil,
                                           durable: session.durable ? true : nil,
@@ -106,6 +107,16 @@ extension AppStore {
     private func paneOverlays(_ session: Session) -> [String]? {
         let panes = session.openPaneOverlays.map(\.rawValue)
         return panes.isEmpty ? nil : panes
+    }
+
+    /// The tree's `autoAnswer`, the read side of `session.autoanswer`; also the command's own answer. A
+    /// grace only counts while the session is still `blocked`: a keystroke clears the status without
+    /// telling the coordinator, whose timer then finds nothing to do, so the running `dueAt` is masked here.
+    public func autoAnswerNode(_ session: Session) -> ControlAutoAnswerNode {
+        var state = session.autoAnswer
+        if session.agentIndicator.status != .blocked { state.dueAt = nil }
+        return ControlAutoAnswerNode.project(state, settingsEnabled: autoAnswerEnabled,
+                                             delaySeconds: autoAnswerDelaySeconds)
     }
 
     /// The tree's `reader`: the document in the split pane, omitted when no reader is up. Its width is the

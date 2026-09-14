@@ -326,6 +326,18 @@ final class SettingsModel {
         settings.failoverModels = models.isEmpty ? nil : models
         try? settingsStore.save(settings)
     }
+    /// Auto-answer knobs, saved and fanned out to every open window's store (the tree reads them there; the
+    /// coordinator reads the model directly at fire time).
+    func setAutoAnswerEnabled(_ value: Bool?) {
+        settings.autoAnswerEnabled = value
+        try? settingsStore.save(settings)
+        applyAutoAnswerToAllWindows()
+    }
+    func setAutoAnswerDelaySeconds(_ value: Int?) {
+        settings.autoAnswerDelaySeconds = value
+        try? settingsStore.save(settings)
+        applyAutoAnswerToAllWindows()
+    }
     /// Persist the user-idle auto-follow timeout (nil = off) and push it into every open window's `AppStore`
     /// (a newly opened window seeds itself via `applyAutoFollow(to:)`).
     func setAutoFollowAttention(_ value: String?) {
@@ -748,6 +760,17 @@ final class SettingsModel {
     func applyAutoFollowToAllWindows() {
         for store in library.openIDs().compactMap({ library.store(for: $0) }) {
             applyAutoFollow(to: store)
+        }
+    }
+
+    func applyAutoAnswer(to store: AppStore) {
+        store.autoAnswerEnabled = settings.effectiveAutoAnswerEnabled
+        store.autoAnswerDelaySeconds = settings.effectiveAutoAnswerDelaySeconds
+    }
+
+    func applyAutoAnswerToAllWindows() {
+        for store in library.openIDs().compactMap({ library.store(for: $0) }) {
+            applyAutoAnswer(to: store)
         }
     }
 

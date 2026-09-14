@@ -98,6 +98,7 @@ final class MockControlActions: ControlActions {
         case scheduleCancel(target: String)
         case scheduleRun(target: String)
         case reportFailure(target: String?, options: ControlFailureOptions)
+        case setSessionAutoAnswer(target: String?, options: ControlAutoAnswerOptions)
     }
 
     var calls: [Call] = []
@@ -149,6 +150,7 @@ final class MockControlActions: ControlActions {
     var nextReaderOpenResponse = ControlResponse(ok: true)
     var nextReaderCloseResponse = ControlResponse(ok: true)
     var nextReportFailureResponse = ControlResponse(ok: true)
+    var nextSetSessionAutoAnswerResponse = ControlResponse(ok: true)
     var nextSessionBackgroundResponse = ControlResponse(ok: true)
     var nextSessionTextResponse = ControlResponse(ok: true)
     var nextSurfaceZoomResponse = ControlResponse(ok: true)
@@ -521,6 +523,11 @@ final class MockControlActions: ControlActions {
     func reportFailure(_ target: String?, options: ControlFailureOptions) -> ControlResponse {
         calls.append(.reportFailure(target: target, options: options))
         return nextReportFailureResponse
+    }
+
+    func setSessionAutoAnswer(_ target: String?, options: ControlAutoAnswerOptions) -> ControlResponse {
+        calls.append(.setSessionAutoAnswer(target: target, options: options))
+        return nextSetSessionAutoAnswerResponse
     }
 
     func setSessionBackground(_ target: String?, window: String?,

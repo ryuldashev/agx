@@ -1448,13 +1448,15 @@ struct AppStoreTests {
         store.selectSession(b.id)
 
         let tree = store.controlTree()
+        let defaultAutoAnswer = ControlAutoAnswerNode(enabled: true, source: "settings",
+                                                      delaySeconds: AutoAnswerPolicy.defaultDelaySeconds)
 
         #expect(tree.workspaces.map(\.id) == [work.id.uuidString, personal.id.uuidString])
         #expect(tree.workspaces.map(\.name) == ["work", "personal"])
         #expect(tree.workspaces.map(\.active) == [false, true])
         #expect(tree.workspaces[0].sessions == [
             ControlSessionNode(id: a.id.uuidString, name: "alpha", cwd: "/repo/a",
-                               active: false, split: false,
+                               active: false, split: false, autoAnswer: defaultAutoAnswer,
                                surfaces: [
                                 ControlSurfaceNode(id: TerminalSurfaceID(sessionID: a.id, surface: .primary).rawValue,
                                                    kind: "left", active: true, visible: true),
@@ -1466,7 +1468,7 @@ struct AppStoreTests {
             ControlSessionNode(id: b.id.uuidString, name: "remote:~/b", cwd: "/live/b",
                                title: "remote:~/b", active: true, split: true,
                                hasSplit: true, splitAxis: "vertical", splitFocused: false,
-                               overlay: true, scratch: true, flagged: true,
+                               overlay: true, autoAnswer: defaultAutoAnswer, scratch: true, flagged: true,
                                status: "blocked", statusPane: "right",
                                background: BackgroundWatermark(kind: .text, text: "PROD"),
                                surfaces: [

@@ -81,6 +81,18 @@ after 20s up to three times. Every action posts a notification and a `failover` 
 session node's `failover`. Host-free policy and transcript digest: `agtermCore/AgentFailover.swift`; the
 typing/spawning side: `agterm/AgentFailoverCoordinator.swift`. `docs/decisions/0002-agent-failover.md`.
 
+**Auto-answer** — a permission prompt nobody answers gets a Yes from the app. A Claude Code or Codex pane
+that goes `blocked` (the agent status hooks) and stays there for the grace (Settings ▸ Agents ▸ Auto-answer,
+default on, 45 s) has Return (Claude) or `y` (Codex) typed into it through the `session type` path — unless
+the open dialog shows a destructive command (`rm -rf`, `git push --force`, `sudo`, `git reset --hard`,
+`DROP …` and the rest of `DestructiveCommand.catalog`), in which case only a notification goes out. A
+countdown HUD warns over the pane, and while the user is IN that session the grace restarts from their
+last keystroke, so it answers for them, never over them. `agtermctl session autoanswer on|off|status
+--target` is the per-session override; every decision posts a notification, an `auto_answer` event and the
+session node's `autoAnswer`. `agx spawn --agent codex` launches `codex -a on-request -s workspace-write`,
+whose escalation prompts are what this answers. Host-free policy: `agtermCore/AutoAnswer.swift`; timers,
+presence, HUD and keystroke: `agterm/AutoAnswerCoordinator.swift`. `docs/decisions/0003-auto-answer.md`.
+
 **Workspace defaults** — a workspace pins the directory new sessions open in and the connected agent
 they run, so opening a tab in `mmee` lands in `~/mmee` with Claude Code already running. Set from the
 sidebar's right-click ▸ Workspace Defaults… or over the control API:

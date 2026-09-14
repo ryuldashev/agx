@@ -146,6 +146,12 @@ public final class AppStore {
     /// Whether auto-follow suppresses the jump while the current session is `active` (opt-in, default false).
     @ObservationIgnored var autoFollowStayOnActive = false
 
+    /// The Settings side of auto-answer, pushed in by the same fan-out as auto-follow (the store is host-free
+    /// and cannot read `AppSettings`): whether a `blocked` prompt is answered after the grace and how long the
+    /// grace is. Read imperatively by the control tree and the app's coordinator, so no view reacts.
+    @ObservationIgnored public var autoAnswerEnabled = true
+    @ObservationIgnored public var autoAnswerDelaySeconds = AutoAnswerPolicy.defaultDelaySeconds
+
     /// The last user interaction with this window (a keystroke or a manual selection), nil until the first.
     /// Stamped unconditionally by `noteUserActivity`, so the idle metric is independent of the feature being
     /// on. Stamped at high frequency and read imperatively, so no view may react to it.

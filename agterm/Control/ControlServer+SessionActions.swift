@@ -421,6 +421,8 @@ extension ControlServer: ControlActions {
             if let name = update.status.effectiveSound(perCall: update.sound, blockedDefault: blockedDefault) {
                 StatusSoundPlayer.shared.play(name)
             }
+            // the auto-answer grace starts on the same NEW entry into `blocked` and stops on anything else.
+            if let session { self.actions.autoAnswer?.statusChanged(session: session, wasBlocked: wasBlocked, store: store) }
             return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
         }
     }

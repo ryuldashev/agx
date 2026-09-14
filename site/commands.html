@@ -193,6 +193,7 @@
             <a href="#hud" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session hud</a>
             <a href="#reader" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session reader</a>
             <a href="#failure" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session failure</a>
+            <a href="#autoanswer" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session autoanswer</a>
             <a href="#schedule" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">schedule</a>
             <a href="#window" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">window</a>
             <a href="#surface" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">surface zoom</a>
@@ -1901,6 +1902,67 @@
                 the agent's status is still <span style="font-family: &quot;JetBrains Mono&quot;, monospace">active</span> is treated as a crash and handed
                 off the same way, without any command. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agent failover not started</span>
                 before the app has finished launching.
+              </p>
+            </div>
+          </section>
+
+          <!-- AUTOANSWER -->
+          <section id="autoanswer" style="scroll-margin-top: 88px; padding-top: 56px">
+            <h2
+              style="
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+                font-weight: 700;
+                font-size: 28px;
+                letter-spacing: -0.02em;
+                margin: 0 0 16px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              "
+            >
+              session autoanswer
+            </h2>
+            <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0 0 16px">
+              A permission prompt nobody answers gets a Yes from the app. A session that goes
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace">blocked</span> (the agent status hooks) and stays there for the Settings grace — 45 s by
+              default — has Return (Claude Code) or <span style="font-family: &quot;JetBrains Mono&quot;, monospace">y</span> (Codex) typed into it, unless the dialog shows a
+              destructive command, in which case the user is notified instead. A countdown panel warns over the pane, and the grace
+              restarts from the user's last keystroke while they are in that session, so the app answers for the user, never over
+              them. This command is the per-session switch; the default lives in Settings ▸ Agents ▸ Auto-answer.
+            </p>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl session autoanswer [on|off|status] [--target T] [--window W]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.autoanswer</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Set or read. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">on</span> and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">off</span> set a
+                per-session override that survives a Settings flip (<span style="font-family: &quot;JetBrains Mono&quot;, monospace">source: session</span>);
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">off</span> also drops a running countdown, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">on</span> starts
+                one if the session is blocked right now. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">status</span> (the default) only reads.
+                <strong style="color: #bfbab0">Returns</strong> the session's <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span> and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.autoAnswer</span> —
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">{enabled, source, delaySeconds, dueAt?, answered?, held?, lastAction?, lastReason?}</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">dueAt</span> present only while a grace is running. The same object sits on the
+                session's tree node as <span style="font-family: &quot;JetBrains Mono&quot;, monospace">autoAnswer</span>, and every decision emits an
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">auto_answer</span> event (<span style="font-family: &quot;JetBrains Mono&quot;, monospace">action</span>
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">answered</span> or <span style="font-family: &quot;JetBrains Mono&quot;, monospace">held</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">reason</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agent</span>) plus a desktop notification.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                When the grace fires the app reads the blocked pane's visible text and holds — notification "Agent needs you" —
+                when the agent is neither Claude Code nor Codex, the pane is not readable, no prompt is on screen, or the open
+                dialog contains a destructive command: <span style="font-family: &quot;JetBrains Mono&quot;, monospace">rm -rf</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">git push --force</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">sudo</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">git reset --hard</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">DROP</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">TRUNCATE</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">DELETE FROM</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">git clean -f</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">git branch -D</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">dd of=/dev/</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">mkfs</span>,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">kill -9</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">docker rm</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">kubectl delete</span> and the
+                rest of the catalog. Only the dialog is scanned, so a destructive command still visible from an earlier, already
+                approved step does not hold a later safe prompt. Otherwise it types the affirmative key once and reports
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">answered</span>. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agx spawn --agent codex</span> launches Codex with
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">-a on-request -s workspace-write</span>, whose escalation prompts are exactly what this answers.
+                Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">auto-answer not started</span> before the app has finished launching.
               </p>
             </div>
           </section>

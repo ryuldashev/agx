@@ -53,6 +53,10 @@ The six event kinds and payloads are:
   `notify`), `source` (the failed session's id, for `handoff`); the event's `session` is the NEW session
   for `handoff`, the failed one otherwise. Human mode: `<time> failover <name> <action> [model=…]
   [source=…] session=<id> [reason=…]`.
+- `auto_answer`: the grace on a blocked session ran out and the app decided. Payload: `name`, `action`
+  (`answered`|`held`), `reason` (for `held`: `destructive: <name>`, `no prompt visible`, `pane not
+  readable`, `unknown agent`, `could not type into the pane`), `agent` (`claude`|`codex`). Human mode:
+  `<time> auto_answer <name> <action> [agent=…] session=<id> [reason=…]`.
 - `schedule.added` / `schedule.fired` / `schedule.cancelled` / `schedule.missed`: a scheduled session's
   lifecycle. Payload carries `name` and `at` (the job's fire time, ISO 8601 with the local offset); the
   event's `session` id is the JOB's own id for `.added`/`.cancelled`/`.missed`, but for `.fired` it is
@@ -152,6 +156,9 @@ independently of the session-wide `overlay` flag, which a pane overlay never set
 `reader` (the markdown document in the split's right pane — `path`; omitted when none is up),
 `failover` (the read side of `session failure` — `{lastAction, switchedTo?, switches, retries, exhausted, handedOffTo?}`;
 omitted until the app acted on a failure in this session),
+`autoAnswer` (the read side of `session autoanswer` — `{enabled, source, delaySeconds, dueAt?, answered?, held?,
+lastAction?, lastReason?}`; always present for a session; `dueAt` only while the session is blocked with a
+grace running; the counters only once nonzero),
 `hud` (the message panel occupying the session-wide overlay slot — the read side of `session hud`; omitted
 when none is up. A
 `{message, detail?, spinner, backgroundColor?, textColor?, sizePercent?, heightPercent?, position}`
@@ -783,6 +790,15 @@ error keeps those names for compatibility.
   the transcript path, the last three user prompts and the last answer. No other agent connected →
   `notify`. Returns `result.id` and `result.failover`. Refuses an empty or multi-token `error`, and
   `agent failover not started` before the app finished launching.
+- `session autoanswer [on|off|status] [--target] [--window W]` — set or read this session's auto-answer
+  override (`session.autoanswer`). Mode defaults to `status`; anything else is refused. `on`/`off` set
+  the override (`source: session`) and answer with the same `result.autoAnswer` as `status`. What the
+  app does when a grace fires: reads the blocked pane's visible text; holds (`held`, notification "Agent
+  needs you") when the agent is not Claude Code or Codex, the pane is not readable, no prompt marker is
+  on screen, or the open dialog contains a destructive command; otherwise types Return (Claude) or `y`
+  (Codex) once and reports `answered`. The dialog region is scanned, not the whole screen, so a
+  destructive command visible from an earlier, already-approved step does not hold a later safe prompt.
+  Errors `auto-answer not started` before the app finished launching.
 
 **Displaying an image inline.** This skill bundles `scripts/show-image.sh`. It opens an overlay (a
 real terminal surface) and renders the image there via the kitty graphics protocol, which ghostty —

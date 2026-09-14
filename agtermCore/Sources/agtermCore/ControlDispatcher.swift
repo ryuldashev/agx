@@ -109,6 +109,7 @@ public protocol ControlActions {
     /// An agent's failure report for the session (`session.failure`): the host decides between a model
     /// switch, a retry, a handoff to another agent, or a notification, and performs it.
     func reportFailure(_ target: String?, options: ControlFailureOptions) -> ControlResponse
+    func setSessionAutoAnswer(_ target: String?, options: ControlAutoAnswerOptions) -> ControlResponse
     func setSessionBackground(_ target: String?, window: String?,
                               options: ControlSessionBackgroundOptions) -> ControlResponse
     func readSessionText(_ target: String?, window: String?, options: ControlSessionTextOptions) -> ControlResponse
@@ -200,6 +201,8 @@ public struct ControlDispatcher {
             return dispatchReaderCommand(request)
         case .sessionFailure:
             return dispatchFailureCommand(request)
+        case .sessionAutoAnswer:
+            return dispatchAutoAnswerCommand(request)
         case .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun:
             return dispatchScheduleCommand(request)
         }
