@@ -66,3 +66,7 @@ only, both ways. Spinner frames cycle via `TimelineView` at `HudSpinner.interval
 - Shipped: `.glassEffect(.regular)` in the terminal's polarity on macOS 26 without Reduce Transparency;
   the synthesized plate stays as the fallback (pre-26, Reduce Transparency). Visual explanation:
   `scratchpad/glass-explained.html` (session-local).
+
+### Closed (2026-09-14)
+Ruslan: keep the synthesized plate for now (Reduce Transparency stays on). Deployed `7368899`; live AGX
+still needs his `agtermctl app relaunch`. Nothing pending. Next, if wanted: `hud update` keeping the anchor.
