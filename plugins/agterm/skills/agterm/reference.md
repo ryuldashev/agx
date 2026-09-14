@@ -724,7 +724,7 @@ error keeps those names for compatibility.
   A corner is what keeps a long-lived panel out of the text the user is reading. The bare `top`/`bottom`
   this argument shipped with are still accepted for `top-center`/`bottom-center`, and `hud.position` reports
   the canonical anchor whichever spelling was sent. The panel is drawn natively — the message in the system face at the weight of a
-  macOS notice, the detail a size down and dimmed, no plate unless one is asked for — and sized from its
+  macOS notice, the detail a size down and dimmed, on Liquid Glass unless `--background-color` asks for a solid plate — and sized from its
   text: width from the longest line, height from the number of them. It fades in with a short drift from
   its anchored edge and fades out again (Reduce Motion keeps the fade alone). `--size-percent N` (1–100) overrides the WIDTH
   only; the height always follows the message, since a caller-set height could only strand it in an empty

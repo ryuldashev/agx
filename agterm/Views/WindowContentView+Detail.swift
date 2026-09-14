@@ -217,8 +217,7 @@ extension WindowContentView {
         GeometryReader { geo in
             ZStack {
                 if let spec = session.hudSpec, session.hudActive {
-                    HudNoticeView(spec: spec, foreground: chromeText,
-                                  overDark: HudNoticeView.isDark(GhosttyApp.shared.terminalBackgroundColor))
+                    HudNoticeView(spec: spec, foreground: chromeText)
                         .frame(maxWidth: geo.size.width * style.sizeFraction)
                         .padding(HudNoticeView.edgeInset)
                         .frame(width: geo.size.width, height: geo.size.height, alignment: style.position.alignment)

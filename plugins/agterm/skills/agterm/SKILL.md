@@ -415,8 +415,8 @@ omitted when expanded).
   width from the longest line, height from the number of them — so a title and a subtitle give a wide, short
   panel, not a square one. `--size-percent N` (1-100) overrides the WIDTH only, bounded to 10-80% of the
   pane, since a message must never cover the session it is about, so a requested 100 reads back as 80. The
-  height always follows the message. The panel is drawn natively — system face, notice weight, no plate unless `--background-color`
-  asks for one — and fades in and out. `--text-color` colors the TEXT. `hud update` repaints in place with no blink,
+  height always follows the message. The panel is drawn natively — system face, notice weight, on Liquid Glass unless `--background-color`
+  asks for a solid plate — and fades in and out. `--text-color` colors the TEXT. `hud update` repaints in place with no blink,
   and REPLACES the whole spec — repeat `--detail`/`--spinner`/`--text-color` to keep them, since an omitted
   one drops. It takes no `--background-color`: the plate is set once at creation, so only a fresh
   `hud` changes it and `tree` keeps reporting the creation color across updates, while an update recolors

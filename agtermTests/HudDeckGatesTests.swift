@@ -129,13 +129,4 @@ final class HudDeckGatesTests: XCTestCase {
         XCTAssertEqual(HudPosition.center.unitPoint, .center)
         XCTAssertEqual(HudPosition.bottomRight.unitPoint, .bottomTrailing)
     }
-
-    // MARK: - legibility
-
-    // the shadow takes the ground's polarity: black under light text on a dark terminal, white on a light one
-    func testShadowPolarityFollowsTheTerminalBackground() {
-        XCTAssertTrue(HudNoticeView.isDark(NSColor(srgbRed: 0.157, green: 0.173, blue: 0.204, alpha: 1)))
-        XCTAssertFalse(HudNoticeView.isDark(NSColor(srgbRed: 0.98, green: 0.98, blue: 0.96, alpha: 1)))
-        XCTAssertTrue(HudNoticeView.isDark(nil), "with no theme known the terminal default is dark")
-    }
 }
