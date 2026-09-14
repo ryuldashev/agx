@@ -54,3 +54,15 @@ only, both ways. Spinner frames cycle via `TimelineView` at `HudSpinner.interval
   spec replaces the whole spec). The caller must repeat `--position`.
 - Showing: the isolated instance pops a window Ruslan closes with ⌘W (journal shows the chord), which
   quits the single-session instance — capture in one shot and SIGTERM right after.
+
+### Round 3 — the "no glass over Metal" claim was WRONG
+- Standalone experiment (`scratchpad/glasslab/main.swift`): a window with a `CAMetalLayer` half and a
+  plain `CALayer` half under `NSGlassEffectView` and `NSVisualEffectView(.withinWindow)`. Sampled pixels
+  are identical over both halves — a backdrop DOES sample Metal.
+- Real cause: `defaults read com.apple.universalaccess reduceTransparency` → `1` on this Mac. macOS makes
+  every material/glass an opaque fill in the window appearance (system is light) → white slab. The same
+  is why `pick`/palettes render white here. `defaults write` on that domain is refused, so it can only be
+  toggled in System Settings ▸ Accessibility ▸ Display.
+- Shipped: `.glassEffect(.regular)` in the terminal's polarity on macOS 26 without Reduce Transparency;
+  the synthesized plate stays as the fallback (pre-26, Reduce Transparency). Visual explanation:
+  `scratchpad/glass-explained.html` (session-local).

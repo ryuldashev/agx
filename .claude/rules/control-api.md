@@ -408,11 +408,13 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   caller can round-trip what `tree` gave it. HUD state is poll-only.
   `openOverlay`/`closeOverlay` emit no `scheduleTreeChanged()` and neither does a HUD, so document no event.
 - The panel is NOT a surface: `overlayPanel` renders `HudNoticeView` (system face, 15pt semibold message,
-  13pt dimmed detail, on a glass plate SYNTHESIZED from the terminal colors — `HudNoticeView.glass`, the
-  background lifted 10% toward its far luminance side at 0.9 opacity, opaque under Reduce Transparency.
-  NOT `glassEffect`/`.regularMaterial`: a backdrop layer does not sample libghostty's Metal layer, so over
-  a pane both render an opaque white slab (verified on macOS 26). A solid plate for
-  `--background-color`) in the slot instead of the overlay `TerminalView`, so `openHud` claims the slot with
+  13pt dimmed detail, on `glassEffect` in the terminal's polarity — guarded, the target is macOS 14 —
+  with a plate SYNTHESIZED from the terminal colors before 26 and under Reduce Transparency
+  (`HudNoticeView.glass`: background lifted 10% toward its far luminance side, 0.9 opacity, opaque under
+  the setting). Reduce Transparency ON makes every system material an opaque fill in the WINDOW
+  appearance — a white slab over a dark theme on a light system; that is also why the palettes go white
+  there. Metal content IS sampled by a backdrop (measured, `docs/log/2026-09-13-hud-restyle.md`). A solid
+  plate for `--background-color`) in the slot instead of the overlay `TerminalView`, so `openHud` claims the slot with
   `overlayCommand` nil and the factory never runs for it. The spinner is a `TimelineView` at
   `HudSpinner.interval`. Placement is `HudPosition.alignment` on a full-pane frame with a fixed
   `HudNoticeView.inset(paneHeight:)` (the top row a quarter of the pane down, where a sheet sits); `sizePercent` is only the text's width budget (`.frame(maxWidth:)`), still

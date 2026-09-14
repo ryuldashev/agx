@@ -148,3 +148,11 @@ extension HudDeckGatesTests {
         XCTAssertEqual(inset.bottom, HudNoticeView.edgeInset.bottom)
     }
 }
+
+extension HudDeckGatesTests {
+    func testGlassPolarityFollowsTheTerminalBackground() {
+        XCTAssertTrue(HudNoticeView.isDark(NSColor(agtermHex: "#1e1e1e")))
+        XCTAssertFalse(HudNoticeView.isDark(NSColor(agtermHex: "#fafafa")))
+        XCTAssertTrue(HudNoticeView.isDark(nil))
+    }
+}

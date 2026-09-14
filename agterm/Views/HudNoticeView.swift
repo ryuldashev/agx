@@ -3,12 +3,14 @@ import AppKit
 import SwiftUI
 
 /// The passive `session.hud.*` panel, drawn natively over the session: a message in the system face at the
-/// weight of a macOS notice, its detail a size down and dimmed, on a glass plate — or a solid one when the
-/// caller set `--background-color`. The glass is SYNTHESIZED from the terminal's own colors rather than
-/// `glassEffect`/a material: those frost what a `CABackdropLayer` samples, and libghostty's Metal layer
-/// is not sampled, so over a pane they render their bare tint as an opaque white slab. The spinner cycles
-/// the style's frames on a `TimelineView` at the style's own interval; it animates under Reduce Motion
-/// too, since it reports state rather than decorating.
+/// weight of a macOS notice, its detail a size down and dimmed, on Liquid Glass — or a solid plate when
+/// the caller set `--background-color`. The glass takes the terminal's polarity as its color scheme, so it
+/// is dark glass over a dark theme whatever the system appearance. Before macOS 26 and under Reduce
+/// Transparency the plate is SYNTHESIZED from the terminal colors instead (`glass(over:)`): the
+/// accessibility setting makes every system material opaque in the WINDOW's appearance, which over a
+/// dark theme on a light system is a white slab. The spinner cycles the style's frames on a
+/// `TimelineView` at the style's own interval; it animates under Reduce Motion too, since it reports
+/// state rather than decorating.
 struct HudNoticeView: View {
     let spec: HudSpec
     /// The terminal foreground, taken when the spec sets no `--text-color`.
@@ -60,6 +62,10 @@ struct HudNoticeView: View {
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
         if let plate {
             padded.background(Color(nsColor: plate), in: shape)
+        } else if #available(macOS 26, *), !reduceTransparency {
+            padded
+                .glassEffect(.regular, in: shape)
+                .colorScheme(Self.isDark(background) ? .dark : .light)
         } else {
             padded
                 .background(Color(nsColor: Self.glass(over: background)).opacity(reduceTransparency ? 1 : Self.glassOpacity),
@@ -69,12 +75,17 @@ struct HudNoticeView: View {
         }
     }
 
+    /// Whether `background` reads as dark; relative luminance, nil reads as dark.
+    static func isDark(_ background: NSColor?) -> Bool {
+        guard let c = background?.usingColorSpace(.sRGB) else { return true }
+        return 0.2126 * c.redComponent + 0.7152 * c.greenComponent + 0.0722 * c.blueComponent < 0.5
+    }
+
     /// The plate color: the terminal background nudged toward white or black, whichever is the far side
     /// of its luminance, so it lifts off a dark pane and sinks into a light one.
     static func glass(over background: NSColor?) -> NSColor {
         let base = background?.usingColorSpace(.sRGB) ?? NSColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
-        let luminance = 0.2126 * base.redComponent + 0.7152 * base.greenComponent + 0.0722 * base.blueComponent
-        let toward: NSColor = luminance < 0.5 ? .white : .black
+        let toward: NSColor = isDark(base) ? .white : .black
         return base.blended(withFraction: glassLift, of: toward) ?? base
     }
 
