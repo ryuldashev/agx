@@ -30,7 +30,7 @@ by a crash.
 - [x] 5 tests — `PrivateSessionTests.swift` (target validation, restore-line parsing, history filter, sweep on temp home/tmp roots for claude + codex, pending store, snapshot/recent-closed filter, setPrivate sink, restore-pin capture, shouldWrap, tree read-back), dispatcher (`session.private` mode parse + `session.new --private`), CLI parse (`session private`, bad mode, `--private`), `formatTree` tag; pinned counts bumped (PaletteCommand 52, BuiltinAction 48)
 - [x] 6 docs — `site/docs.html` "Private sessions" (restore section) + keymap tokens, `site/commands.html` `session.private` + `--private` + node field, skill SKILL/reference/examples, `.claude/rules/control-api.md`, `docs/ui-lexicon.md`, `FORK.md`, ADR `docs/decisions/0003-private-sessions.md`
 - [x] gates: swift test (2748 green) / make test-app (250, 0 failures) / make lint (strict, clean; `AppActions.swift` sits at the 1000-line cap upstream — private actions live in `AppActions+Private.swift`, `PrivateCommand` in `SessionPrivateCommands.swift`, the dispatcher arm in `dispatchSessionPrivate`)
-- [ ] commit + make deploy (relaunch pending)
+- [x] commit `145205b` on `worktree-private-sessions-2026-09-14` + `make deploy` → `/Applications/agx.app` (2026-09-15). **Deploy awaits relaunch**: the running instance still serves the old build; `agtermctl app relaunch` kills live sessions, so that step is Ruslan's. Branch not merged into master yet.
 
 ## Findings (running notes)
 - `snapshot()` is called only from `save()`; filtering there covers `windows/<id>.json` and the legacy
