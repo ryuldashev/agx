@@ -54,8 +54,9 @@ The six event kinds and payloads are:
   for `handoff`, the failed one otherwise. Human mode: `<time> failover <name> <action> [model=…]
   [source=…] session=<id> [reason=…]`.
 - `auto_answer`: the grace on a blocked session ran out and the app decided. Payload: `name`, `action`
-  (`answered`|`held`), `reason` (for `held`: `destructive: <name>`, `no prompt visible`, `pane not
-  readable`, `unknown agent`, `could not type into the pane`), `agent` (`claude`|`codex`). Human mode:
+  (`answered`|`held`), `reason` (for `held`: `destructive: <name>`, `question for the user`, `no prompt
+  visible`, `pane not readable`, `unknown agent`, `could not type into the pane`), `agent`
+  (`claude`|`codex`). Human mode:
   `<time> auto_answer <name> <action> [agent=…] session=<id> [reason=…]`.
 - `schedule.added` / `schedule.fired` / `schedule.cancelled` / `schedule.missed`: a scheduled session's
   lifecycle. Payload carries `name` and `at` (the job's fire time, ISO 8601 with the local offset); the
@@ -794,8 +795,9 @@ error keeps those names for compatibility.
   override (`session.autoanswer`). Mode defaults to `status`; anything else is refused. `on`/`off` set
   the override (`source: session`) and answer with the same `result.autoAnswer` as `status`. What the
   app does when a grace fires: reads the blocked pane's visible text; holds (`held`, notification "Agent
-  needs you") when the agent is not Claude Code or Codex, the pane is not readable, no prompt marker is
-  on screen, or the open dialog contains a destructive command; otherwise types Return (Claude) or `y`
+  needs you") when the agent is not Claude Code or Codex, the pane is not readable, the dialog is a
+  question to the user (`AskUserQuestion`, Codex input) rather than a permission prompt, no permission
+  question with a Yes option is on screen, or the open dialog contains a destructive command; otherwise types Return (Claude) or `y`
   (Codex) once and reports `answered`. The dialog region is scanned, not the whole screen, so a
   destructive command visible from an earlier, already-approved step does not hold a later safe prompt.
   Errors `auto-answer not started` before the app finished launching.

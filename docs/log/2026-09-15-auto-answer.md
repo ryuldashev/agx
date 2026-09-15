@@ -77,8 +77,11 @@ creation failed" — `env -u AGTERM_WORKSPACE_ID -u AGTERM_SESSION_ID …`; zsh 
 ## Not done / next
 - The presence rule is unit-tested and traced, not driven live: I cannot be "in" a Debug session from a
   control socket. Watch the first real week for a prompt answered while Ruslan was reading it.
-- `AskUserQuestion` dialogs: if they flip `blocked`, they hold on "no prompt visible" (no `1. Yes`
-  marker). Acceptable; revisit if the hold notifications get noisy.
+- ~~`AskUserQuestion` dialogs~~ — Ruslan saw one get its first option picked after the deploy. Confirmed
+  live (it flips `blocked`, footer has `Esc to cancel`, Return chose "Red"). Fixed the same session: a
+  question-to-the-user veto (`Type something.` / `Chat about this`; Codex `Enter to submit`) →
+  `held reason=question for the user`, and a permission prompt now needs question + Yes option. Re-verified
+  live: question held, the next Write prompt answered.
 - Claude's dialog region keys on a rule/box line; a Claude Code release that changes that chrome falls
   back to whole-screen scanning (more holds, never more answers). No UI test drives the real dialog.
 - Counters and the per-session override are in-memory; a relaunch forgets them.

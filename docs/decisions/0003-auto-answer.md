@@ -47,9 +47,11 @@ Facts that shaped the design:
    for the remainder. Anywhere else the plain grace applies. `AutoAnswerPresence.remainingGrace` is the
    pure rule.
 4. **Decide from the dialog text.** `AutoAnswerPolicy.decide(screen:agent:)`: unknown agent
-   (`AgentBinary.of` says neither claude nor codex) → hold; pane not readable → hold; no prompt marker
-   on screen (`Do you want to`, `1. Yes` / `Would you like to run`, `Press enter to confirm`, …) →
-   hold; a `DestructiveCommand` in the dialog region → hold `destructive: <name>`; else answer. The
+   (`AgentBinary.of` says neither claude nor codex) → hold; pane not readable → hold; a question TO the
+   user on screen (`AskUserQuestion`'s `Type something.` / `Chat about this`, Codex's `Enter to submit`)
+   → hold `question for the user`; no permission question AND affirmative option (`Do you want to` +
+   `1. Yes` / `Would you like to run` + `Yes, proceed (y)`) → hold `no prompt visible`; a
+   `DestructiveCommand` in the dialog region → hold `destructive: <name>`; else answer. The
    region is the open dialog (Codex: from its question; Claude: from the rule/box line above the tool
    box) to the end of the screen; an unrecognized layout falls back to the whole screen. Holding is
    the cheap error: it costs one manual answer. The catalog is broader than the five named
@@ -94,7 +96,9 @@ override across a relaunch.
 - The presence rule needs the app active and the session on screen; a user watching the pane through
   Screen Sharing or a second display with another app frontmost is "not in the session" and gets the
   plain grace — the HUD is their warning.
-- If Claude Code's `AskUserQuestion` dialog flips `blocked`, its options are answers to a question,
-  not permissions. The `1. Yes` marker is absent there, so it holds ("no prompt visible") unless an
-  option happens to read "Yes". Known gap, acceptable: a hold is a notification.
+- `AskUserQuestion` DOES flip `blocked`, and its footer carries `Esc to cancel` — the first cut keyed on
+  that and picked the first option of a real question (caught the same day). A question to the user is
+  now vetoed by its own chrome (`Type something.` / `Chat about this`; Codex `Enter to submit`), and a
+  permission prompt needs both the question and the Yes option. A yes/no `AskUserQuestion` phrased
+  "Do you want to…?" is still held by the veto.
 - `autoAnswer` state is per session and in-memory; a relaunch forgets counters and overrides.

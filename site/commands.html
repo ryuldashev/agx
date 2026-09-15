@@ -1951,8 +1951,9 @@
               </p>
               <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
                 When the grace fires the app reads the blocked pane's visible text and holds — notification "Agent needs you" —
-                when the agent is neither Claude Code nor Codex, the pane is not readable, no prompt is on screen, or the open
-                dialog contains a destructive command: <span style="font-family: &quot;JetBrains Mono&quot;, monospace">rm -rf</span>,
+                when the agent is neither Claude Code nor Codex, the pane is not readable, the dialog is a question to the user
+                (Claude Code's AskUserQuestion, Codex's input request) rather than a permission prompt, no permission prompt is on
+                screen, or the open dialog contains a destructive command: <span style="font-family: &quot;JetBrains Mono&quot;, monospace">rm -rf</span>,
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">git push --force</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">sudo</span>,
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">git reset --hard</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">DROP</span>,
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">TRUNCATE</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">DELETE FROM</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">git clean -f</span>,

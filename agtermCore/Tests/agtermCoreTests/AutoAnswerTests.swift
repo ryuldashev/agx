@@ -97,8 +97,36 @@ struct AutoAnswerPolicyTests {
         #expect(AutoAnswerPolicy.decide(screen: screen, agent: .claude) == .hold(reason: "destructive: sudo"))
     }
 
+    @Test func aQuestionToTheUserIsNeverAnswered() {
+        let askUserQuestion = """
+            ──────────────────────────────────────
+             ☐ Demo color
+
+            Which color for the demo?
+
+            ❯ 1. Red
+                 Warm, energetic
+              2. Blue
+                 Cool, calm
+              4. Type something.
+            ──────────────────────────────────────
+              5. Chat about this
+
+            Enter to select · ↑/↓ to navigate · Esc to cancel
+            """
+        #expect(AutoAnswerPolicy.decide(screen: askUserQuestion, agent: .claude) == .hold(reason: "question for the user"))
+        let yesNoQuestion = askUserQuestion.replacingOccurrences(of: "Which color for the demo?", with: "Do you want to deploy now?")
+            .replacingOccurrences(of: "1. Red", with: "1. Yes")
+        #expect(AutoAnswerPolicy.decide(screen: yesNoQuestion, agent: .claude) == .hold(reason: "question for the user"))
+        let optionsOnly = "Which color?\n❯ 1. Yes\n  2. No\nEsc to cancel"
+        #expect(AutoAnswerPolicy.decide(screen: optionsOnly, agent: .claude) == .hold(reason: "no prompt visible"))
+        let codexInput = "Codex needs your input\nWhich branch?\n› main\nEnter to submit"
+        #expect(AutoAnswerPolicy.decide(screen: codexInput, agent: .codex) == .hold(reason: "question for the user"))
+    }
+
     @Test func nothingToAnswerHolds() {
         #expect(AutoAnswerPolicy.decide(screen: "> \n", agent: .claude) == .hold(reason: "no prompt visible"))
+        #expect(AutoAnswerPolicy.decide(screen: "Do you want to proceed?\nEsc to cancel", agent: .claude) == .hold(reason: "no prompt visible"))
         #expect(AutoAnswerPolicy.decide(screen: nil, agent: .claude) == .hold(reason: "pane not readable"))
         #expect(AutoAnswerPolicy.decide(screen: claudePrompt, agent: nil) == .hold(reason: "unknown agent"))
     }

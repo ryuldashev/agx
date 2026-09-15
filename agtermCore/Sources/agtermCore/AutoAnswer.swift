@@ -66,14 +66,40 @@ public enum AutoAnswerAgent: String, Sendable, CaseIterable {
         }
     }
 
-    /// Lower-cased fragments that prove a permission prompt is actually on screen. Claude Code phrases every
-    /// tool prompt as a "Do you want …?" question over a numbered list; Codex's approval overlay and its
-    /// question dialogs carry the footer the Codex status hook already keys on.
-    public var promptMarkers: [String] {
+    /// Lower-cased fragments of the question a permission dialog carries. Claude Code phrases every tool
+    /// prompt as "Do you want …?"; Codex's approval overlay asks "Would you like to run …?" / "Allow command?".
+    public var questionMarkers: [String] {
         switch self {
-        case .claude: return ["do you want to", "1. yes", "esc to cancel"]
-        case .codex: return ["allow command?", "press enter to confirm", "enter to submit", "would you like to run", "(y)"]
+        case .claude: return ["do you want to"]
+        case .codex: return ["would you like to", "allow command?"]
         }
+    }
+
+    /// The affirmative option that must ALSO be on screen: `1. Yes` (Claude), `Yes, proceed (y)` / `Yes (y)`
+    /// (Codex). A question the agent asks the user (`AskUserQuestion`, Codex's input request) blocks the
+    /// session the same way but lists answers, not a Yes — the app must never pick one (2026-09-15: it did).
+    public var yesMarkers: [String] {
+        switch self {
+        case .claude: return ["1. yes"]
+        case .codex: return ["yes, proceed (y)", "yes (y)"]
+        }
+    }
+
+    /// Fragments that only a question-to-the-user dialog shows; any of them vetoes an answer outright.
+    public var questionForUserMarkers: [String] {
+        switch self {
+        case .claude: return ["type something.", "chat about this"]
+        case .codex: return ["enter to submit"]
+        }
+    }
+
+    /// Why `lower` (the lower-cased screen) is not a permission prompt the app may answer; nil when it is.
+    public func holdReason(for lower: String) -> String? {
+        if questionForUserMarkers.contains(where: { lower.contains($0) }) { return "question for the user" }
+        guard questionMarkers.contains(where: { lower.contains($0) }), yesMarkers.contains(where: { lower.contains($0) }) else {
+            return "no prompt visible"
+        }
+        return nil
     }
 
     public static func of(binary: String?) -> AutoAnswerAgent? {
@@ -88,7 +114,7 @@ public enum AutoAnswerAgent: String, Sendable, CaseIterable {
     public func dialogRegion(of screen: String) -> String {
         let lines = screen.split(separator: "\n", omittingEmptySubsequences: false)
         let lower = lines.map { $0.lowercased() }
-        guard let marker = lower.lastIndex(where: { line in promptMarkers.contains { line.contains($0) } }) else {
+        guard let marker = lower.lastIndex(where: { line in questionMarkers.contains { line.contains($0) } }) else {
             return screen
         }
         let opens: (String) -> Bool
@@ -138,10 +164,7 @@ public enum AutoAnswerPolicy {
     public static func decide(screen: String?, agent: AutoAnswerAgent?) -> AutoAnswerDecision {
         guard let agent else { return .hold(reason: "unknown agent") }
         guard let screen else { return .hold(reason: "pane not readable") }
-        let lower = screen.lowercased()
-        guard agent.promptMarkers.contains(where: { lower.contains($0) }) else {
-            return .hold(reason: "no prompt visible")
-        }
+        if let reason = agent.holdReason(for: screen.lowercased()) { return .hold(reason: reason) }
         if let hit = DestructiveCommand.match(in: agent.dialogRegion(of: screen)) {
             return .hold(reason: "destructive: \(hit.name)")
         }

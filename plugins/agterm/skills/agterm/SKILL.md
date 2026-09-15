@@ -448,7 +448,8 @@ omitted when expanded).
   session. By default (Settings ▸ Agents ▸ Auto-answer, on, 45 s) a session that goes `blocked` and stays
   there for the grace gets a Yes typed by the app — Return for Claude Code, `y` for Codex — unless the
   dialog shows a destructive command (`rm -rf`, `git push --force`, `sudo`, `git reset --hard`, `DROP …`,
-  and the rest of the catalog), in which case the user is notified instead. A countdown HUD warns over
+  and the rest of the catalog) or is a question to the user (`AskUserQuestion`) rather than a permission
+  prompt, in which case the user is notified instead. A countdown HUD warns over
   the pane; the grace restarts from the user's last keystroke while they are IN that session, so it never
   answers over someone reading the prompt. `off` keeps this session's prompts for the user (and drops a
   running countdown), `on` restores it (and starts one if the session is blocked now); either is a

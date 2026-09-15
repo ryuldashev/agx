@@ -727,7 +727,8 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   does), so the agent's next hook owns the status after the answer. `docs/decisions/0003-auto-answer.md`.
 - Detection is the status, never a buffer scan. The screen is read ONCE, at fire time, for the decision:
   `AutoAnswerPolicy.decide(screen:agent:)` (host-free, `agtermCore/AutoAnswer.swift`) holds on an unknown
-  agent, an unreadable pane, no prompt marker, or a `DestructiveCommand` inside the dialog region
+  agent, an unreadable pane, a question to the user (`AskUserQuestion` chrome — it flips `blocked` too and
+  must never get its first option picked), a missing question + Yes pair, or a `DestructiveCommand` inside the dialog region
   (`AutoAnswerAgent.dialogRegion`: Codex from its question line, Claude from the rule/box line above the
   tool box; no opening line → whole screen, which errs toward holding). One key, no safety repeat.
 - Presence: at fire time the session on screen in the frontmost window of the active app re-arms for
