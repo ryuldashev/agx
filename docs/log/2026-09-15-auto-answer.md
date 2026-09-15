@@ -85,5 +85,9 @@ creation failed" — `env -u AGTERM_WORKSPACE_ID -u AGTERM_SESSION_ID …`; zsh 
 - Claude's dialog region keys on a rule/box line; a Claude Code release that changes that chrome falls
   back to whole-screen scanning (more holds, never more answers). No UI test drives the real dialog.
 - Counters and the per-session override are in-memory; a relaunch forgets them.
+- Parked (Ruslan, 2026-09-15): a supervising model that answers the agent's QUESTIONS, not only its
+  permission prompts. "Too early, not needed yet." The seam is `AutoAnswerPolicy.decide` returning
+  `hold(reason: "question for the user")` — that is where a model would get the dialog text + transcript
+  tail and return an option number or "ask the human"; grace, presence, HUD, inject and the event reuse as is.
 - Codex's session-start hook printed `hook returned invalid session start JSON output` in the Debug
   instance — pre-existing, unrelated to this feature, not chased.
