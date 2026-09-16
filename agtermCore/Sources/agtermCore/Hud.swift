@@ -17,6 +17,10 @@ public struct HudSpec: Codable, Equatable, Sendable {
     /// message. There is no height counterpart — `HudLayout.heightPercent` owns why.
     public let sizePercent: Int?
     public let position: HudPosition
+    /// The session a click on the panel selects, closing the panel; nil leaves the panel inert. Always a
+    /// RESOLVED id: the dispatcher hands the caller's spelling to the host separately, and only the host,
+    /// which can see every open window, writes one here.
+    public let reveal: UUID?
 
     /// Cap on `message` and `detail` each, enforced by the dispatcher in `HudLayout.textLength`'s unit. The
     /// panel wraps at `HudLayout.maxColumns` and is clamped to `HudLayout.maxSizePercent`, so longer text
@@ -25,7 +29,7 @@ public struct HudSpec: Codable, Equatable, Sendable {
 
     public init(message: String, detail: String? = nil, spinner: HudSpinner? = nil,
                 backgroundColor: String? = nil, textColor: String? = nil,
-                sizePercent: Int? = nil, position: HudPosition = .defaultPosition) {
+                sizePercent: Int? = nil, position: HudPosition = .defaultPosition, reveal: UUID? = nil) {
         self.message = message
         self.detail = detail
         self.spinner = spinner
@@ -33,10 +37,11 @@ public struct HudSpec: Codable, Equatable, Sendable {
         self.textColor = textColor
         self.sizePercent = sizePercent
         self.position = position
+        self.reveal = reveal
     }
 
     enum CodingKeys: String, CodingKey {
-        case message, detail, spinner, backgroundColor, textColor, sizePercent, position
+        case message, detail, spinner, backgroundColor, textColor, sizePercent, position, reveal
     }
 
     /// A copy carrying `color` in place of this spec's own background. `AppStore.updateHud` holds the LIVE
@@ -44,7 +49,14 @@ public struct HudSpec: Codable, Equatable, Sendable {
     /// stored spec carrying any other value would report a color the panel does not paint.
     func withBackgroundColor(_ color: String?) -> HudSpec {
         HudSpec(message: message, detail: detail, spinner: spinner, backgroundColor: color,
-                textColor: textColor, sizePercent: sizePercent, position: position)
+                textColor: textColor, sizePercent: sizePercent, position: position, reveal: reveal)
+    }
+
+    /// A copy carrying `reveal` in place of this spec's own: the host's step from the caller's spelling to
+    /// the resolved session.
+    public func withReveal(_ reveal: UUID?) -> HudSpec {
+        HudSpec(message: message, detail: detail, spinner: spinner, backgroundColor: backgroundColor,
+                textColor: textColor, sizePercent: sizePercent, position: position, reveal: reveal)
     }
 
     public init(from decoder: Decoder) throws {
@@ -56,6 +68,7 @@ public struct HudSpec: Codable, Equatable, Sendable {
         textColor = try c.decodeIfPresent(String.self, forKey: .textColor)
         sizePercent = try c.decodeIfPresent(Int.self, forKey: .sizePercent)
         position = try c.decodeIfPresent(HudPosition.self, forKey: .position) ?? .defaultPosition
+        reveal = try c.decodeIfPresent(UUID.self, forKey: .reveal)
     }
 }
 

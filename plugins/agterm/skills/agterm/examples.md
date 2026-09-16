@@ -862,8 +862,17 @@ off that pane edge on its own — a corner is what keeps the panel clear of the 
 change it, unlike `--background-color`), and `--size-percent N` overrides the panel's WIDTH; its height
 always follows the message.
 
-Read it back from the session node, and note the panel does NOT set `overlay` — one slot, and whichever
-occupant holds it is the one that reports:
+A panel ABOUT another session — a peer you just spawned, a session that needs a look — takes `--reveal`:
+a click on the plate then closes the panel and selects that session, in whatever window holds it.
+
+```bash
+peer=$(agx spawn --brief "…" --name "Stafflog зарплаты" --workspace-name mars --json | jq -r .id)
+agtermctl session hud "Новое" --detail "mars · Stafflog зарплаты" --position top-center \
+  --reveal "$peer" --target "$me"
+```
+
+Read it back from the session node (`hud.reveal` is the target's full id), and note the panel does NOT
+set `overlay` — one slot, and whichever occupant holds it is the one that reports:
 
 ```bash
 agtermctl tree --json | jq -r --arg s "$me" '

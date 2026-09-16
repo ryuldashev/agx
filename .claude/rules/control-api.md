@@ -400,6 +400,12 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   `overlayBackgroundColor`, set ONCE at open (`updateHud` carries the live one forward), `textColor` is the
   spec's own. So `hud.update` recolors text in place and cannot touch the plate, and the CLI's `update`
   takes `--text-color` but no `--background-color`.
+- `--reveal <session>` is the one click a HUD takes: the dispatcher rejects only a BLANK value, the host
+  (`ControlServer+Hud.resolveReveal`) resolves it like a target across every open window and writes the
+  full id into `HudSpec.reveal`, and `HudNoticeView` takes `onTap` only then — the plate's shape is the
+  hit region, the deck's `allowsHitTesting` widens for exactly that case, and a HUD without it stays inert
+  byte-for-byte. The click is `AppActions.revealHudTarget`: close the HUD, then the banner's `reveal`.
+  An update replaces it like every other field. Read back as `hud.reveal`, omitted when unset.
 - Read back `ControlSessionNode.hud` with BOTH shares, `sizePercent` and `heightPercent`, `overlay` false
   and `overlaySizePercent` omitted beside it, plus `textColor` (omitted when the panel keeps the terminal
   foreground, and tracking the LATEST update unlike `backgroundColor`);

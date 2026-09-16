@@ -274,6 +274,10 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// style or nothing and the dispatcher has one thing to validate.
     /// The box reserves the glyph's cells either way, so toggling it cannot rewrap the message.
     public var spinner: String?
+    /// For `session.hud.open`/`.update`, the session (id / unique prefix / `active`) a click on the panel
+    /// selects, closing the panel. Resolved app-side across every open window, like a target; omitted
+    /// leaves the panel inert. An update replaces the whole spec, so it must be repeated to survive one.
+    public var reveal: String?
     /// The finished caller-provided choices for `pick.open`.
     public var items: [ControlPickItem]?
     /// Optional placeholder text for `pick.open`'s query field.
@@ -341,7 +345,7 @@ public struct ControlArgs: Codable, Sendable, Equatable {
                 command: String? = nil, wait: Bool? = nil, durable: Bool? = nil, sizePercent: Int? = nil,
                 full: Bool? = nil,
                 follow: Bool? = nil, message: String? = nil, detail: String? = nil, spinner: String? = nil,
-                items: [ControlPickItem]? = nil, prompt: String? = nil,
+                reveal: String? = nil, items: [ControlPickItem]? = nil, prompt: String? = nil,
                 query: String? = nil, allowCustom: Bool? = nil, window: String? = nil,
                 pane: String? = nil, paneID: String? = nil, to: String? = nil,
                 after: String? = nil, before: String? = nil, run: String? = nil,
@@ -380,6 +384,7 @@ public struct ControlArgs: Codable, Sendable, Equatable {
         self.message = message
         self.detail = detail
         self.spinner = spinner
+        self.reveal = reveal
         self.items = items
         self.prompt = prompt
         self.query = query

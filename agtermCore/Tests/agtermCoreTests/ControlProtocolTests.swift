@@ -194,7 +194,7 @@ struct ControlProtocolTests {
             ControlRequest(cmd: .sessionHudOpen, target: "9f3c", args: ControlArgs(message: "gathering options")),
             ControlRequest(cmd: .sessionHudOpen, target: "9f3c",
                            args: ControlArgs(sizePercent: 40, message: "gathering options",
-                                             detail: "scanning 400 files", spinner: "braille",
+                                             detail: "scanning 400 files", spinner: "braille", reveal: "a1b2",
                                              window: "win", color: "#2a1a3a", position: "top")),
             ControlRequest(cmd: .sessionHudUpdate, target: "9f3c",
                            args: ControlArgs(message: "almost there", detail: "12 left", position: "bottom")),
@@ -252,7 +252,7 @@ struct ControlProtocolTests {
         #expect(decoded.args?.position == nil)
         #expect(decoded.args?.sizePercent == nil)
         let json = String(data: try JSONEncoder().encode(request), encoding: .utf8) ?? ""
-        for key in ["detail", "spinner", "position", "sizePercent", "color"] {
+        for key in ["detail", "spinner", "position", "sizePercent", "color", "reveal"] {
             #expect(!json.contains(key), "an unset \(key) must be omitted from the JSON; got \(json)")
         }
     }

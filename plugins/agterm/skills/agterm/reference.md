@@ -162,8 +162,10 @@ lastAction?, lastReason?}`; always present for a session; `dueAt` only while the
 grace running; the counters only once nonzero),
 `hud` (the message panel occupying the session-wide overlay slot — the read side of `session hud`; omitted
 when none is up. A
-`{message, detail?, spinner, backgroundColor?, textColor?, sizePercent?, heightPercent?, position}`
-object: `detail`, `backgroundColor` and `textColor` are omitted when the caller set none, `sizePercent` is the EFFECTIVE
+`{message, detail?, spinner, backgroundColor?, textColor?, sizePercent?, heightPercent?, position, reveal?}`
+object: `detail`, `backgroundColor` and `textColor` are omitted when the caller set none, `reveal` is the
+FULL id of the session a click on the panel selects (omitted for an inert panel, whatever prefix
+`--reveal` was given), `sizePercent` is the EFFECTIVE
 10–80 share of the pane's WIDTH the panel takes (the app's measurement of the message, or the caller's
 `--size-percent` override, either way bounded so a message never covers the session; always present for a
 live HUD), `heightPercent` is the effective share of its HEIGHT, always measured from the message's rows
@@ -713,7 +715,7 @@ error keeps those names for compatibility.
   file. Errors `no overlay`, `overlay not realized` and `no overlay to read: the slot holds a hud` as
   `session overlay copy` does, plus `failed to read surface buffer` on a real read failure. It has no
   `no selection`: a blank realized screen is `ok` with an empty string.
-- `session hud [open] <message> [--detail T] [--spinner] [--spinner-style S] [--position P] [--background-color #rrggbb] [--text-color #rrggbb] [--size-percent N] [--target] [--window W]`
+- `session hud [open] <message> [--detail T] [--spinner] [--spinner-style S] [--position P] [--background-color #rrggbb] [--text-color #rrggbb] [--size-percent N] [--reveal S] [--target] [--window W]`
   — post a PASSIVE message panel over the session and return its id. It occupies the same session-wide slot
   as `session overlay open`, but carries a message rather than a program: it takes no input, the session
   keeps first responder and stays typable, and the terminal behind it is neither dimmed nor click-blocked.
@@ -749,12 +751,19 @@ error keeps those names for compatibility.
   `invalid position: <value> (top-left|top-center|top-right|center-left|center|center-right|bottom-left|bottom-center|bottom-right|top|bottom)`,
   `invalid spinner: <value> (bar|braille|circle|blocks|dot|none)`,
   and `session.hud.open: --size-percent must be 1...100`.
+  `--reveal <session>` (id, unique prefix, or `active`, resolved across every open window) makes the panel
+  a link: a click on its plate takes the panel down and selects that session, raising its window — the
+  one thing a passive panel does with a click. It is for a panel ABOUT another session ("new session
+  started in mars"), where the reader wants to go there; the margins around the plate stay the session's.
+  Without it the panel is inert, as ever. Errors `session.hud.open: --reveal requires a session` on a blank
+  value and `--reveal: no such session: <value>` when nothing resolves, and the read-back reports the full id
+  as `hud.reveal`.
   A second `hud` replaces the first; a `session overlay open` replaces a HUD, while a HUD over a RUNNING
   program is refused with `overlay already open` — a message is replaceable, a program is not.
-- `session hud update <message> [--detail T] [--spinner] [--spinner-style S] [--position P] [--text-color #rrggbb] [--size-percent N] [--target] [--window W]`
+- `session hud update <message> [--detail T] [--spinner] [--spinner-style S] [--position P] [--text-color #rrggbb] [--size-percent N] [--reveal S] [--target] [--window W]`
   — repaint the live panel in place: no re-spawn, no blink, the panel does not flicker. It REPLACES the
-  whole spec rather than patching it, so `--detail`, the spinner, `--position` and `--text-color` must be
-  repeated to survive and an omitted one drops. `--spinner-style` may name a DIFFERENT style than the panel
+  whole spec rather than patching it, so `--detail`, the spinner, `--position`, `--text-color` and
+  `--reveal` must be repeated to survive and an omitted one drops. `--spinner-style` may name a DIFFERENT style than the panel
   opened with, and `--text-color` a different color; both ride the message file, so the look changes on the
   next tick with no re-spawn. Same required message and same rejections as `open`. There is no
   `--background-color`: the surface reads that once at creation, so only a fresh `session hud` can change

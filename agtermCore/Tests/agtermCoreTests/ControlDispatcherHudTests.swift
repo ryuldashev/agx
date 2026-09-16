@@ -166,7 +166,7 @@ struct ControlDispatcherHudTests {
 
             #expect(response?.error == nil)
             let call = try #require(actions.calls.first)
-            guard case let .hudOpen(_, _, spec) = call else { Issue.record("not a hud open"); return }
+            guard case let .hudOpen(_, _, spec, _) = call else { Issue.record("not a hud open"); return }
             #expect(spec.position == HudPosition.parse(raw))
         }
     }
@@ -195,7 +195,7 @@ struct ControlDispatcherHudTests {
             args: ControlArgs(message: "done", textColor: "#7ec07e", position: "bottom-right")))
 
         let call = try #require(actions.calls.first)
-        guard case let .hudUpdate(_, _, spec) = call else { Issue.record("not a hud update"); return }
+        guard case let .hudUpdate(_, _, spec, _) = call else { Issue.record("not a hud update"); return }
         #expect(spec.textColor == "#7ec07e")
         #expect(spec.position == .bottomRight)
     }
@@ -224,7 +224,7 @@ struct ControlDispatcherHudTests {
                                                      args: ControlArgs(message: "working",
                                                                        spinner: style.rawValue)))
 
-        guard case let .hudOpen(_, _, spec) = try #require(actions.calls.first) else {
+        guard case let .hudOpen(_, _, spec, _) = try #require(actions.calls.first) else {
             Issue.record("expected session.hud.open host call")
             return
         }
@@ -241,7 +241,7 @@ struct ControlDispatcherHudTests {
                                                      args: ControlArgs(message: "working",
                                                                        spinner: HudSpinner.noneName)))
 
-        guard case let .hudOpen(_, _, spec) = try #require(actions.calls.first) else {
+        guard case let .hudOpen(_, _, spec, _) = try #require(actions.calls.first) else {
             Issue.record("expected session.hud.open host call")
             return
         }
@@ -258,14 +258,29 @@ struct ControlDispatcherHudTests {
             cmd: .sessionHudOpen,
             target: "session-id",
             args: ControlArgs(sizePercent: 40, message: "gathering options", detail: "scanning 400 files",
-                              spinner: "bar", window: "window-id", color: "#112233", position: "top")
+                              spinner: "bar", reveal: "9f3c", window: "window-id", color: "#112233", position: "top")
         ))
 
         #expect(response == expected)
         let call = try #require(actions.calls.first)
         #expect(call == .hudOpen(target: "session-id", window: "window-id",
                                  HudSpec(message: "gathering options", detail: "scanning 400 files", spinner: .bar,
-                                         backgroundColor: "#112233", sizePercent: 40, position: .topCenter)))
+                                         backgroundColor: "#112233", sizePercent: 40, position: .topCenter),
+                                 reveal: "9f3c"))
+    }
+
+    @Test func rejectsABlankRevealWithoutCallingHost() async {
+        let actions = MockControlActions()
+        let dispatcher = ControlDispatcher(actions: actions)
+
+        let open = await dispatcher.dispatch(ControlRequest(cmd: .sessionHudOpen,
+                                                            args: ControlArgs(message: "new", reveal: " ")))
+        let update = await dispatcher.dispatch(ControlRequest(cmd: .sessionHudUpdate,
+                                                              args: ControlArgs(message: "new", reveal: "")))
+
+        #expect(open == ControlResponse(ok: false, error: "session.hud.open: --reveal requires a session"))
+        #expect(update == ControlResponse(ok: false, error: "session.hud.update: --reveal requires a session"))
+        #expect(actions.calls.isEmpty)
     }
 
     @Test func updateRoutesParsedSpecAndReturnsHostResponse() async throws {
@@ -283,7 +298,8 @@ struct ControlDispatcherHudTests {
         #expect(response == expected)
         let call = try #require(actions.calls.first)
         #expect(call == .hudUpdate(target: "session-id", window: nil,
-                                   HudSpec(message: "still working", detail: "312 of 400", position: .bottomCenter)))
+                                   HudSpec(message: "still working", detail: "312 of 400", position: .bottomCenter),
+                                   reveal: nil))
     }
 
     @Test func omittedPositionSpinnerAndOverridesTakeTheirDefaults() async throws {
@@ -293,7 +309,7 @@ struct ControlDispatcherHudTests {
         _ = await dispatcher.dispatch(ControlRequest(cmd: .sessionHudOpen, args: ControlArgs(message: "working")))
 
         let call = try #require(actions.calls.first)
-        guard case let .hudOpen(_, _, spec) = call else {
+        guard case let .hudOpen(_, _, spec, _) = call else {
             Issue.record("expected session.hud.open host call")
             return
         }
@@ -315,7 +331,7 @@ struct ControlDispatcherHudTests {
         ))
 
         let call = try #require(actions.calls.first)
-        guard case let .hudOpen(_, _, spec) = call else {
+        guard case let .hudOpen(_, _, spec, _) = call else {
             Issue.record("expected session.hud.open host call")
             return
         }

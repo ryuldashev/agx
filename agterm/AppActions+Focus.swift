@@ -207,6 +207,17 @@ extension AppActions {
         revealAfterOpen(windowID: windowID, sessionID: sessionID, pane: pane)
     }
 
+    /// A click on a `--reveal` HUD: take the panel down, then go to the session it named, in whatever
+    /// window holds it. A target closed since the panel went up leaves only the close — the click still did
+    /// the one thing it could.
+    func revealHudTarget(of sessionID: UUID) {
+        guard let store = library.store(forSession: sessionID),
+              let target = store.session(withID: sessionID)?.hudSpec?.reveal else { return }
+        store.closeHud(sessionID)
+        guard let windowID = library.windowID(forSession: target) else { return }
+        reveal(windowID: windowID, sessionID: target, pane: .main)
+    }
+
     /// Polls for a reopened window's store to load, then reveals the session. Bounded, so a stale id (the
     /// window never materializes) gives up instead of looping forever.
     private func revealAfterOpen(windowID: UUID, sessionID: UUID, pane: PaneRole, attempt: Int = 0) {
