@@ -33,3 +33,9 @@ Branch: `worktree-secrets-2026-09-16` (worktree from origin/master ddda9df).
   secret can be inserted at once). Ruslan asked for it the moment he saw the CLI-only version. Removal
   stays CLI-only.
 - No "send Return after" option; `session type $'\n'` follows an insert when a script needs it.
+
+## Shipped
+- Merged to `origin/master` as `45889e0` (via `hud-reveal-2026-09-16`, which carried the three feature commits);
+  `/Applications/agx.app` is that branch, so master adds only the UI-test fix. Flow verified by hand by Ruslan.
+- XCUITests steal the user focus: run `InsertSecretUITests` only in a quiet window (2 of 4 runs flaked on the
+  typed-query variant; the click-the-row variant passed 3/3).
