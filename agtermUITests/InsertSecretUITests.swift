@@ -65,18 +65,21 @@ final class InsertSecretUITests: ControlAPITestCase {
         let item = app.menuBars.menuBarItems["Edit"].menus.firstMatch.menuItems["Insert Secret…"]
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         item.click()
+        let query = app.textFields.firstMatch
+        XCTAssertTrue(query.waitForExistence(timeout: 5), "the secret palette field should appear")
         let add = app.descendants(matching: .any).matching(identifier: "palette-item-secret-add").firstMatch
         XCTAssertTrue(add.waitForExistence(timeout: 5), "the palette should end with Add Secret…")
-        app.typeText("Add Secret")
-        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(poll(until: add.isHittable, timeout: 2))
+        add.click()
 
         let labelField = app.textFields["secret-add-label"]
-        XCTAssertTrue(labelField.waitForExistence(timeout: 5), "the Add Secret dialog should open with the label field")
+        XCTAssertTrue(labelField.waitForExistence(timeout: 5), "the Add Secret dialog should open with the label field — sheets: \(app.sheets.count), palette: \(app.descendants(matching: .any).matching(identifier: "command-palette").firstMatch.exists), query: \(String(describing: query.value)), add row: \(add.exists)")
         app.typeKey(.return, modifierFlags: [])
         let error = app.staticTexts["secret-add-error"]
-        XCTAssertTrue(error.waitForExistence(timeout: 5))
-        XCTAssertEqual(error.value as? String, "Enter a label.", "Save on empty fields keeps the dialog up")
-
+        XCTAssertTrue(poll(until: error.exists && error.value as? String == "Enter a label.", timeout: 5),
+                      "Save on empty fields keeps the dialog up with the reason")
+        // the rejected sheet is re-presented on the next tick; type only once the field is back and hittable
+        XCTAssertTrue(poll(until: labelField.exists && labelField.isHittable, timeout: 5))
         labelField.click()
         app.typeText(label)
         app.typeKey(.tab, modifierFlags: [])
@@ -84,7 +87,8 @@ final class InsertSecretUITests: ControlAPITestCase {
         app.typeKey(.return, modifierFlags: [])
 
         let row = app.descendants(matching: .any).matching(identifier: "palette-item-secret-\(label)").firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "Save should reopen the palette listing the new secret")
+        XCTAssertTrue(row.waitForExistence(timeout: 5),
+                      "Save should reopen the palette listing the new secret — error: \(String(describing: error.value))")
         app.typeKey(.escape, modifierFlags: [])
         let listed = try sendCommand(#"{"cmd":"secret.list"}"#)
         let labels = (listed["result"] as? [String: Any])?["secrets"] as? [String] ?? []
