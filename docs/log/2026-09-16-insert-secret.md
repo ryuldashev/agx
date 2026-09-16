@@ -28,6 +28,8 @@ Branch: `worktree-secrets-2026-09-16` (worktree from origin/master ddda9df).
   before reading them. Test labels are unique and removed in tearDown.
 
 ## Not done (deliberately)
-- No Settings pane for managing secrets; add/remove is CLI-only. Add it if the CLI turns out to be
-  the wrong surface for Ruslan in practice.
+- No Settings pane. Adding is the palette's last row, Add Secret… (`SecretAddPrompt`, an NSAlert with a
+  label and a secure field, same `SecretPolicy` wording as the CLI; Save reopens the palette so the new
+  secret can be inserted at once). Ruslan asked for it the moment he saw the CLI-only version. Removal
+  stays CLI-only.
 - No "send Return after" option; `session type $'\n'` follows an insert when a script needs it.

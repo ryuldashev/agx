@@ -74,3 +74,18 @@ struct ControlDispatcherSecretTests {
                                   .secretInsert(label: "a", target: nil, window: nil, pane: nil)])
     }
 }
+
+struct SecretPolicyTests {
+    @Test func labelErrorsMatchTheDispatcherWording() {
+        #expect(SecretPolicy.labelError("db-root") == nil)
+        #expect(SecretPolicy.labelError(String(repeating: "a", count: 64)) == nil)
+        #expect(SecretPolicy.labelError(String(repeating: "a", count: 65)) == "label too long (max 64 characters)")
+        #expect(SecretPolicy.labelError("a\u{7f}b") == "label must not contain control characters")
+    }
+
+    @Test func valueErrorsMatchTheDispatcherWording() {
+        #expect(SecretPolicy.valueError("Tr0ub4dor&3 with spaces") == nil)
+        #expect(SecretPolicy.valueError(String(repeating: "x", count: 4097)) == "value too long (max 4096 characters)")
+        #expect(SecretPolicy.valueError("a\rb") == "value must not contain control characters")
+    }
+}

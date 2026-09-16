@@ -307,18 +307,29 @@ extension AppActions {
         }
     }
 
-    /// One row per stored label; choosing one types its value into the surface pinned at open. The value is
-    /// read from the keychain only at that moment. With nothing stored the single inert row says how to add one.
+    /// One row per stored label — choosing one types its value, read from the keychain only at that moment,
+    /// into the surface pinned at open — and a last Add Secret… row that opens the store prompt.
     func paletteSecrets() -> [PaletteItem] {
         let labels = (try? KeychainSecretStore.labels()) ?? []
-        guard !labels.isEmpty else {
-            return [PaletteItem(id: "secret-none", title: "No secrets yet",
-                                subtitle: "agtermctl secret add <label>", isEnabled: { false }, run: {})]
-        }
-        return labels.map { label in
+        let rows = labels.map { label in
             PaletteItem(id: "secret-\(label)", title: label) { [weak self] in
                 self?.insertSecret(label)
             }
+        }
+        let add = PaletteItem(id: "secret-add", title: "Add Secret…",
+                              subtitle: "Store a new one in the login keychain") { [weak self] in
+            self?.addSecretFromPalette()
+        }
+        return rows + [add]
+    }
+
+    /// Runs the prompt on the next tick, once the palette has closed under it, and reopens the palette on
+    /// Save so the new secret can be inserted at once — into the surface still pinned from the first open.
+    private func addSecretFromPalette() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let label = SecretAddPrompt.present(store: { try KeychainSecretStore.set($1, label: $0) }) else { return }
+            ActionJournal.shared.log("action", ["source": "palette", "action": "secret_add", "label": label])
+            self.palette?.open(.secrets)
         }
     }
 

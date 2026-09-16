@@ -59,4 +59,35 @@ final class InsertSecretUITests: ControlAPITestCase {
         let missing = try sendCommand(#"{"cmd":"secret.insert","target":"\#(id)","args":{"label":"no-such-\#(label)"}}"#)
         XCTAssertEqual(missing["error"] as? String, "no such secret: no-such-\(label)")
     }
+
+    func testAddRowPromptsAndStoresThenReopensThePalette() throws {
+        app.menuBars.menuBarItems["Edit"].click()
+        let item = app.menuBars.menuBarItems["Edit"].menus.firstMatch.menuItems["Insert Secret…"]
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        item.click()
+        let add = app.descendants(matching: .any).matching(identifier: "palette-item-secret-add").firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 5), "the palette should end with Add Secret…")
+        app.typeText("Add Secret")
+        app.typeKey(.return, modifierFlags: [])
+
+        let labelField = app.textFields["secret-add-label"]
+        XCTAssertTrue(labelField.waitForExistence(timeout: 5), "the Add Secret dialog should open with the label field")
+        app.typeKey(.return, modifierFlags: [])
+        let error = app.staticTexts["secret-add-error"]
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        XCTAssertEqual(error.value as? String, "Enter a label.", "Save on empty fields keeps the dialog up")
+
+        labelField.click()
+        app.typeText(label)
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText(value)
+        app.typeKey(.return, modifierFlags: [])
+
+        let row = app.descendants(matching: .any).matching(identifier: "palette-item-secret-\(label)").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "Save should reopen the palette listing the new secret")
+        app.typeKey(.escape, modifierFlags: [])
+        let listed = try sendCommand(#"{"cmd":"secret.list"}"#)
+        let labels = (listed["result"] as? [String: Any])?["secrets"] as? [String] ?? []
+        XCTAssertTrue(labels.contains(label), "the dialog should have stored the secret: \(labels)")
+    }
 }

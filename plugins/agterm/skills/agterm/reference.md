@@ -877,7 +877,8 @@ shell (no controlling terminal — `/dev/tty` errors). See examples.md for usage
 
 Passwords and tokens the app keeps in the login keychain and types into a terminal on demand — the
 control half of Edit ▸ Insert Secret… (⌥⌘F, keymap action `insert_secret`), which lists the labels in a
-palette and types the chosen value into the pane that had focus. No command returns a value.
+palette (plus an Add Secret… row that stores one through a dialog) and types the chosen value into the
+pane that had focus. No command returns a value.
 
 - `secret add <label>` — store a value under `label` (max 64 characters; trimmed; no control
   characters), REPLACING an existing item so re-adding rotates a password in place. The value is read

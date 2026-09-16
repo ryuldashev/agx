@@ -224,7 +224,8 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 
 - `secret.*` is the control half of Edit ▸ Insert Secret… (`insert_secret`, ⌥⌘F). Items live in the login
   keychain under `Brand.keychainService` (`KeychainSecretStore`, app target — the only keychain caller);
-  the dispatcher validates label/value host-free. The value crosses the socket ONCE, inbound on
+  the dispatcher validates label/value host-free through `SecretPolicy`, which the palette's
+  Add Secret… dialog (`SecretAddPrompt`) shares so both refuse the same input with the same words. The value crosses the socket ONCE, inbound on
   `secret.add`, and is never returned: `secret.list` is labels, `secret.insert` reuses `injectText` so
   the value goes to the pty like `session.type` text. `journal(request)` never records `args.value`.
   The CLI reads the value from stdin only (hidden tty prompt or piped text), never from argv.

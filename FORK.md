@@ -44,7 +44,8 @@ app already running at the moment the job fired.
 
 **Insert Secret** (Edit ▸ Insert Secret…, ⌥⌘F) — iTerm2's password manager, minus the window: passwords
 and tokens live in the login keychain (`uz.marshub.agx.secrets`, one generic-password item per label), the
-chord opens a palette of labels, Enter types the value into the pane that had focus. Control-native the
+chord opens a palette of labels, Enter types the value into the pane that had focus, and the last row —
+Add Secret… — stores a new one through a label + secret dialog. Control-native the
 whole way: `agtermctl secret add <label>` (value from stdin only, hidden prompt on a tty), `list`,
 `remove`, `insert <label> --target <session>` — so an agent whose pane hit a `sudo`/`ssh`/DB prompt inserts
 the stored password itself instead of asking the user to type it. No command ever returns a value.

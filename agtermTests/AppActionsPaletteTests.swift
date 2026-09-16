@@ -120,4 +120,14 @@ final class AppActionsPaletteTests: XCTestCase {
         XCTAssertTrue(viaPalette.isDisjoint(with: paletteLess), "an action must have exactly one dispatch path")
         XCTAssertEqual(viaPalette.union(paletteLess), Set(BuiltinAction.allCases))
     }
+
+    // the secrets palette always ends in the Add row, so an empty keychain still offers a way in.
+    func testSecretsPaletteEndsWithTheAddRow() throws {
+        let rows = actions.paletteSecrets()
+        let add = try XCTUnwrap(rows.last)
+        XCTAssertEqual(add.id, "secret-add")
+        XCTAssertEqual(add.title, "Add Secret…")
+        XCTAssertTrue(add.isEnabled())
+        XCTAssertTrue(rows.dropLast().allSatisfy { $0.id.hasPrefix("secret-") && $0.id != "secret-add" })
+    }
 }

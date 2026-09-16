@@ -475,7 +475,7 @@ invoke by hand.
 replaces an existing item) · `list` (labels, never values) · `remove <label>` · `insert <label> [--target S]
 [--pane left|right|scratch]` (type the stored value into a session like `session type`, no trailing
 newline, value never in the response). The control half of Edit ▸ Insert Secret… (⌥⌘F, `insert_secret`),
-which lists the same labels in a palette. Items live in the login keychain. When a pane asks for a
+which lists the same labels in a palette and adds one through its Add Secret… row. Items live in the login keychain. When a pane asks for a
 password the user stored, `secret list` then `secret insert` instead of asking them to type it.
 
 **window** — `new [name] [--minimized]` · `list` · `select <id>` · `close <id>` · `rename <id> <name>` ·
