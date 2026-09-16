@@ -12,25 +12,39 @@ enum SecretAddPrompt {
         let error: NSTextField
     }
 
-    /// Run the dialog until Save stores a valid secret or Cancel. Returns the stored label, nil on cancel.
-    /// A rejected entry keeps the dialog up with the reason under the fields, so a typo costs one retry.
-    static func present(store: (String, String) throws -> Void) -> String? {
-        let built = makeAlert()
-        while built.alert.runModal() == .alertFirstButtonReturn {
+    static let fieldWidth: CGFloat = 220
+
+    /// Run the dialog as a sheet on `window` — app-modal would open on another Space when the terminal is
+    /// fullscreen — until Save stores a valid secret or Cancel; `completion` gets the stored label or nil.
+    /// A rejected entry re-presents the same sheet with the reason under the fields, values kept.
+    static func present(in window: NSWindow?, store: @escaping (String, String) throws -> Void,
+                        completion: @escaping (String?) -> Void) {
+        run(makeAlert(), in: window, store: store, completion: completion)
+    }
+
+    private static func run(_ built: Built, in window: NSWindow?, store: @escaping (String, String) throws -> Void,
+                            completion: @escaping (String?) -> Void) {
+        let handle: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .alertFirstButtonReturn else { return completion(nil) }
             let label = built.label.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             let value = built.value.stringValue
             if let problem = problem(label: label, value: value) {
                 built.error.stringValue = problem
-                continue
+            } else {
+                do {
+                    try store(label, value)
+                    return completion(label)
+                } catch {
+                    built.error.stringValue = "keychain: \(error)"
+                }
             }
-            do {
-                try store(label, value)
-                return label
-            } catch {
-                built.error.stringValue = "keychain: \(error)"
-            }
+            DispatchQueue.main.async { run(built, in: window, store: store, completion: completion) }
         }
-        return nil
+        if let window {
+            built.alert.beginSheetModal(for: window, completionHandler: handle)
+        } else {
+            handle(built.alert.runModal())
+        }
     }
 
     static func problem(label: String, value: String) -> String? {
@@ -40,12 +54,13 @@ enum SecretAddPrompt {
         return SecretPolicy.valueError(value)
     }
 
-    /// The alert and its fields, split out so a hosted test can check them without running a modal.
+    /// The alert and its fields, split out so a hosted test can check them without running a modal. The
+    /// fields carry a width constraint because the stack otherwise shrinks them to their placeholder.
     static func makeAlert() -> Built {
-        let label = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        let label = NSTextField(string: "")
         label.placeholderString = "Label, e.g. db-root"
         label.setAccessibilityIdentifier("secret-add-label")
-        let value = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        let value = NSSecureTextField(string: "")
         value.placeholderString = "Secret"
         value.setAccessibilityIdentifier("secret-add-value")
         label.nextKeyView = value
@@ -53,14 +68,17 @@ enum SecretAddPrompt {
         let error = NSTextField(wrappingLabelWithString: "")
         error.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         error.textColor = .systemRed
-        error.preferredMaxLayoutWidth = 260
+        error.preferredMaxLayoutWidth = fieldWidth
         error.setAccessibilityIdentifier("secret-add-error")
+        for field in [label, value, error] {
+            field.widthAnchor.constraint(equalToConstant: fieldWidth).isActive = true
+        }
 
         let stack = NSStackView(views: [label, value, error])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 6
-        stack.frame = NSRect(x: 0, y: 0, width: 260, height: 24 + 6 + 24 + 6 + 32)
+        stack.frame = NSRect(origin: .zero, size: stack.fittingSize)
         let container = NSView(frame: stack.frame)
         container.addSubview(stack)
 

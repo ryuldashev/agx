@@ -14,6 +14,13 @@ final class SecretAddPromptTests: XCTestCase {
         XCTAssertEqual(built.alert.buttons.map(\.title), ["Save", "Cancel"])
     }
 
+    // the stack shrank the fields to their placeholder's width and truncated it until they were pinned
+    func testFieldsKeepTheirWidthInsideTheStack() {
+        let built = SecretAddPrompt.makeAlert()
+        XCTAssertEqual(built.label.frame.width, SecretAddPrompt.fieldWidth, accuracy: 0.5)
+        XCTAssertEqual(built.value.frame.width, SecretAddPrompt.fieldWidth, accuracy: 0.5)
+    }
+
     func testProblemsFollowSecretPolicy() {
         XCTAssertEqual(SecretAddPrompt.problem(label: "", value: "x"), "Enter a label.")
         XCTAssertEqual(SecretAddPrompt.problem(label: "root", value: ""), "Enter the secret.")

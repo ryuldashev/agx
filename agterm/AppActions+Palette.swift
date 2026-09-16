@@ -323,13 +323,18 @@ extension AppActions {
         return rows + [add]
     }
 
-    /// Runs the prompt on the next tick, once the palette has closed under it, and reopens the palette on
-    /// Save so the new secret can be inserted at once — into the surface still pinned from the first open.
+    /// Runs the prompt on the next tick, once the palette has closed under it, as a sheet on the pinned
+    /// surface's window, and reopens the palette on Save so the new secret can be inserted at once — into
+    /// that same surface.
     private func addSecretFromPalette() {
         DispatchQueue.main.async { [weak self] in
-            guard let self, let label = SecretAddPrompt.present(store: { try KeychainSecretStore.set($1, label: $0) }) else { return }
-            ActionJournal.shared.log("action", ["source": "palette", "action": "secret_add", "label": label])
-            self.palette?.open(.secrets)
+            guard let self else { return }
+            let window = self.secretTargetSurface?.window ?? NSApp.keyWindow
+            SecretAddPrompt.present(in: window, store: { try KeychainSecretStore.set($1, label: $0) }, completion: { [weak self] label in
+                guard let self, let label else { return }
+                ActionJournal.shared.log("action", ["source": "palette", "action": "secret_add", "label": label])
+                self.palette?.open(.secrets)
+            })
         }
     }
 
