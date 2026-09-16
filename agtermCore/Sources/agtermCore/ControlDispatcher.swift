@@ -141,6 +141,11 @@ public protocol ControlActions {
     func scheduleList() -> ControlResponse
     func scheduleCancel(_ target: String) -> ControlResponse
     func scheduleRun(_ target: String) -> ControlResponse
+    func secretList() -> ControlResponse
+    func secretAdd(label: String, value: String) -> ControlResponse
+    func secretRemove(label: String) -> ControlResponse
+    /// Type the secret stored under `label` into the target session, as `session.type` would type text.
+    func secretInsert(label: String, target: String?, window: String?, pane: String?) async -> ControlResponse
 }
 
 public extension ControlActions {
@@ -205,6 +210,8 @@ public struct ControlDispatcher {
             return dispatchAutoAnswerCommand(request)
         case .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun:
             return dispatchScheduleCommand(request)
+        case .secretList, .secretAdd, .secretRemove, .secretInsert:
+            return await dispatchSecretCommand(request)
         }
     }
 

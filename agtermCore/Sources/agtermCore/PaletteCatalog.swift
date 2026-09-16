@@ -87,7 +87,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
     case toggleSplit, toggleHorizontalSplit, closeSplit, toggleScratch, toggleTerminalZoom
     case toggleSidebar, toggleFlag, focusWorkspace
     case find, quickTerminal, dashboard, toggleFullscreen
-    case increaseFontSize, decreaseFontSize, resetFontSize, selectTheme
+    case increaseFontSize, decreaseFontSize, resetFontSize, selectTheme, insertSecret
     case editKeymap, reloadKeymap, editGhosttyConfig, reloadConfig
     case deleteWorkspace, toggleFlaggedView, clearFlagged, clearFocus
     case addWorkspaceToFocus, toggleWorkspaceFilter
@@ -103,7 +103,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .toggleSplit,
              .toggleHorizontalSplit, .toggleScratch,
              .find, .previousSession, .nextSession, .previousAttentionSession, .nextAttentionSession,
-             .firstSession, .lastSession:
+             .firstSession, .lastSession, .insertSecret:
             return context.hasActiveSession
         case .renameWorkspace, .focusWorkspace, .addWorkspaceToFocus, .toggleWorkspaceCollapse:
             return context.hasCurrentWorkspace
@@ -213,6 +213,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .decreaseFontSize: return "Decrease Font Size"
         case .resetFontSize: return "Actual Font Size"
         case .selectTheme: return "Select Theme…"
+        case .insertSecret: return "Insert Secret…"
         case .editKeymap: return "Edit Keymap"
         case .reloadKeymap: return "Reload Keymap"
         case .editGhosttyConfig: return "Edit ghostty.conf"
@@ -268,6 +269,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .decreaseFontSize: return .decreaseFontSize
         case .resetFontSize: return .resetFontSize
         case .selectTheme: return .selectTheme
+        case .insertSecret: return .insertSecret
         case .deleteWorkspace: return .deleteWorkspace
         case .toggleFlaggedView: return .toggleFlaggedView
         case .toggleWorkspaceFilter: return .toggleWorkspaceFilter

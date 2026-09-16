@@ -77,6 +77,7 @@ final class AppActions {
     /// wrote. `themePreviewActive` gates preview/commit/cancel so the hooks are inert outside the picker.
     var themePreviewActive = false
     var themePreviewOriginal: (theme: String?, dark: String?)?
+    weak var secretTargetSurface: GhosttySurfaceView?
 
     /// The `.agtermAutoFollowed` observer token, installed once in `init` so an idle auto-follow in the key
     /// window moves first responder into the newly selected session.
@@ -990,11 +991,4 @@ final class AppActions {
     /// opposite-target ping-pong flicker — last-focus-wins per window. Keyed by window (one NSWindow = one
     /// first responder) so one window's focus op never cancels another's still-materializing retry.
     var focusGeneration: [UUID: Int] = [:]
-
-    /// The focused terminal: the key window's first responder if a surface (main, split or quick terminal),
-    /// else the active session's focused pane.
-    private func focusedSurface() -> GhosttySurfaceView? {
-        if let view = NSApp.keyWindow?.firstResponder as? GhosttySurfaceView { return view }
-        return store?.activeSession?.activeSurface as? GhosttySurfaceView
-    }
 }

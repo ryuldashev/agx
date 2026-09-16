@@ -101,6 +101,7 @@ extension AppActions {
         case .decreaseFontSize: decreaseFontSize()
         case .resetFontSize: resetFontSize()
         case .selectTheme: openThemePalette()
+        case .insertSecret: openSecretPalette()
         case .editKeymap: editKeymap()
         case .reloadKeymap: reloadKeymap()
         case .editGhosttyConfig: editGhosttyConfig()
@@ -289,6 +290,43 @@ extension AppActions {
                   !self.pickActive(for: self.library.activeWindowID) else { return }
             self.palette?.open(.attention)
         }
+    }
+
+    // MARK: - Secrets
+
+    /// Open the `.secrets` palette on the next runloop tick (the `openThemePalette` idiom). The surface to
+    /// type into is pinned NOW, while the terminal still holds first responder: once the palette's field
+    /// takes focus, `focusedSurface()` can no longer tell a scratch or split from the main pane.
+    func openSecretPalette() {
+        guard !terminalZoomActive, !pickActive(for: library.activeWindowID) else { return }
+        secretTargetSurface = focusedSurface()
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.terminalZoomActive,
+                  !self.pickActive(for: self.library.activeWindowID) else { return }
+            self.palette?.open(.secrets)
+        }
+    }
+
+    /// One row per stored label; choosing one types its value into the surface pinned at open. The value is
+    /// read from the keychain only at that moment. With nothing stored the single inert row says how to add one.
+    func paletteSecrets() -> [PaletteItem] {
+        let labels = (try? KeychainSecretStore.labels()) ?? []
+        guard !labels.isEmpty else {
+            return [PaletteItem(id: "secret-none", title: "No secrets yet",
+                                subtitle: "agtermctl secret add <label>", isEnabled: { false }, run: {})]
+        }
+        return labels.map { label in
+            PaletteItem(id: "secret-\(label)", title: label) { [weak self] in
+                self?.insertSecret(label)
+            }
+        }
+    }
+
+    private func insertSecret(_ label: String) {
+        guard let value = try? KeychainSecretStore.value(label: label),
+              let surface = secretTargetSurface ?? focusedSurface() else { return }
+        ActionJournal.shared.log("action", ["source": "palette", "action": "insert_secret", "label": label])
+        _ = surface.inject(text: value)
     }
 
     // MARK: - Theme picker

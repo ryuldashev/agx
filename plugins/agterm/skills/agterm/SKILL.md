@@ -25,6 +25,7 @@ when_to_use: >
   session.hud, hud panel, show a message over a session, session.reader, reader panel, show a markdown file beside a session, render markdown in the terminal, schedule.add, schedule.list, schedule.cancel,
   schedule.run, scheduled session, run this later, remind me tomorrow, continue at 09:00,
   session.failure, agent failover, out of usage credits, switch model and continue, hand the task to another agent,
+  secret.add, secret.list, secret.remove, secret.insert, insert secret, keychain password, type a password into a session,
   workspace.new, workspace.select, workspace.go, workspace.move, workspace.focus, workspace.filter, window.new, window.list,
   window.select, window.resize, window.move, window.zoom, window.fullscreen, window.minimize, quick terminal, sidebar, sidebar.mode, sidebar.expand, sidebar.collapse, flagged, notify, font.inc, keymap.reload, keymap.list, config.reload,
   theme.set, theme.list, events, events.read, event subscription, select theme, edit keymap, show an image, display an image inline, show-image,
@@ -469,6 +470,13 @@ prints the NEW session id). Read the queue back from the tree's top-level `sched
 session's id. A job overdue by more than 24h when the app checks is never fired stale — it parks as
 `missed` instead. Control-native like `session hud`: no menu item or chord, nothing for a human to
 invoke by hand.
+
+**secret** — `add <label>` (value from stdin only: hidden tty prompt or piped text, never argv;
+replaces an existing item) · `list` (labels, never values) · `remove <label>` · `insert <label> [--target S]
+[--pane left|right|scratch]` (type the stored value into a session like `session type`, no trailing
+newline, value never in the response). The control half of Edit ▸ Insert Secret… (⌥⌘F, `insert_secret`),
+which lists the same labels in a palette. Items live in the login keychain. When a pane asks for a
+password the user stored, `secret list` then `secret insert` instead of asking them to type it.
 
 **window** — `new [name] [--minimized]` · `list` · `select <id>` · `close <id>` · `rename <id> <name>` ·
 `delete <id>` · `resize <id> --width W --height H` · `move <id> --x X --y Y [--display N]` ·

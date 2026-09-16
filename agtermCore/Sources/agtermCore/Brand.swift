@@ -21,6 +21,9 @@ public enum Brand {
     public static let configDirectoryName = "agx"
     /// The control socket's filename inside the state directory.
     public static let socketFileName = "agx.sock"
+    /// `kSecAttrService` of the secrets the Insert Secret palette types (`secret.*`). One item per label in the
+    /// login keychain, so Keychain Access lists them under this name and a fork's items never collide.
+    public static let keychainService = "uz.marshub.agx.secrets"
     /// Upstream agterm's config directory, seeded ON FIRST RUN when this fork has none of its own — a
     /// fork of a tool you already use should start with the keymap you already wrote.
     public static let legacyConfigDirectoryName = "agterm"

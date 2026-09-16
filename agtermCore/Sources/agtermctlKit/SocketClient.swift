@@ -209,6 +209,9 @@ struct SocketClient {
         if let autoAnswer = response.result?.autoAnswer {
             return formatAutoAnswer(autoAnswer)
         }
+        if let secrets = response.result?.secrets {
+            return secrets.isEmpty ? "no secrets" : secrets.joined(separator: "\n")
+        }
         if let text = response.result?.text {
             return text
         }

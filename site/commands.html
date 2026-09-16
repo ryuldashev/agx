@@ -195,6 +195,7 @@
             <a href="#failure" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session failure</a>
             <a href="#autoanswer" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session autoanswer</a>
             <a href="#schedule" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">schedule</a>
+            <a href="#secret" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">secret</a>
             <a href="#window" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">window</a>
             <a href="#surface" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">surface zoom</a>
             <a href="#dashboard" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">dashboard</a>
@@ -2088,6 +2089,70 @@
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">schedule.missed</span> announce lifecycle changes;
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">schedule.fired</span> carries the new session's id
                 under <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session</span>, the others the job's own id.
+              </p>
+            </div>
+          </section>
+
+          <!-- SECRET -->
+          <section id="secret" style="scroll-margin-top: 88px; padding-top: 56px">
+            <h2
+              style="
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+                font-weight: 700;
+                font-size: 28px;
+                letter-spacing: -0.02em;
+                margin: 0 0 16px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              "
+            >
+              secret
+            </h2>
+            <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0 0 16px">
+              Passwords and tokens kept in the login keychain and typed into a terminal on demand — the iTerm2
+              password-manager idea. Edit ▸ Insert Secret… (⌥⌘F, rebindable as
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace">insert_secret</span>) lists the labels in a palette; Enter types the chosen value into the pane that
+              had focus. No command ever returns a value: <span style="font-family: &quot;JetBrains Mono&quot;, monospace">secret.list</span> answers labels alone, and
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace">secret.insert</span> types the value straight to the pty.
+            </p>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                printf '%s' &lt;value&gt; | agtermctl secret add &lt;label&gt;
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">secret.add</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Store a value under a label (max 64 characters), replacing an existing one so re-adding rotates a password in place. The value is read from stdin — a hidden prompt on a terminal, the piped text minus one trailing newline otherwise — so it never appears in <span style="font-family: &quot;JetBrains Mono&quot;, monospace">ps</span> or shell history. Control characters, including newlines, are refused. <strong style="color: #bfbab0">Returns</strong> <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span> = the label.
+              </p>
+            </div>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl secret list
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">secret.list</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                The stored labels, sorted case-insensitively, as <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.secrets</span>; one per line in the CLI, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no secrets</span> when empty.
+              </p>
+            </div>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl secret remove &lt;label&gt;
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">secret.remove</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Delete the keychain item. <strong style="color: #bfbab0">Returns</strong> <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span> and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.affected: 1</span>. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no such secret: &lt;label&gt;</span>.
+              </p>
+            </div>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl secret insert &lt;label&gt; [--target S] [--pane left|right|scratch] [--window W]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">secret.insert</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Type the stored value into a session, exactly as <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session type</span> would type text (same realize poll, same pane addressing, no trailing newline — follow with <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session type</span> to submit). <strong style="color: #bfbab0">Returns</strong> <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span>; the value is never in the response. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no such secret: &lt;label&gt;</span> and the <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session type</span> errors.
               </p>
             </div>
           </section>
