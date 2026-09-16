@@ -57,13 +57,21 @@ public enum AutoAnswerAgent: String, Sendable, CaseIterable {
     case codex
 
     /// Claude Code's permission dialog is a list with "Yes" highlighted, so Return picks it; Codex's approval
-    /// overlay binds `y` to approve. The Return is a single key event, not a typed burst, so the paste
-    /// detection that swallowed the failover prompt's Return (2026-09-11) does not apply.
-    public var affirmativeKeys: String {
+    /// overlay binds `y` to approve, but its MCP tool-approval form is a list again ("1. Allow" highlighted),
+    /// where `y` is ignored and Return submits. The Return is a single key event, not a typed burst, so the
+    /// paste detection that swallowed the failover prompt's Return (2026-09-11) does not apply.
+    public func affirmativeKeys(for lower: String) -> String {
         switch self {
         case .claude: return "\n"
-        case .codex: return "y"
+        case .codex: return isMCPToolApproval(lower) ? "\n" : "y"
         }
+    }
+
+    /// Codex's MCP tool-approval form: "Allow the <server> MCP server to run tool "<name>"?" over a
+    /// 1. Allow / 2. Allow for this session / 3. Always allow / 4. Cancel list, footer "enter to submit".
+    /// That footer is also the question-to-the-user form's, so this shape is recognized before the veto.
+    private func isMCPToolApproval(_ lower: String) -> Bool {
+        self == .codex && lower.contains("mcp server to run tool") && lower.contains("1. allow")
     }
 
     /// Lower-cased fragments of the question a permission dialog carries. Claude Code phrases every tool
@@ -95,6 +103,7 @@ public enum AutoAnswerAgent: String, Sendable, CaseIterable {
 
     /// Why `lower` (the lower-cased screen) is not a permission prompt the app may answer; nil when it is.
     public func holdReason(for lower: String) -> String? {
+        if isMCPToolApproval(lower) { return nil }
         if questionForUserMarkers.contains(where: { lower.contains($0) }) { return "question for the user" }
         guard questionMarkers.contains(where: { lower.contains($0) }), yesMarkers.contains(where: { lower.contains($0) }) else {
             return "no prompt visible"
@@ -114,13 +123,14 @@ public enum AutoAnswerAgent: String, Sendable, CaseIterable {
     public func dialogRegion(of screen: String) -> String {
         let lines = screen.split(separator: "\n", omittingEmptySubsequences: false)
         let lower = lines.map { $0.lowercased() }
-        guard let marker = lower.lastIndex(where: { line in questionMarkers.contains { line.contains($0) } }) else {
+        let markers = questionMarkers + (self == .codex ? ["mcp server to run tool"] : [])
+        guard let marker = lower.lastIndex(where: { line in markers.contains { line.contains($0) } }) else {
             return screen
         }
         let opens: (String) -> Bool
         switch self {
         case .codex:
-            opens = { $0.contains("would you like to run") || $0.contains("allow command?") }
+            opens = { $0.contains("would you like to run") || $0.contains("allow command?") || $0.contains("mcp server to run tool") }
         case .claude:
             opens = { line in
                 let rule = line.trimmingCharacters(in: .whitespaces)
@@ -168,7 +178,7 @@ public enum AutoAnswerPolicy {
         if let hit = DestructiveCommand.match(in: agent.dialogRegion(of: screen)) {
             return .hold(reason: "destructive: \(hit.name)")
         }
-        return .answer(keys: agent.affirmativeKeys)
+        return .answer(keys: agent.affirmativeKeys(for: screen.lowercased()))
     }
 }
 

@@ -994,11 +994,11 @@ struct CommandsTests {
         // --background-color maps to ControlArgs.color, as the overlay group does.
         let expected = ControlRequest(cmd: .sessionHudOpen, target: "9f3c",
                                       args: ControlArgs(sizePercent: 40, message: "building index",
-                                                        detail: "3 of 12 repos", spinner: "bar", window: "w1",
-                                                        color: "#2a1a3a", position: "top"))
+                                                        detail: "3 of 12 repos", spinner: "bar", reveal: "a1b2",
+                                                        window: "w1", color: "#2a1a3a", position: "top"))
         #expect(try request(["session", "hud", "building index", "--detail", "3 of 12 repos", "--spinner",
                              "--position", "top", "--background-color", "#2a1a3a", "--size-percent", "40",
-                             "--target", "9f3c", "--window", "w1"]) == expected)
+                             "--reveal", "a1b2", "--target", "9f3c", "--window", "w1"]) == expected)
     }
 
     // the bare flag resolves to the default style client-side, so the socket only ever carries a name
@@ -1047,6 +1047,12 @@ struct CommandsTests {
         let sent = try request(["session", "hud", "update", "still working",
                                 "--spinner-style", "dot"]).args?.spinner
         #expect(sent == "dot")
+    }
+
+    @Test func sessionHudUpdateCarriesReveal() throws {
+        let sent = try request(["session", "hud", "update", "new", "--reveal", "active"]).args?.reveal
+        #expect(sent == "active")
+        #expect(try request(["session", "hud", "update", "new"]).args?.reveal == nil)
     }
 
     @Test func sessionHudOpenVerbPostsAMessageNamedLikeASubcommand() throws {

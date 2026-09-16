@@ -218,7 +218,8 @@ extension WindowContentView {
             ZStack {
                 if let spec = session.hudSpec, session.hudActive {
                     HudNoticeView(spec: spec, foreground: chromeText,
-                                  background: GhosttyApp.shared.terminalBackgroundColor)
+                                  background: GhosttyApp.shared.terminalBackgroundColor,
+                                  onTap: spec.reveal == nil ? nil : { actions.revealHudTarget(of: session.id) })
                         .frame(maxWidth: geo.size.width * style.sizeFraction)
                         .padding(HudNoticeView.inset(paneHeight: geo.size.height))
                         .frame(width: geo.size.width, height: geo.size.height, alignment: style.position.alignment)
@@ -263,8 +264,10 @@ extension WindowContentView {
             .animation(.default, value: session.hudActive)
         }
         // with no overlay up this is an empty full-frame GeometryReader; keep it inert so it never
-        // intercepts clicks meant for the pane(s).
-        .allowsHitTesting(live && session.overlayActive && deckHostsSurface(session: session, surface: .overlay))
+        // intercepts clicks meant for the pane(s). A `--reveal` HUD is the one passive panel that takes a
+        // click, and only on its plate: nothing else in the frame carries a content shape.
+        .allowsHitTesting((live && session.overlayActive && deckHostsSurface(session: session, surface: .overlay))
+                          || (isActive && session.hudActive && session.hudSpec?.reveal != nil))
     }
 
     /// How a notice arrives and leaves: a fade with a short drift in from its anchored edge and a hair of

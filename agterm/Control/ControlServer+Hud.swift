@@ -7,26 +7,46 @@ import agtermCore
 /// `ControlDispatcher+Hud`; this layer supplies the two things agtermCore cannot resolve — the terminal
 /// font's cell size and the pane's live geometry — which size the panel's width budget and the read-back.
 extension ControlServer {
-    func openHud(_ target: String?, window: String?, spec: HudSpec) -> ControlResponse {
+    func openHud(_ target: String?, window: String?, spec: HudSpec, reveal: String? = nil) -> ControlResponse {
         resolver.resolveSession(target, window: window) { store, id in
             guard let session = store.session(withID: id) else {
                 return ControlResponse(ok: false, error: "no such session")
             }
-            guard store.openHud(id, spec: spec, size: HudLayout.panelSize(for: spec, pane: self.paneMetrics(for: session))) else {
-                return ControlResponse(ok: false, error: "overlay already open")
+            switch self.resolveReveal(reveal, into: spec) {
+            case .failure(let response): return response
+            case .success(let spec):
+                guard store.openHud(id, spec: spec, size: HudLayout.panelSize(for: spec, pane: self.paneMetrics(for: session))) else {
+                    return ControlResponse(ok: false, error: "overlay already open")
+                }
+                return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
             }
-            return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
         }
     }
 
     /// Rewrites the live HUD's message and re-sizes the panel in place.
-    func updateHud(_ target: String?, window: String?, spec: HudSpec) -> ControlResponse {
+    func updateHud(_ target: String?, window: String?, spec: HudSpec, reveal: String? = nil) -> ControlResponse {
         resolver.resolveSession(target, window: window) { store, id in
             guard let session = store.session(withID: id), session.hudActive else {
                 return ControlResponse(ok: false, error: OverlayHudError.noHud)
             }
-            store.updateHud(id, spec: spec, size: HudLayout.panelSize(for: spec, pane: self.paneMetrics(for: session)))
-            return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
+            switch self.resolveReveal(reveal, into: spec) {
+            case .failure(let response): return response
+            case .success(let spec):
+                store.updateHud(id, spec: spec, size: HudLayout.panelSize(for: spec, pane: self.paneMetrics(for: session)))
+                return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
+            }
+        }
+    }
+
+    /// `--reveal` resolved like any session target, across every open window — the panel is usually about
+    /// a session in ANOTHER workspace — and written into the spec as the full id the read-back reports.
+    private func resolveReveal(_ reveal: String?, into spec: HudSpec) -> ControlTargetResolver.Resolution<HudSpec> {
+        guard let reveal else { return .success(spec) }
+        switch resolver.resolveSessionTarget(reveal, window: nil) {
+        case .failure(let response):
+            return .failure(ControlResponse(ok: false, error: "--reveal: \(response.error ?? "no such session")"))
+        case .success(let (_, id)):
+            return .success(spec.withReveal(id))
         }
     }
 

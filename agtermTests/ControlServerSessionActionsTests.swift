@@ -349,6 +349,45 @@ final class ControlServerSessionActionsTests: XCTestCase {
         XCTAssertEqual(session.overlaySizePercent, 40)
     }
 
+    // --reveal is resolved like a target, so a prefix lands as the full id the read-back reports, and an
+    // unknown one fails before the slot is touched.
+    func testHudRevealResolvesToTheFullSessionIdOrRefuses() throws {
+        let (store, session) = try makeHudSession()
+        let owner = try XCTUnwrap(store.currentWorkspaceID)
+        let other = try XCTUnwrap(store.addSession(toWorkspace: owner, cwd: NSHomeDirectory()))
+        let prefix = String(other.id.uuidString.prefix(8))
+
+        let response = server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "new"), reveal: prefix)
+
+        XCTAssertTrue(response.ok, response.error ?? "")
+        XCTAssertEqual(session.hudSpec?.reveal, other.id)
+        let node = store.controlTree().workspaces.flatMap(\.sessions).first { $0.id == session.id.uuidString }
+        XCTAssertEqual(node?.hud?.reveal, other.id.uuidString)
+
+        let missing = server.updateHud(session.id.uuidString, window: nil, spec: HudSpec(message: "new"),
+                                       reveal: "00000000-0000-0000-0000-000000000000")
+        XCTAssertFalse(missing.ok)
+        XCTAssertTrue(missing.error?.hasPrefix("--reveal: ") == true, missing.error ?? "")
+        XCTAssertEqual(session.hudSpec?.reveal, other.id, "a refused update leaves the live panel as it was")
+
+        XCTAssertTrue(server.updateHud(session.id.uuidString, window: nil, spec: HudSpec(message: "new")).ok)
+        XCTAssertNil(session.hudSpec?.reveal, "an update replaces the whole spec, --reveal included")
+    }
+
+    func testHudRevealClickClosesThePanelAndSelectsTheTarget() throws {
+        let (store, session) = try makeHudSession()
+        let owner = try XCTUnwrap(store.currentWorkspaceID)
+        let other = try XCTUnwrap(store.addSession(toWorkspace: owner, cwd: NSHomeDirectory()))
+        store.selectSession(session.id)
+        XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "new"),
+                                     reveal: other.id.uuidString).ok)
+
+        AppActions(library: library).revealHudTarget(of: session.id)
+
+        XCTAssertFalse(session.hudActive)
+        XCTAssertEqual(store.selectedSessionID, other.id)
+    }
+
     func testHudCloseClearsTheSlot() throws {
         let (_, session) = try makeHudSession()
         XCTAssertTrue(server.openHud(session.id.uuidString, window: nil, spec: HudSpec(message: "working")).ok)

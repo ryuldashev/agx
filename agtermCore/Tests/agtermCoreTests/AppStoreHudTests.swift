@@ -8,9 +8,10 @@ struct AppStoreHudTests {
         let store = makeStore()
         let ws = store.addWorkspace(name: "work")
         let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
+        let target = UUID()
         let spec = HudSpec(message: "gathering options", detail: "scanning 400 files", spinner: .braille,
                            backgroundColor: "#2a1a3a", textColor: "#e0e0e0", sizePercent: 35,
-                           position: .topCenter)
+                           position: .topCenter, reveal: target)
         store.openHud(session.id, spec: spec, size: HudPanelSize(widthPercent: 35, heightPercent: 12))
 
         let node = try #require(store.controlTree().workspaces[0].sessions.first)
@@ -18,7 +19,21 @@ struct AppStoreHudTests {
         #expect(node.hud == ControlHudNode(message: "gathering options", detail: "scanning 400 files",
                                            spinner: "braille", backgroundColor: "#2a1a3a",
                                            textColor: "#e0e0e0", sizePercent: 35,
-                                           heightPercent: 12, position: "top-center"))
+                                           heightPercent: 12, position: "top-center",
+                                           reveal: target.uuidString))
+    }
+
+    @Test func theReadBackOmitsRevealForAnInertPanel() throws {
+        let store = makeStore()
+        let ws = store.addWorkspace(name: "work")
+        let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
+        store.openHud(session.id, spec: HudSpec(message: "working"), size: HudPanelSize(widthPercent: 22, heightPercent: 9))
+
+        let node = try #require(store.controlTree().workspaces[0].sessions.first)
+        let json = String(decoding: try JSONEncoder().encode(node), as: UTF8.self)
+
+        #expect(node.hud?.reveal == nil)
+        #expect(!json.contains("reveal"))
     }
 
     /// A caller who sent an alias reads the canonical anchor back, which is what makes it an alias rather

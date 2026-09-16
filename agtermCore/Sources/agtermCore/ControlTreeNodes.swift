@@ -54,10 +54,13 @@ public struct ControlHudNode: Codable, Sendable, Equatable {
     /// the accepted `top`/`bottom` aliases, so a caller reads one spelling whichever he sent. Always present,
     /// including the `center` default, so a caller who omitted it never has to know what the default is.
     public let position: String
+    /// The FULL id of the session a click on the panel selects, whatever prefix the caller passed to
+    /// `--reveal`; nil/omitted for an inert panel.
+    public let reveal: String?
 
     public init(message: String, detail: String? = nil, spinner: String = HudSpinner.noneName,
                 backgroundColor: String? = nil, textColor: String? = nil,
-                sizePercent: Int? = nil, heightPercent: Int? = nil, position: String) {
+                sizePercent: Int? = nil, heightPercent: Int? = nil, position: String, reveal: String? = nil) {
         self.message = message
         self.detail = detail
         self.spinner = spinner
@@ -66,6 +69,7 @@ public struct ControlHudNode: Codable, Sendable, Equatable {
         self.sizePercent = sizePercent
         self.heightPercent = heightPercent
         self.position = position
+        self.reveal = reveal
     }
 }
 

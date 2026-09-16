@@ -124,6 +124,28 @@ struct AutoAnswerPolicyTests {
         #expect(AutoAnswerPolicy.decide(screen: codexInput, agent: .codex) == .hold(reason: "question for the user"))
     }
 
+    private let codexMCPApproval = """
+        • Calling codebase-memory-mcp.search_graph({"file_pattern":".*damin-robot/index.html","limit":80})
+
+          Field 1/1 (1 required unanswered)
+          Allow the codebase-memory-mcp MCP server to run tool "search_graph"?
+
+          file_pattern: .*damin-robot/index.html
+          limit: 80
+
+          › 1. Allow                   Run the tool and continue.
+            2. Allow for this session  Run the tool and remember this choice for this session.
+            3. Always allow            Run the tool and remember this choice for future tool calls.
+            4. Cancel                  Cancel this tool call
+          enter to submit | esc to cancel
+        """
+
+    @Test func codexMCPToolApprovalGetsReturnNotY() {
+        #expect(AutoAnswerPolicy.decide(screen: codexMCPApproval, agent: .codex) == .answer(keys: "\n"))
+        let destructive = codexMCPApproval.replacingOccurrences(of: "limit: 80", with: "command: rm -rf build")
+        #expect(AutoAnswerPolicy.decide(screen: destructive, agent: .codex) == .hold(reason: "destructive: rm -rf"))
+    }
+
     @Test func nothingToAnswerHolds() {
         #expect(AutoAnswerPolicy.decide(screen: "> \n", agent: .claude) == .hold(reason: "no prompt visible"))
         #expect(AutoAnswerPolicy.decide(screen: "Do you want to proceed?\nEsc to cancel", agent: .claude) == .hold(reason: "no prompt visible"))

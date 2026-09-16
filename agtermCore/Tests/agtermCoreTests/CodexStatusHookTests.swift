@@ -159,6 +159,12 @@ struct CodexStatusHookTests {
         #expect(result.statusCalls == ["blocked"])
     }
 
+    @Test func watcherReportsVisibleMCPToolApprovalForm() throws {
+        let screen = "Allow the codebase-memory-mcp MCP server to run tool \"search_graph\"?\n  › 1. Allow\nenter to submit | esc to cancel\n"
+        let result = try run("", screen: screen, worker: true)
+        #expect(result.statusCalls == ["blocked"])
+    }
+
     @Test func watcherReportsVisibleAllowCommandPrompt() throws {
         let result = try run("", screen: "Run the shell command below?\nAllow command?\n", worker: true)
         #expect(result.statusCalls == ["blocked"])

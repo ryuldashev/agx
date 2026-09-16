@@ -153,7 +153,9 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
   read another session       agtermctl session text --target <id|prefix> [--all] [--lines N]
   a pane asks for a PASSWORD  agtermctl secret list → agtermctl secret insert <label> --target <id>   (keychain; types it, never prints it)
   focus / bring to front     agtermctl session select --target <id> | agtermctl workspace select <id>
-  passive panel (HUD)        agtermctl session hud open "<message>" --target <id> [--detail ..] [--spinner]
+  passive panel (HUD)        agtermctl session hud open "<message>" --target <id> [--detail ..] [--spinner] [--reveal <id>]
+    ^ --reveal <session> makes the plate a link: a click closes the panel and selects that session (use it
+      for a panel ABOUT another session, e.g. one you just spawned); without it the panel is inert.
   SHOW A DOCUMENT to the user agx reader <path.md>   renders the markdown in YOUR session's right pane, live-reloading
     ^ a plan, a report, a review: write the .md, open it once, keep editing the file — the pane follows.
       Do not paste long markdown into the chat when the user should read it rendered. agx reader close gives

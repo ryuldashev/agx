@@ -96,11 +96,12 @@ public protocol ControlActions {
                                 options: ControlSessionOverlayTextOptions) -> ControlResponse
     /// Post a message panel over the session, occupying the same overlay slot a program overlay uses. The
     /// dispatcher validated the text, color, percent, and position; the host measures the terminal font,
-    /// renders the message to a file, and drives the store.
-    func openHud(_ target: String?, window: String?, spec: HudSpec) -> ControlResponse
+    /// renders the message to a file, and drives the store. `reveal` is the caller's spelling of the session
+    /// a click selects, resolved by the host into `spec.reveal` — nil leaves the panel inert.
+    func openHud(_ target: String?, window: String?, spec: HudSpec, reveal: String?) -> ControlResponse
     /// Replace a live panel's text in place — same surface, no respawn. `spec.backgroundColor` cannot change
     /// here, the surface having read it once at creation.
-    func updateHud(_ target: String?, window: String?, spec: HudSpec) -> ControlResponse
+    func updateHud(_ target: String?, window: String?, spec: HudSpec, reveal: String?) -> ControlResponse
     func closeHud(_ target: String?, window: String?) -> ControlResponse
     /// Show a markdown file in the session's split pane. The dispatcher validated the path text and the
     /// percent; the host checks the file is readable, drives the store and moves the live divider.

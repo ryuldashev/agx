@@ -9,7 +9,7 @@ extension ControlDispatcher {
             return actions.closeHud(request.target, window: request.args?.window)
         }
         // open and update validate identically — an update replaces the whole spec — so only the effect differs
-        let post: (String?, String?, HudSpec) -> ControlResponse
+        let post: (String?, String?, HudSpec, String?) -> ControlResponse
         switch request.cmd {
         case .sessionHudOpen: post = actions.openHud
         case .sessionHudUpdate: post = actions.updateHud
@@ -17,7 +17,7 @@ extension ControlDispatcher {
         }
         switch parseHudSpec(request) {
         case .rejected(let response): return response
-        case .spec(let spec): return post(request.target, request.args?.window, spec)
+        case .spec(let spec): return post(request.target, request.args?.window, spec, request.args?.reveal)
         }
     }
 
@@ -53,6 +53,11 @@ extension ControlDispatcher {
         }
         if let textColor = args?.textColor, !WatermarkConfig.isValidColorHex(textColor) {
             return .rejected(ControlResponse(ok: false, error: "invalid text color: \(textColor) (#rrggbb)"))
+        }
+        // resolving the session is the host's; only an empty spelling, which no session could match, is
+        // caught here so it is not read as "no reveal".
+        if let reveal = args?.reveal, reveal.trimmingCharacters(in: .whitespaces).isEmpty {
+            return .rejected(ControlResponse(ok: false, error: "\(request.cmd.rawValue): --reveal requires a session"))
         }
         if let percent = args?.sizePercent, !(1...100).contains(percent) {
             return .rejected(ControlResponse(ok: false,

@@ -17,6 +17,8 @@ struct HudNoticeView: View {
     let foreground: Color
     /// The terminal background the glass is mixed from; nil reads as black.
     let background: NSColor?
+    /// What a click on the plate does; nil leaves the notice inert, which is every HUD without `--reveal`.
+    var onTap: (() -> Void)?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// Clearance from the pane edge on the anchored sides. The top row sits a quarter of the pane down,
@@ -60,19 +62,22 @@ struct HudNoticeView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-        if let plate {
-            padded.background(Color(nsColor: plate), in: shape)
-        } else if #available(macOS 26, *), !reduceTransparency {
-            padded
-                .glassEffect(.regular, in: shape)
-                .colorScheme(Self.isDark(background) ? .dark : .light)
-        } else {
-            padded
-                .background(Color(nsColor: Self.glass(over: background)).opacity(reduceTransparency ? 1 : Self.glassOpacity),
-                            in: shape)
-                .overlay(shape.strokeBorder(foreground.opacity(0.14), lineWidth: 1))
-                .shadow(color: .black.opacity(0.35), radius: 16, y: 6)
+        Group {
+            if let plate {
+                padded.background(Color(nsColor: plate), in: shape)
+            } else if #available(macOS 26, *), !reduceTransparency {
+                padded
+                    .glassEffect(.regular, in: shape)
+                    .colorScheme(Self.isDark(background) ? .dark : .light)
+            } else {
+                padded
+                    .background(Color(nsColor: Self.glass(over: background)).opacity(reduceTransparency ? 1 : Self.glassOpacity),
+                                in: shape)
+                    .overlay(shape.strokeBorder(foreground.opacity(0.14), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.35), radius: 16, y: 6)
+            }
         }
+        .modifier(HudTapModifier(shape: shape, onTap: onTap))
     }
 
     /// Whether `background` reads as dark; relative luminance, nil reads as dark.
@@ -105,6 +110,28 @@ struct HudNoticeView: View {
         }
     }
 
+}
+
+/// The click a `--reveal` panel takes: the plate alone is the hit region, so the margins around it stay
+/// the session's, and the pointer says it is a link. A panel with no action is left untouched, which keeps
+/// the inert HUD's passivity contract exactly as it was.
+private struct HudTapModifier: ViewModifier {
+    let shape: RoundedRectangle
+    let onTap: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if let onTap {
+            content
+                .contentShape(shape)
+                .onTapGesture(perform: onTap)
+                .onHover { inside in
+                    if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
+                .accessibilityAddTraits(.isButton)
+        } else {
+            content
+        }
+    }
 }
 
 /// One frame of the spinner at a time, in the monospaced face so every frame takes the same width and

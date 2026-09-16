@@ -73,7 +73,9 @@ final class InsertSecretUITests: ControlAPITestCase {
         add.click()
 
         let labelField = app.textFields["secret-add-label"]
-        XCTAssertTrue(labelField.waitForExistence(timeout: 5), "the Add Secret dialog should open with the label field — sheets: \(app.sheets.count), palette: \(app.descendants(matching: .any).matching(identifier: "command-palette").firstMatch.exists), query: \(String(describing: query.value)), add row: \(add.exists)")
+        let palette = app.descendants(matching: .any).matching(identifier: "command-palette").firstMatch
+        XCTAssertTrue(labelField.waitForExistence(timeout: 5), "the Add Secret dialog should open with the label field"
+                      + " — sheets: \(app.sheets.count), palette: \(palette.exists), query: \(String(describing: query.value))")
         app.typeKey(.return, modifierFlags: [])
         let error = app.staticTexts["secret-add-error"]
         XCTAssertTrue(poll(until: error.exists && error.value as? String == "Enter a label.", timeout: 5),

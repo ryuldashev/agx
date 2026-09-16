@@ -69,8 +69,8 @@ final class MockControlActions: ControlActions {
         case overlayResult(target: String?, window: String?, pane: OverlayPane?)
         case overlayCopy(target: String?, window: String?, pane: OverlayPane?)
         case overlayText(target: String?, window: String?, ControlSessionOverlayTextOptions)
-        case hudOpen(target: String?, window: String?, HudSpec)
-        case hudUpdate(target: String?, window: String?, HudSpec)
+        case hudOpen(target: String?, window: String?, HudSpec, reveal: String?)
+        case hudUpdate(target: String?, window: String?, HudSpec, reveal: String?)
         case hudClose(target: String?, window: String?)
         case readerOpen(target: String?, window: String?, ReaderSpec)
         case readerClose(target: String?, window: String?)
@@ -499,13 +499,13 @@ final class MockControlActions: ControlActions {
         return nextOverlayTextResponse
     }
 
-    func openHud(_ target: String?, window: String?, spec: HudSpec) -> ControlResponse {
-        calls.append(.hudOpen(target: target, window: window, spec))
+    func openHud(_ target: String?, window: String?, spec: HudSpec, reveal: String?) -> ControlResponse {
+        calls.append(.hudOpen(target: target, window: window, spec, reveal: reveal))
         return nextHudOpenResponse
     }
 
-    func updateHud(_ target: String?, window: String?, spec: HudSpec) -> ControlResponse {
-        calls.append(.hudUpdate(target: target, window: window, spec))
+    func updateHud(_ target: String?, window: String?, spec: HudSpec, reveal: String?) -> ControlResponse {
+        calls.append(.hudUpdate(target: target, window: window, spec, reveal: reveal))
         return nextHudUpdateResponse
     }
 
