@@ -20,6 +20,7 @@ struct BuiltinActionTests {
         #expect(BuiltinAction.nextAttentionSession.rawValue == "next_attention_session")
         #expect(BuiltinAction.toggleSidebar.rawValue == "toggle_sidebar")
         #expect(BuiltinAction.selectTheme.rawValue == "select_theme")
+        #expect(BuiltinAction.insertSecret.rawValue == "insert_secret")
         #expect(BuiltinAction.toggleFlaggedView.rawValue == "toggle_flagged_view")
         #expect(BuiltinAction.toggleWorkspaceFilter.rawValue == "toggle_workspace_filter")
         #expect(BuiltinAction.toggleFlag.rawValue == "toggle_flag")
@@ -33,7 +34,7 @@ struct BuiltinActionTests {
         #expect(BuiltinAction.previousWorkspace.rawValue == "previous_workspace")
         #expect(BuiltinAction.nextWorkspace.rawValue == "next_workspace")
         #expect(BuiltinAction.toggleWorkspaceCollapse.rawValue == "toggle_workspace_collapse")
-        #expect(BuiltinAction.allCases.count == 46)
+        #expect(BuiltinAction.allCases.count == 47)
     }
 
     @Test func rejectsUnknownName() {
@@ -123,6 +124,7 @@ struct BuiltinActionTests {
             .customCommandPalette: Chord(mods: [.control, .shift], key: "o"),
             .showAttention: Chord(mods: [.control, .shift], key: "i"),
             .dashboard: Chord(mods: [.command, .shift], key: "g"),
+            .insertSecret: Chord(mods: [.command, .option], key: "f"),
         ]
         #expect(expected.count == BuiltinAction.allCases.count)
         for action in BuiltinAction.allCases {

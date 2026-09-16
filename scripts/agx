@@ -151,6 +151,7 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
       a prompt showing rm -rf, push --force, sudo, reset --hard, DROP … is never answered, only notified.
   message another session    agtermctl session type --target <id|prefix> --select "<text>\\n"   (\\n submits)
   read another session       agtermctl session text --target <id|prefix> [--all] [--lines N]
+  a pane asks for a PASSWORD  agtermctl secret list → agtermctl secret insert <label> --target <id>   (keychain; types it, never prints it)
   focus / bring to front     agtermctl session select --target <id> | agtermctl workspace select <id>
   passive panel (HUD)        agtermctl session hud open "<message>" --target <id> [--detail ..] [--spinner] [--reveal <id>]
     ^ --reveal <session> makes the plate a link: a click closes the panel and selects that session (use it

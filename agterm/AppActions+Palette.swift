@@ -101,6 +101,7 @@ extension AppActions {
         case .decreaseFontSize: decreaseFontSize()
         case .resetFontSize: resetFontSize()
         case .selectTheme: openThemePalette()
+        case .insertSecret: openSecretPalette()
         case .editKeymap: editKeymap()
         case .reloadKeymap: reloadKeymap()
         case .editGhosttyConfig: editGhosttyConfig()
@@ -289,6 +290,59 @@ extension AppActions {
                   !self.pickActive(for: self.library.activeWindowID) else { return }
             self.palette?.open(.attention)
         }
+    }
+
+    // MARK: - Secrets
+
+    /// Open the `.secrets` palette on the next runloop tick (the `openThemePalette` idiom). The surface to
+    /// type into is pinned NOW, while the terminal still holds first responder: once the palette's field
+    /// takes focus, `focusedSurface()` can no longer tell a scratch or split from the main pane.
+    func openSecretPalette() {
+        guard !terminalZoomActive, !pickActive(for: library.activeWindowID) else { return }
+        secretTargetSurface = focusedSurface()
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.terminalZoomActive,
+                  !self.pickActive(for: self.library.activeWindowID) else { return }
+            self.palette?.open(.secrets)
+        }
+    }
+
+    /// One row per stored label — choosing one types its value, read from the keychain only at that moment,
+    /// into the surface pinned at open — and a last Add Secret… row that opens the store prompt.
+    func paletteSecrets() -> [PaletteItem] {
+        let labels = (try? KeychainSecretStore.labels()) ?? []
+        let rows = labels.map { label in
+            PaletteItem(id: "secret-\(label)", title: label) { [weak self] in
+                self?.insertSecret(label)
+            }
+        }
+        let add = PaletteItem(id: "secret-add", title: "Add Secret…",
+                              subtitle: "Store a new one in the login keychain") { [weak self] in
+            self?.addSecretFromPalette()
+        }
+        return rows + [add]
+    }
+
+    /// Runs the prompt on the next tick, once the palette has closed under it, as a sheet on the pinned
+    /// surface's window, and reopens the palette on Save so the new secret can be inserted at once — into
+    /// that same surface.
+    private func addSecretFromPalette() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let window = self.secretTargetSurface?.window ?? NSApp.keyWindow
+            SecretAddPrompt.present(in: window, store: { try KeychainSecretStore.set($1, label: $0) }, completion: { [weak self] label in
+                guard let self, let label else { return }
+                ActionJournal.shared.log("action", ["source": "palette", "action": "secret_add", "label": label])
+                self.palette?.open(.secrets)
+            })
+        }
+    }
+
+    private func insertSecret(_ label: String) {
+        guard let value = try? KeychainSecretStore.value(label: label),
+              let surface = secretTargetSurface ?? focusedSurface() else { return }
+        ActionJournal.shared.log("action", ["source": "palette", "action": "insert_secret", "label": label])
+        _ = surface.inject(text: value)
     }
 
     // MARK: - Theme picker

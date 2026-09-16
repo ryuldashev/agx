@@ -39,6 +39,7 @@ struct PaletteCatalogTests {
             "Decrease Font Size",
             "Actual Font Size",
             "Select Theme…",
+            "Insert Secret…",
             "Edit Keymap",
             "Reload Keymap",
             "Edit ghostty.conf",
@@ -58,7 +59,7 @@ struct PaletteCatalogTests {
     }
 
     @Test func catalogHasTheExpectedStaticCommandCount() {
-        #expect(PaletteCommand.allCases.count == 50)
+        #expect(PaletteCommand.allCases.count == 51)
     }
 
     @Test func idsRoundTripThroughRawValue() {
@@ -168,7 +169,7 @@ struct PaletteCatalogTests {
         .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .toggleSplit, .toggleHorizontalSplit,
         .toggleScratch, .find,
         .previousSession, .nextSession, .previousAttentionSession, .nextAttentionSession,
-        .firstSession, .lastSession,
+        .firstSession, .lastSession, .insertSecret,
     ]
 
     @Test func everyCommandIsLiveWhenNothingIsMissingOrCovering() {

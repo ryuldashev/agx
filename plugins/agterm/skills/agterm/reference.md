@@ -882,6 +882,37 @@ shell (no controlling terminal — `/dev/tty` errors). See examples.md for usage
   here for a human to invoke by hand, so it is a deliberate exemption from the shared menu-actions seam.
   The GUI shows only the session the job eventually creates.
 
+## secret
+
+Passwords and tokens the app keeps in the login keychain and types into a terminal on demand — the
+control half of Edit ▸ Insert Secret… (⌥⌘F, keymap action `insert_secret`), which lists the labels in a
+palette (plus an Add Secret… row that stores one through a dialog) and types the chosen value into the
+pane that had focus. No command returns a value.
+
+- `secret add <label>` — store a value under `label` (max 64 characters; trimmed; no control
+  characters), REPLACING an existing item so re-adding rotates a password in place. The value is read
+  from stdin only: a hidden prompt when stdin is a terminal, otherwise the whole piped text minus one
+  trailing newline (`printf '%s' "$PW" | agtermctl secret add db-root`). Never pass it on the command
+  line — there is no flag for it, so it cannot land in `ps` or shell history. The value itself may not
+  contain control characters (a newline would submit whatever it is typed into) and is capped at 4096
+  characters. Prints `ok`; `result.id` is the label. Errors: `secret.add requires a label`,
+  `label too long (max 64 characters)`, `label must not contain control characters`,
+  `secret.add requires a value`, `value too long (max 4096 characters)`,
+  `value must not contain control characters`, `keychain: <message>`, and the CLI-local
+  `no value read from stdin`.
+- `secret list` — the stored labels, case-insensitively sorted, one per line (`no secrets` when empty);
+  `--json` gives `result.secrets`. Labels only.
+- `secret remove <label>` — delete the item. `result.id` + `result.affected: 1`; errors
+  `no such secret: <label>`.
+- `secret insert <label> [--target S] [--pane left|right|scratch] [--window W]` — type the stored value
+  into a session exactly as `session type` types text: same target/pane addressing, same realize poll,
+  same `ok` meaning "queued to the pty". No newline is appended — follow with
+  `session type $'\n'` to submit. The response carries `result.id` only; the value is never echoed.
+  Errors `no such secret: <label>`, `invalid pane: <p>`, `keychain: <message>`, and `session type`'s
+  own. Use this when a program in a pane asks for a password the user has stored (sudo, ssh, a DB
+  client) instead of asking the user to type it: `agtermctl secret list` to see what exists, then
+  `secret insert`. Never try to read a value back through `session text` on a prompt that echoes.
+
 ## window
 
 - `window new [name] [--minimized]` — create and open a window; returns its id. It replies only once
@@ -1262,7 +1293,7 @@ Built-in action names for `map` include: `new_window`, `new_workspace`, `new_ses
 `focus_workspace`, `toggle_workspace_filter`, `quick_terminal`,
 `session_palette`, `command_palette`, `custom_command_palette`, `dashboard`, and the navigation actions (`previous_session`, `next_session`,
 `first_session`, `last_session`, `previous_attention_session`, `next_attention_session`,
-`focus_left_pane`, `focus_right_pane`, `select_theme`). Editing the keymap from a terminal: open
+`focus_left_pane`, `focus_right_pane`, `select_theme`, `insert_secret`). Editing the keymap from a terminal: open
 `keymap.conf` in `$EDITOR`, then `agtermctl keymap reload`.
 
 ## config

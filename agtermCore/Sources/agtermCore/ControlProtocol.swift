@@ -92,6 +92,10 @@ public enum Command: String, Codable, Sendable {
     case scheduleList = "schedule.list"
     case scheduleCancel = "schedule.cancel"
     case scheduleRun = "schedule.run"
+    case secretList = "secret.list"
+    case secretAdd = "secret.add"
+    case secretRemove = "secret.remove"
+    case secretInsert = "secret.insert"
     /// UI-TEST-ONLY: forces the app-level appearance (`light`|`dark` via `args.name`) so an XCUITest can
     /// simulate a macOS light/dark flip; with NO name it READS the side the last config feed applied, so a
     /// test can assert the flip drove the reload. Refused outside an XCUITest launch, and EXEMPT from the
@@ -336,6 +340,12 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     public var transcript: String?
     /// `session.failure`: hand the task to another agent now, skipping the model ladder.
     public var handoff: Bool?
+    /// The keychain item a `secret.*` command names: `secret.add` stores `value` under it (replacing an
+    /// existing one), `secret.remove` deletes it, `secret.insert` types its value into the target session.
+    public var label: String?
+    /// The secret itself, for `secret.add` only. It crosses the local socket once and is never read back:
+    /// no command returns it, and `secret.list` answers labels alone.
+    public var value: String?
 
     public init(name: String? = nil, cwd: String? = nil, targets: [String]? = nil,
                 workspace: String? = nil, workspaceName: String? = nil,
@@ -360,7 +370,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
                 light: String? = nil, dark: String? = nil,
                 close: Bool? = nil, fontSize: Double? = nil, autoSize: Bool? = nil, mru: Bool? = nil,
                 agent: String? = nil, at: String? = nil, brief: String? = nil,
-                error: String? = nil, transcript: String? = nil, handoff: Bool? = nil) {
+                error: String? = nil, transcript: String? = nil, handoff: Bool? = nil,
+                label: String? = nil, value: String? = nil) {
         self.name = name
         self.cwd = cwd
         self.agent = agent
@@ -432,6 +443,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
         self.error = error
         self.transcript = transcript
         self.handoff = handoff
+        self.label = label
+        self.value = value
     }
 }
 
@@ -503,6 +516,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
     public var failover: ControlFailoverNode?
     /// The session's auto-answer state, for `session.autoanswer` (both the read and the write's echo).
     public var autoAnswer: ControlAutoAnswerNode?
+    /// The stored secret labels, sorted, for `secret.list` — never the values.
+    public var secrets: [String]?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -513,7 +528,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil,
                 scheduled: [ControlScheduledNode]? = nil,
                 closed: [ControlRecentClosedNode]? = nil, failover: ControlFailoverNode? = nil,
-                autoAnswer: ControlAutoAnswerNode? = nil) {
+                autoAnswer: ControlAutoAnswerNode? = nil, secrets: [String]? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -535,6 +550,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.closed = closed
         self.failover = failover
         self.autoAnswer = autoAnswer
+        self.secrets = secrets
     }
 }
 

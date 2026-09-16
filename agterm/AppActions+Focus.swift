@@ -252,4 +252,11 @@ extension AppActions {
         session.splitFocused = wantSplit
         focusSplitPane(session, wantSplit: wantSplit)
     }
+
+    /// The focused terminal: the key window's first responder if a surface (main, split or quick terminal),
+    /// else the active session's focused pane.
+    func focusedSurface() -> GhosttySurfaceView? {
+        if let view = NSApp.keyWindow?.firstResponder as? GhosttySurfaceView { return view }
+        return store?.activeSession?.activeSurface as? GhosttySurfaceView
+    }
 }

@@ -99,6 +99,10 @@ final class MockControlActions: ControlActions {
         case scheduleRun(target: String)
         case reportFailure(target: String?, options: ControlFailureOptions)
         case setSessionAutoAnswer(target: String?, options: ControlAutoAnswerOptions)
+        case secretList
+        case secretAdd(label: String, value: String)
+        case secretRemove(label: String)
+        case secretInsert(label: String, target: String?, window: String?, pane: String?)
     }
 
     var calls: [Call] = []
@@ -648,5 +652,27 @@ final class MockControlActions: ControlActions {
     func scheduleRun(_ target: String) -> ControlResponse {
         calls.append(.scheduleRun(target: target))
         return nextScheduleResponse
+    }
+
+    var nextSecretResponse = ControlResponse(ok: true)
+
+    func secretList() -> ControlResponse {
+        calls.append(.secretList)
+        return nextSecretResponse
+    }
+
+    func secretAdd(label: String, value: String) -> ControlResponse {
+        calls.append(.secretAdd(label: label, value: value))
+        return nextSecretResponse
+    }
+
+    func secretRemove(label: String) -> ControlResponse {
+        calls.append(.secretRemove(label: label))
+        return nextSecretResponse
+    }
+
+    func secretInsert(label: String, target: String?, window: String?, pane: String?) async -> ControlResponse {
+        calls.append(.secretInsert(label: label, target: target, window: window, pane: pane))
+        return nextSecretResponse
     }
 }

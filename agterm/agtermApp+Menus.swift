@@ -194,6 +194,14 @@ extension agtermApp {
                 // quit gracefully (persisting sessions per the restore toggle) and relaunch; keyless.
                 Button { actions.restartApp() } label: { Label("Restart App", systemImage: "arrow.clockwise.circle") }
             }
+            // Edit: the stock pasteboard items stay; below them, the keychain-backed secret picker (⌥⌘F, the
+            // iTerm2 password-manager chord), whose control half is `secret.*`.
+            CommandGroup(after: .pasteboard) {
+                let context = actions.paletteContext
+                Button { actions.openSecretPalette() } label: { Label("Insert Secret…", systemImage: "key") }
+                    .keyboardShortcut(shortcut(for: .insertSecret))
+                    .disabled(!PaletteCommand.insertSecret.isEnabled(in: context))
+            }
             // View: font zoom (on the focused terminal), the status-bar toggle, split / quick terminal /
             // palettes. Every item needs an SF Symbol: one iconless item renders as a blank, indented slot
             // beside the icon column its neighbours reserve.
