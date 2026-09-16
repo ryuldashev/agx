@@ -76,7 +76,9 @@ watch_for_blocker() {
     footer=$(printf '%s\n' "$screen" | /usr/bin/tail -n 12 | /usr/bin/tr '[:upper:]' '[:lower:]')
 
     case "$footer" in
-      *"press enter to confirm"*|*"enter to submit answer"*|*"enter to submit all"*|*"allow command?"*)
+      # "enter to submit" alone is the MCP tool-approval form ("Allow the X MCP server to run tool …?",
+      # footer "enter to submit | esc to cancel"), which the answer/all variants did not cover (2026-09-16).
+      *"press enter to confirm"*|*"enter to submit"*|*"allow command?"*)
         if [ "$prompt_was_visible" -eq 0 ]; then
           # Re-check the token right before writing: a superseding lifecycle event (stop /
           # pre-tool-use / post-tool-use) may have fired during read_visible_screen, and its
