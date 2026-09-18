@@ -140,6 +140,10 @@ C-boundary concurrency before changing the bridge.
   that is not on it and exits 127 — the session vanishes the instant it opens. `LoginShellPath` seeds the
   surface env from a login shell, and `SurfaceCommand.checked` falls back to a shell that PRINTS the reason
   rather than letting a pane die silently. Keep both: a spawn failure must always leave something on screen.
+  Never pump the main run loop inside a `static let` initializer (`Process.waitUntilExit` does): a second
+  surface mounting during the spin re-enters the same `swift_once` and libdispatch aborts the app.
+  Crash dumps land in `~/.local/state/ghostty/crash/*.ghosttycrash` (sentry envelope with a minidump),
+  not in DiagnosticReports — ghostty's handler catches the signal first.
 - Unix socket paths cap near 104 bytes. A long scratch path lets the app launch while control bind fails.
 - "What drove the UI?" is answered by the action journal, not reconstructed: `<state dir>/journal.jsonl`
   (`ActionJournal`) records every ⌘/⌃ chord the key monitor saw (chord, produced char, layout, focus,
