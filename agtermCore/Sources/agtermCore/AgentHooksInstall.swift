@@ -47,6 +47,9 @@ public enum AgentHooksInstall {
     /// The Claude Code `StopFailure` hook: reports a turn-ending API error to `session.failure`, so the app
     /// can switch the model or hand the task to another agent. A no-op outside agx.
     public static let agentFailureHookName = "agx-agent-failure.sh"
+    /// The Claude Code `PostToolUse` hook that feeds the artifact index: a Bash `open`, `agx reader` or
+    /// `SendUserFile` becomes `artifact.add`. Matcher-scoped to those two tools; a no-op outside agx.
+    public static let artifactsHookName = "agx-artifacts.sh"
 
     /// The Claude Code hook events the merge installs: the script each runs (relative to the script directory)
     /// plus its arguments. The four status hooks share the wrapper and differ by state: `UserPromptSubmit` and
@@ -71,6 +74,7 @@ public enum AgentHooksInstall {
         ClaudeHook(event: "SessionStart", matcher: nil, script: sessionRestoreHookName, args: ""),
         ClaudeHook(event: "SessionStart", matcher: nil, script: sessionContextHookName, args: ""),
         ClaudeHook(event: "StopFailure", matcher: nil, script: agentFailureHookName, args: ""),
+        ClaudeHook(event: "PostToolUse", matcher: "Bash|SendUserFile", script: artifactsHookName, args: ""),
     ]
 
     /// Codex lifecycle events paired with actions the installed Codex hook understands; the adapter, not

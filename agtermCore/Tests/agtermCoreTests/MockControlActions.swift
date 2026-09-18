@@ -103,6 +103,13 @@ final class MockControlActions: ControlActions {
         case secretAdd(label: String, value: String)
         case secretRemove(label: String)
         case secretInsert(label: String, target: String?, window: String?, pane: String?)
+        case artifactAdd(ControlArtifactAddOptions)
+        case artifactList(ControlArtifactListOptions)
+        case artifactRemove(target: String)
+        case artifactSetPinned(Bool, target: String)
+        case artifactSetHidden(Bool, target: String)
+        case artifactOpen(target: String, reveal: Bool)
+        case artifactShow(window: String?)
     }
 
     var calls: [Call] = []
@@ -674,5 +681,42 @@ final class MockControlActions: ControlActions {
     func secretInsert(label: String, target: String?, window: String?, pane: String?) async -> ControlResponse {
         calls.append(.secretInsert(label: label, target: target, window: window, pane: pane))
         return nextSecretResponse
+    }
+
+    var nextArtifactResponse = ControlResponse(ok: true)
+
+    func artifactAdd(_ options: ControlArtifactAddOptions) -> ControlResponse {
+        calls.append(.artifactAdd(options))
+        return nextArtifactResponse
+    }
+
+    func artifactList(_ options: ControlArtifactListOptions) -> ControlResponse {
+        calls.append(.artifactList(options))
+        return nextArtifactResponse
+    }
+
+    func artifactRemove(_ target: String) -> ControlResponse {
+        calls.append(.artifactRemove(target: target))
+        return nextArtifactResponse
+    }
+
+    func artifactSetPinned(_ pinned: Bool, target: String) -> ControlResponse {
+        calls.append(.artifactSetPinned(pinned, target: target))
+        return nextArtifactResponse
+    }
+
+    func artifactSetHidden(_ hidden: Bool, target: String) -> ControlResponse {
+        calls.append(.artifactSetHidden(hidden, target: target))
+        return nextArtifactResponse
+    }
+
+    func artifactOpen(_ target: String, reveal: Bool) -> ControlResponse {
+        calls.append(.artifactOpen(target: target, reveal: reveal))
+        return nextArtifactResponse
+    }
+
+    func artifactShow(window: String?) -> ControlResponse {
+        calls.append(.artifactShow(window: window))
+        return nextArtifactResponse
     }
 }

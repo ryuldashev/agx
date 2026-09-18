@@ -30,11 +30,12 @@ struct BuiltinActionTests {
         #expect(BuiltinAction.undoClose.rawValue == "undo_close")
         #expect(BuiltinAction.toggleFullscreen.rawValue == "toggle_fullscreen")
         #expect(BuiltinAction.dashboard.rawValue == "dashboard")
+        #expect(BuiltinAction.showArtifacts.rawValue == "show_artifacts")
         #expect(BuiltinAction.duplicateSession.rawValue == "duplicate_session")
         #expect(BuiltinAction.previousWorkspace.rawValue == "previous_workspace")
         #expect(BuiltinAction.nextWorkspace.rawValue == "next_workspace")
         #expect(BuiltinAction.toggleWorkspaceCollapse.rawValue == "toggle_workspace_collapse")
-        #expect(BuiltinAction.allCases.count == 47)
+        #expect(BuiltinAction.allCases.count == 48)
     }
 
     @Test func rejectsUnknownName() {
@@ -125,6 +126,7 @@ struct BuiltinActionTests {
             .showAttention: Chord(mods: [.control, .shift], key: "i"),
             .dashboard: Chord(mods: [.command, .shift], key: "g"),
             .insertSecret: Chord(mods: [.command, .option], key: "f"),
+            .showArtifacts: Chord(mods: [.command, .shift], key: "a"),
         ]
         #expect(expected.count == BuiltinAction.allCases.count)
         for action in BuiltinAction.allCases {

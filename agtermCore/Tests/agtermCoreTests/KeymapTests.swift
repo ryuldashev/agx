@@ -1008,8 +1008,8 @@ struct KeymapTests {
 
     @Test func commandAlternativeKeepsItsRawSpellingWhenASiblingDrops() {
         // the survivor is spliced from the raw substrings, never re-rendered from the parsed chord.
-        let (keymap, _) = parseKeymap(#"command "Boom" cmd+d|COMMAND+Shift+A echo boom"#)
-        #expect(keymap.commands[0].shortcut == "COMMAND+Shift+A")
+        let (keymap, _) = parseKeymap(#"command "Boom" cmd+d|COMMAND+Shift+Y echo boom"#)
+        #expect(keymap.commands[0].shortcut == "COMMAND+Shift+Y")
     }
 
     @Test func builtinAlternativeShadowedByItsOwnMenuChordIsDropped() {

@@ -96,6 +96,13 @@ public enum Command: String, Codable, Sendable {
     case secretAdd = "secret.add"
     case secretRemove = "secret.remove"
     case secretInsert = "secret.insert"
+    case artifactAdd = "artifact.add"
+    case artifactList = "artifact.list"
+    case artifactRemove = "artifact.remove"
+    case artifactPin = "artifact.pin"
+    case artifactHide = "artifact.hide"
+    case artifactOpen = "artifact.open"
+    case artifactShow = "artifact.show"
     /// UI-TEST-ONLY: forces the app-level appearance (`light`|`dark` via `args.name`) so an XCUITest can
     /// simulate a macOS light/dark flip; with NO name it READS the side the last config feed applied, so a
     /// test can assert the flip drove the reload. Refused outside an XCUITest launch, and EXEMPT from the
@@ -346,6 +353,10 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// The secret itself, for `secret.add` only. It crosses the local socket once and is never read back:
     /// no command returns it, and `secret.list` answers labels alone.
     public var value: String?
+    /// `artifact.add`: how the artifact was shown (an `ArtifactSource` raw value; default `manual`).
+    public var source: String?
+    /// `artifact.pin`/`artifact.hide`: clear the flag instead of setting it (the CLI's `--off`).
+    public var off: Bool?
 
     public init(name: String? = nil, cwd: String? = nil, targets: [String]? = nil,
                 workspace: String? = nil, workspaceName: String? = nil,
@@ -371,7 +382,7 @@ public struct ControlArgs: Codable, Sendable, Equatable {
                 close: Bool? = nil, fontSize: Double? = nil, autoSize: Bool? = nil, mru: Bool? = nil,
                 agent: String? = nil, at: String? = nil, brief: String? = nil,
                 error: String? = nil, transcript: String? = nil, handoff: Bool? = nil,
-                label: String? = nil, value: String? = nil) {
+                label: String? = nil, value: String? = nil, source: String? = nil, off: Bool? = nil) {
         self.name = name
         self.cwd = cwd
         self.agent = agent
@@ -445,6 +456,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
         self.handoff = handoff
         self.label = label
         self.value = value
+        self.source = source
+        self.off = off
     }
 }
 
@@ -518,6 +531,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
     public var autoAnswer: ControlAutoAnswerNode?
     /// The stored secret labels, sorted, for `secret.list` — never the values.
     public var secrets: [String]?
+    /// The artifact rows for `artifact.list`, and the stored/updated row for the `artifact.*` writes.
+    public var artifacts: [ControlArtifactNode]?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -528,7 +543,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 pick: ControlPickResult? = nil, defaults: ControlWorkspaceDefaults? = nil,
                 scheduled: [ControlScheduledNode]? = nil,
                 closed: [ControlRecentClosedNode]? = nil, failover: ControlFailoverNode? = nil,
-                autoAnswer: ControlAutoAnswerNode? = nil, secrets: [String]? = nil) {
+                autoAnswer: ControlAutoAnswerNode? = nil, secrets: [String]? = nil,
+                artifacts: [ControlArtifactNode]? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -551,6 +567,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.failover = failover
         self.autoAnswer = autoAnswer
         self.secrets = secrets
+        self.artifacts = artifacts
     }
 }
 

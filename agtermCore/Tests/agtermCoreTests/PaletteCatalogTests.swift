@@ -39,7 +39,7 @@ struct PaletteCatalogTests {
             "Decrease Font Size",
             "Actual Font Size",
             "Select Theme…",
-            "Insert Secret…",
+            "Insert Secret…", "Artifacts",
             "Edit Keymap",
             "Reload Keymap",
             "Edit ghostty.conf",
@@ -59,7 +59,7 @@ struct PaletteCatalogTests {
     }
 
     @Test func catalogHasTheExpectedStaticCommandCount() {
-        #expect(PaletteCommand.allCases.count == 51)
+        #expect(PaletteCommand.allCases.count == 52)
     }
 
     @Test func idsRoundTripThroughRawValue() {
@@ -162,7 +162,7 @@ struct PaletteCatalogTests {
     /// The commands whose menu item carries no `modalActive` term at all.
     private static let coverProof: Set<PaletteCommand> = [
         .closeSession, .reloadKeymap, .reloadConfig,
-        .increaseFontSize, .decreaseFontSize, .resetFontSize, .toggleTerminalZoom,
+        .increaseFontSize, .decreaseFontSize, .resetFontSize, .toggleTerminalZoom, .showArtifacts,
     ]
 
     private static let needSession: Set<PaletteCommand> = [
@@ -260,6 +260,7 @@ struct PaletteCatalogTests {
         #expect(PaletteCommand.toggleTerminalZoom.builtinAction == .toggleTerminalZoom)
         #expect(PaletteCommand.resetFontSize.builtinAction == .resetFontSize)
         #expect(PaletteCommand.dashboard.builtinAction == .dashboard)
+        #expect(PaletteCommand.showArtifacts.builtinAction == .showArtifacts)
         #expect(PaletteCommand.reopenRecent.builtinAction == .reopenRecent)
         #expect(PaletteCommand.undoClose.builtinAction == .undoClose)
         #expect(PaletteCommand.toggleWorkspaceFilter.builtinAction == .toggleWorkspaceFilter)

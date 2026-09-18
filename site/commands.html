@@ -196,6 +196,7 @@
             <a href="#autoanswer" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">session autoanswer</a>
             <a href="#schedule" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">schedule</a>
             <a href="#secret" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">secret</a>
+            <a href="#artifact" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">artifact</a>
             <a href="#window" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">window</a>
             <a href="#surface" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">surface zoom</a>
             <a href="#dashboard" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">dashboard</a>
@@ -2170,6 +2171,110 @@
                 Type the stored value into a session, exactly as <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session type</span> would type text (same realize poll, same pane addressing, no trailing newline — follow with <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session type</span> to submit). <strong style="color: #bfbab0">Returns</strong> <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span>; the value is never in the response. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no such secret: &lt;label&gt;</span> and the <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session type</span> errors.
               </p>
             </div>
+          </section>
+
+
+          <!-- ARTIFACT -->
+          <section id="artifact" style="scroll-margin-top: 88px; padding-top: 56px">
+            <h2
+              style="
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+                font-weight: 700;
+                font-size: 28px;
+                letter-spacing: -0.02em;
+                margin: 0 0 16px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              "
+            >
+              artifact
+            </h2>
+            <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0 0 16px">
+              The artifact index: the files and links agents showed you, so a PDF or a page from a conversation you closed last week
+              is two clicks away from View ▸ Artifacts (⌘⇧A, rebindable as <span style="font-family: &quot;JetBrains Mono&quot;, monospace">show_artifacts</span>) without waking a model. The
+              installed Claude Code hook records a Bash <span style="font-family: &quot;JetBrains Mono&quot;, monospace">open &lt;file|url&gt;</span>, an <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agx reader &lt;file.md&gt;</span> and every
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace">SendUserFile</span> by itself; a write or an edit is never an artifact — only what was put in front of you. The
+              same path shown twice is one row with a count, never two. Rows keep the showing session's name and workspace,
+              and the transcript id as the way back to the conversation. The index lives in
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace">artifacts.json</span> beside the app's other state.
+            </p>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl artifact add &lt;path|url&gt; [--title T] [--source open|reader|sendfile|manual|backfill] [--session S|none] [--cwd DIR] [--agent-session UUID] [--seen ISO8601]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">artifact.add</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Record a showing. The path may be absolute, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">~</span>-relative, an http(s) URL, or relative to <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--cwd</span>. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--session</span> defaults to the caller's own pane and freezes its names into the row; <span style="font-family: &quot;JetBrains Mono&quot;, monospace">none</span> records no session. Prints the artifact id; <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.artifacts[0]</span> is the row. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">artifact.add requires a path or URL</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">title too long (max 200 characters)</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">invalid source: …</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">invalid --seen: …</span>.
+              </p>
+            </div>
+
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl artifact list [--query WORDS] [--workspace NAME] [--kind pdf|image|document|sheet|slides|media|code|url|other] [--session S] [--hidden] [--limit N]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">artifact.list</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                The rows, pinned first, then newest showing first, as <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.artifacts</span>: <span style="font-family: &quot;JetBrains Mono&quot;, monospace">{{id, path, kind, name, title?, type, category, seen, firstSeen, count, source, session?, sessionID?, workspace?, cwd?, agentSession?, pinned, hidden, exists?, size?}}</span>. Every word of <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--query</span> must match the caption, path, session or workspace name. Hidden rows need <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--hidden</span>. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">exists</span> and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">size</span> are read from disk as you list.
+              </p>
+            </div>
+
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl artifact open &lt;id|prefix|path&gt; [--reveal]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">artifact.open</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Open the file in its default app, exactly as a double-click in the window does — or <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--reveal</span> to select it in Finder. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no such artifact: …</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">file not found: …</span>.
+              </p>
+            </div>
+
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl artifact pin &lt;id|prefix|path&gt; [--off]&nbsp;&nbsp;·&nbsp;&nbsp;agtermctl artifact hide &lt;id|prefix|path&gt; [--off]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">artifact.pin · artifact.hide</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Pin a row to the top of the list, or hide it from the default list without deleting anything — the next time the same file is shown it comes back. The updated row is echoed.
+              </p>
+            </div>
+
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl artifact remove &lt;id|prefix|path&gt;
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">artifact.remove</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Drop the row from the index. The file on disk is never touched. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.id</span> and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">result.affected: 1</span>.
+              </p>
+            </div>
+
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl artifact show
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">artifact.show</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Bring up the Artifacts window: a search field, workspace and type pickers, a Show hidden toggle, and a table (Name · Type · Where · When · Size). Double-click or Return opens, Space is Quick Look, ⌘C copies the path, Delete removes; the context menu adds Reveal in Finder and Go to Session.
+              </p>
+            </div>
+
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agx artifact backfill [--days N | --all] [--dry-run]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">(bundled agx script, local)</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Replay past Claude Code transcripts through the hook's rule and record every shown file that still exists (URLs always) with <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--source backfill</span> and the time it was shown; 30 days by default. A row the live hook already holds is never overridden by an older showing.
+              </p>
+            </div>
+
           </section>
 
           <!-- WINDOW -->

@@ -25,6 +25,7 @@ struct agtermApp: App {
     @State private var scheduler: SessionScheduler
     @State private var failover: AgentFailoverCoordinator
     @State private var autoAnswer: AutoAnswerCoordinator
+    @State private var artifacts: ArtifactLibrary
 
     /// Whether this launch owes the user the first-run welcome. Decided in `init()`, because the first
     /// launch writes its own window snapshot moments after the scene appears and that write would read back
@@ -92,6 +93,7 @@ struct agtermApp: App {
         _failover = State(initialValue: AgentFailoverCoordinator(directory: stateDirectory, library: library,
                                                                  settingsModel: settingsModel))
         _autoAnswer = State(initialValue: AutoAnswerCoordinator(library: library, settingsModel: settingsModel))
+        _artifacts = State(initialValue: ArtifactLibrary(directory: stateDirectory))
     }
 
     var body: some Scene {
@@ -209,6 +211,7 @@ struct agtermApp: App {
                         scheduler.start()
                         actions.failover = failover
                         actions.autoAnswer = autoAnswer
+                        actions.attachArtifacts(artifacts)
                         autoAnswer.controlServer = controlServer
                         // last: a modal here blocks the rest of the task, and the window behind it should be
                         // fully wired before it opens. `presentOnce` latches, so the per-window .task is safe.

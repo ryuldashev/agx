@@ -87,7 +87,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
     case toggleSplit, toggleHorizontalSplit, closeSplit, toggleScratch, toggleTerminalZoom
     case toggleSidebar, toggleFlag, focusWorkspace
     case find, quickTerminal, dashboard, toggleFullscreen
-    case increaseFontSize, decreaseFontSize, resetFontSize, selectTheme, insertSecret
+    case increaseFontSize, decreaseFontSize, resetFontSize, selectTheme, insertSecret, showArtifacts
     case editKeymap, reloadKeymap, editGhosttyConfig, reloadConfig
     case deleteWorkspace, toggleFlaggedView, clearFlagged, clearFocus
     case addWorkspaceToFocus, toggleWorkspaceFilter
@@ -121,7 +121,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
     private func isCoveredByModal(_ context: PaletteContext) -> Bool {
         switch self {
         case .increaseFontSize, .decreaseFontSize, .resetFontSize,
-             .reloadKeymap, .reloadConfig, .toggleTerminalZoom, .closeSession:
+             .reloadKeymap, .reloadConfig, .toggleTerminalZoom, .closeSession, .showArtifacts:
             return false
         case .dashboard:
             return context.terminalZoomActive || context.pickerActive
@@ -214,6 +214,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .resetFontSize: return "Actual Font Size"
         case .selectTheme: return "Select Theme…"
         case .insertSecret: return "Insert Secret…"
+        case .showArtifacts: return "Artifacts"
         case .editKeymap: return "Edit Keymap"
         case .reloadKeymap: return "Reload Keymap"
         case .editGhosttyConfig: return "Edit ghostty.conf"
@@ -270,6 +271,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .resetFontSize: return .resetFontSize
         case .selectTheme: return .selectTheme
         case .insertSecret: return .insertSecret
+        case .showArtifacts: return .showArtifacts
         case .deleteWorkspace: return .deleteWorkspace
         case .toggleFlaggedView: return .toggleFlaggedView
         case .toggleWorkspaceFilter: return .toggleWorkspaceFilter

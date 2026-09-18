@@ -147,6 +147,17 @@ public protocol ControlActions {
     func secretRemove(label: String) -> ControlResponse
     /// Type the secret stored under `label` into the target session, as `session.type` would type text.
     func secretInsert(label: String, target: String?, window: String?, pane: String?) async -> ControlResponse
+    /// Record a showing. The dispatcher normalized the key; the host resolves `options.session` against the
+    /// live tree for the frozen names and folds the record into the index.
+    func artifactAdd(_ options: ControlArtifactAddOptions) -> ControlResponse
+    func artifactList(_ options: ControlArtifactListOptions) -> ControlResponse
+    func artifactRemove(_ target: String) -> ControlResponse
+    func artifactSetPinned(_ pinned: Bool, target: String) -> ControlResponse
+    func artifactSetHidden(_ hidden: Bool, target: String) -> ControlResponse
+    /// Open the artifact in its default app, or reveal it in Finder — what a double-click in the window does.
+    func artifactOpen(_ target: String, reveal: Bool) -> ControlResponse
+    /// Show (or raise) the Artifacts window.
+    func artifactShow(window: String?) -> ControlResponse
 }
 
 public extension ControlActions {
@@ -213,6 +224,8 @@ public struct ControlDispatcher {
             return dispatchScheduleCommand(request)
         case .secretList, .secretAdd, .secretRemove, .secretInsert:
             return await dispatchSecretCommand(request)
+        case .artifactAdd, .artifactList, .artifactRemove, .artifactPin, .artifactHide, .artifactOpen, .artifactShow:
+            return dispatchArtifactCommand(request)
         }
     }
 

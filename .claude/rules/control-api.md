@@ -137,6 +137,7 @@ renumbering. Do not reintroduce a count anywhere.
   `restore.list`, `restore.open`
 - `schedule.add`, `.list`, `.cancel`, `.run`
 - `secret.list`, `.add`, `.remove`, `.insert`
+- `artifact.add`, `.list`, `.remove`, `.pin`, `.hide`, `.open`, `.show`
 
 `debug.appearance` is a private `Command` case, absent from the list above, used only by `AppearanceFlipUITests`.
 It accepts light/dark, sets `NSApp.appearance`, posts `.agtermSystemAppearanceChanged`, echoes the effective
@@ -229,6 +230,20 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   `secret.add`, and is never returned: `secret.list` is labels, `secret.insert` reuses `injectText` so
   the value goes to the pty like `session.type` text. `journal(request)` never records `args.value`.
   The CLI reads the value from stdin only (hidden tty prompt or piped text), never from argv.
+- `artifact.*` is the control half of View ▸ Artifacts (`show_artifacts`, ⌘⇧A): the index of files and
+  links agents showed the user. Model, dedup and filtering are host-free (`ArtifactIndex`,
+  `ArtifactPolicy.normalize` is the one key rule shared by the dispatcher, the hook and the backfill);
+  `ArtifactStore` persists `<stateDir>/artifacts.json` (version-gated, atomic); `ArtifactLibrary` is the
+  `@Observable` owner the window and `ControlServer+Artifact` share. The dispatcher normalizes the key and
+  validates title/source/seen; the host resolves the showing session and freezes its names into the row,
+  reads `exists`/`size` from disk, and opens through `ArtifactOpener` (the only `NSWorkspace` caller —
+  the window's double-click uses it too). The window is an app-global `NSWindow` (`ArtifactsWindowController`),
+  not a deck cover, so it never competes with the dashboard or the quick terminal for the overlay slot.
+  The recording rule is "what was put in front of the user": Bash `open`, `agx reader`, `SendUserFile`,
+  through the installed `PostToolUse` hook `agx-artifacts.sh` (matcher `Bash|SendUserFile`), plus explicit
+  `artifact add` and `agx artifact backfill`. Write/Edit are deliberately not sources — an intermediate
+  file was never shown. A repeat showing folds into the existing row; an older backfill never overrides a
+  live row. See `docs/plans/artifacts-screen.md` for the data-source decision.
 - `schedule.add` persists a job to `<stateDir>/scheduled.json`, with its brief in a sibling
   `<stateDir>/scheduled/<id>.brief` file; jobs survive an app restart.
 - `SessionScheduler` fires on a main-runloop timer armed for the earliest pending job, and re-sweeps at

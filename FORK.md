@@ -75,6 +75,12 @@ both). Help ▸ Install Agent Status Hooks adds two Claude Code `SessionStart` h
 nothing on failure and always exit 0, so outside agx they cost one `test` and can never block a turn. The
 installer bakes the bundled `agtermctl`/`agx` paths into the wrappers, so nothing needs to be on PATH.
 
+**Artifacts (2026-09-18).** View ▸ Artifacts (⌘⇧A, `show_artifacts`) lists the files and links agents
+showed the user, so a PDF from a closed conversation opens in two clicks without an LLM. `artifact.*`
+control commands, `<stateDir>/artifacts.json`, the `PostToolUse` hook `agx-artifacts.sh` (Bash `open`,
+`agx reader`, `SendUserFile`), and `agx artifact add|list|backfill`. Plan and data-source decision:
+`docs/plans/artifacts-screen.md`.
+
 **Agent failover** — when Claude Code stops on an API error, the app decides what happens next instead of
 leaving the pane at "You're out of usage credits. Run /usage-credits … or /model". Claude Code's
 `StopFailure` hook (`Resources/agent-status/agx-agent-failure.sh`, installed by Help ▸ Install Agent Status

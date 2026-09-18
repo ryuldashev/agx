@@ -191,6 +191,7 @@
             <a href="#terminals" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">Terminals</a>
             <a href="#navigation" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">Navigation</a>
             <a href="#windows" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">Windows</a>
+            <a href="#artifacts" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">Artifacts</a>
             <a href="#notifications" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">Notifications</a>
             <a href="#accessibility" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">Accessibility</a>
             <a href="#settings" style="color: #bfbab0; padding: 7px 12px; border-radius: 7px" class="hv9">Customization</a>
@@ -1050,6 +1051,36 @@
               scriptable — <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">agtermctl window</span> can
               create, raise, move, resize, and minimize them, so a few lines of shell can give every window the same frame and park
               all but the one you are on, turning several windows into what feels like one that switches contents.
+            </p>
+          </section>
+
+
+          <!-- ARTIFACTS -->
+          <section id="artifacts" style="scroll-margin-top: 88px; padding-top: 56px">
+            <h2
+              style="
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+                font-weight: 700;
+                font-size: 28px;
+                letter-spacing: -0.02em;
+                margin: 0 0 16px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              "
+            >
+              Artifacts
+            </h2>
+            <p style="font-size: 16px; line-height: 1.7; color: #cbc6bc; margin: 0">
+              Agents produce files — a PDF, a rendered page, an export — open them for you, and the window closes; a week later the
+              conversation is gone and the file is somewhere under a project. View ▸ Artifacts (⌘⇧A) is the list of everything an
+              agent showed you, newest first: the name, its type, which workspace and session it came from, when, and whether it is
+              still on disk. Search by name, path or session, filter by workspace or type, double-click to open, Space for Quick
+              Look, Reveal in Finder, Copy Path, Go to Session while that session is still open, Pin to keep one at the top, Hide
+              to get one out of the way. Nothing here needs a model: the installed Claude Code hook records every
+              <span style="font-family: &quot;JetBrains Mono&quot;, monospace">open</span>, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agx reader</span> and <span style="font-family: &quot;JetBrains Mono&quot;, monospace">SendUserFile</span> as it happens, <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agx artifact backfill</span> reads the last
+              month of transcripts into the list once, and an agent can add a file by hand with <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agx artifact add</span>. A file
+              written but never shown is not an artifact — the list is what was put in front of you, not every intermediate.
+              Scriptable as <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agtermctl artifact</span>.
             </p>
           </section>
 
@@ -2043,7 +2074,7 @@
                 color: #cbc6bc;
               "
             >
-              new_window&nbsp;&nbsp;&nbsp;rename_window&nbsp;&nbsp;&nbsp;delete_window<br />new_workspace&nbsp;&nbsp;&nbsp;rename_workspace&nbsp;&nbsp;&nbsp;delete_workspace<br />new_session&nbsp;&nbsp;&nbsp;open_directory&nbsp;&nbsp;&nbsp;rename_session&nbsp;&nbsp;&nbsp;duplicate_session<br />close_session&nbsp;&nbsp;&nbsp;reopen_recent&nbsp;&nbsp;&nbsp;undo_close&nbsp;&nbsp;&nbsp;clear_status<br />increase_font_size&nbsp;&nbsp;&nbsp;decrease_font_size&nbsp;&nbsp;&nbsp;reset_font_size<br />toggle_split&nbsp;&nbsp;&nbsp;toggle_horizontal_split&nbsp;&nbsp;&nbsp;toggle_scratch&nbsp;&nbsp;&nbsp;toggle_search<br />toggle_sidebar&nbsp;&nbsp;&nbsp;toggle_flag&nbsp;&nbsp;&nbsp;toggle_flagged_view<br />focus_left_pane&nbsp;&nbsp;&nbsp;focus_right_pane&nbsp;&nbsp;&nbsp;focus_workspace&nbsp;&nbsp;&nbsp;toggle_workspace_filter<br />toggle_workspace_collapse<br />previous_session&nbsp;&nbsp;&nbsp;next_session&nbsp;&nbsp;&nbsp;first_session&nbsp;&nbsp;&nbsp;last_session<br />previous_workspace&nbsp;&nbsp;&nbsp;next_workspace<br />previous_attention_session&nbsp;&nbsp;&nbsp;next_attention_session<br />quick_terminal&nbsp;&nbsp;&nbsp;session_palette&nbsp;&nbsp;&nbsp;command_palette<br />custom_command_palette&nbsp;&nbsp;&nbsp;show_attention<br />select_theme&nbsp;&nbsp;&nbsp;toggle_fullscreen&nbsp;&nbsp;&nbsp;toggle_terminal_zoom<br />dashboard&nbsp;&nbsp;&nbsp;insert_secret
+              new_window&nbsp;&nbsp;&nbsp;rename_window&nbsp;&nbsp;&nbsp;delete_window<br />new_workspace&nbsp;&nbsp;&nbsp;rename_workspace&nbsp;&nbsp;&nbsp;delete_workspace<br />new_session&nbsp;&nbsp;&nbsp;open_directory&nbsp;&nbsp;&nbsp;rename_session&nbsp;&nbsp;&nbsp;duplicate_session<br />close_session&nbsp;&nbsp;&nbsp;reopen_recent&nbsp;&nbsp;&nbsp;undo_close&nbsp;&nbsp;&nbsp;clear_status<br />increase_font_size&nbsp;&nbsp;&nbsp;decrease_font_size&nbsp;&nbsp;&nbsp;reset_font_size<br />toggle_split&nbsp;&nbsp;&nbsp;toggle_horizontal_split&nbsp;&nbsp;&nbsp;toggle_scratch&nbsp;&nbsp;&nbsp;toggle_search<br />toggle_sidebar&nbsp;&nbsp;&nbsp;toggle_flag&nbsp;&nbsp;&nbsp;toggle_flagged_view<br />focus_left_pane&nbsp;&nbsp;&nbsp;focus_right_pane&nbsp;&nbsp;&nbsp;focus_workspace&nbsp;&nbsp;&nbsp;toggle_workspace_filter<br />toggle_workspace_collapse<br />previous_session&nbsp;&nbsp;&nbsp;next_session&nbsp;&nbsp;&nbsp;first_session&nbsp;&nbsp;&nbsp;last_session<br />previous_workspace&nbsp;&nbsp;&nbsp;next_workspace<br />previous_attention_session&nbsp;&nbsp;&nbsp;next_attention_session<br />quick_terminal&nbsp;&nbsp;&nbsp;session_palette&nbsp;&nbsp;&nbsp;command_palette<br />custom_command_palette&nbsp;&nbsp;&nbsp;show_attention<br />select_theme&nbsp;&nbsp;&nbsp;toggle_fullscreen&nbsp;&nbsp;&nbsp;toggle_terminal_zoom<br />dashboard&nbsp;&nbsp;&nbsp;insert_secret&nbsp;&nbsp;&nbsp;show_artifacts
             </div>
             <p style="font-size: 15px; line-height: 1.65; color: #949ba4; margin: 16px 0 0">
               <span style="font-family: &quot;JetBrains Mono&quot;, monospace; color: #cbc6bc">toggle_fullscreen</span> is the one

@@ -102,6 +102,7 @@ extension AppActions {
         case .resetFontSize: resetFontSize()
         case .selectTheme: openThemePalette()
         case .insertSecret: openSecretPalette()
+        case .showArtifacts: showArtifacts()
         case .editKeymap: editKeymap()
         case .reloadKeymap: reloadKeymap()
         case .editGhosttyConfig: editGhosttyConfig()
