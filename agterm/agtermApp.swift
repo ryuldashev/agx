@@ -55,6 +55,7 @@ struct agtermApp: App {
         // FIRST, before anything reads or writes the state directory: `WindowLibrary`'s bootstrap seeds a
         // window and saves it, which a later read would see as evidence of an earlier launch.
         let hadPriorState = FirstRunWelcome.hasPriorState(in: stateDirectory)
+        LoginShellPath.prewarm()
         ActionJournal.shared.configure(directory: stateDirectory)
         let library = agtermApp.restoredLibrary()
         _library = State(initialValue: library)
@@ -670,12 +671,20 @@ struct agtermApp: App {
 /// session dies the instant it opens. Seeding the surface env with the login-shell `PATH` makes a bare
 /// agent command resolve without every caller wrapping itself in `zsh -lc`.
 ///
-/// Resolved lazily exactly once (`static let`), and only as a FALLBACK: `merging` keeps any `PATH` the
+/// Resolved exactly once (`static let`), and only as a FALLBACK: `merging` keeps any `PATH` the
 /// surface builder already set, and a login shell still re-exports its own on top. Any failure — no
 /// `SHELL`, a non-executable one, a nonzero exit, empty output — yields no key at all, leaving today's
 /// inherited environment untouched.
+///
+/// The initializer must not pump the main run loop (`Process.waitUntilExit` does): the first surface resolves
+/// it from `makeNSView`, and a second surface mounting during that spin re-enters the same `swift_once` on
+/// the same thread, which libdispatch aborts. `prewarm()` also keeps the login shell off the main thread.
 enum LoginShellPath {
     static let env: [String: String] = resolve().map { ["PATH": $0] } ?? [:]
+
+    static func prewarm() {
+        DispatchQueue.global(qos: .userInitiated).async { _ = env }
+    }
 
     private static func resolve() -> String? {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
@@ -687,9 +696,11 @@ enum LoginShellPath {
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
         process.standardInput = FileHandle.nullDevice
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
         do { try process.run() } catch { return nil }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        exited.wait()
         guard process.terminationStatus == 0 else { return nil }
         let path = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
         return path.isEmpty ? nil : path
