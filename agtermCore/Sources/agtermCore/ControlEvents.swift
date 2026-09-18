@@ -19,6 +19,8 @@ public enum ControlEventKind: String, Codable, CaseIterable, Sendable, Equatable
     /// The app answered (or deliberately held) a `blocked` permission prompt after the grace:
     /// `payload.action` is `answered`|`held`, `reason` why a hold happened, `agent` the CLI in the pane.
     case autoAnswer = "auto_answer"
+    /// A showing entered the artifact index: `payload.name` the caption, `path` the key, `source` how.
+    case artifactAdded = "artifact.added"
 }
 
 /// Kind-specific event data. Optional fields keep the encoded payload compact while preserving one
@@ -46,12 +48,14 @@ public struct ControlEventPayload: Codable, Sendable, Equatable {
     public var source: String?
     /// `auto_answer`: the agent CLI in the pane (`claude`, `codex`).
     public var agent: String?
+    /// `artifact.added`: the stored key (absolute path or URL).
+    public var path: String?
 
     public init(name: String? = nil, status: String? = nil, pane: String? = nil,
                 blink: Bool? = nil, color: String? = nil, shape: String? = nil,
                 title: String? = nil, body: String? = nil, attached: Bool? = nil, at: String? = nil,
                 action: String? = nil, model: String? = nil, reason: String? = nil, source: String? = nil,
-                agent: String? = nil) {
+                agent: String? = nil, path: String? = nil) {
         self.name = name
         self.status = status
         self.pane = pane
@@ -67,6 +71,7 @@ public struct ControlEventPayload: Codable, Sendable, Equatable {
         self.reason = reason
         self.source = source
         self.agent = agent
+        self.path = path
     }
 }
 

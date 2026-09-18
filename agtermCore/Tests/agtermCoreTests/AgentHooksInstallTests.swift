@@ -28,7 +28,7 @@ struct AgentHooksInstallTests {
         #expect(result.changed)
         let evts = events(result.json)
         #expect(evts["UserPromptSubmit"]?.count == 1)
-        #expect(evts["PostToolUse"]?.count == 1)
+        #expect(evts["PostToolUse"]?.count == 2)
         #expect(evts["Stop"]?.count == 1)
         #expect(evts["Notification"]?.count == 1)
         #expect(command(evts["UserPromptSubmit"]![0])?.hasSuffix("agent-status.sh' active --blink") == true)
@@ -46,6 +46,9 @@ struct AgentHooksInstallTests {
         #expect(evts["StopFailure"]?.count == 1)
         #expect(command(evts["StopFailure"]![0]) == "'\(scriptDir)/agx-agent-failure.sh'")
         #expect(evts["StopFailure"]![0]["matcher"] == nil)
+        // the artifact hook fires only for the two tools that show files
+        #expect(command(evts["PostToolUse"]![1]) == "'\(scriptDir)/agx-artifacts.sh'")
+        #expect(evts["PostToolUse"]![1]["matcher"] as? String == "Bash|SendUserFile")
     }
 
     @Test func mergeWhenPresentIsNoOp() throws {
@@ -80,7 +83,7 @@ struct AgentHooksInstallTests {
         let commands = evts["UserPromptSubmit"]!.compactMap { command($0) }
         #expect(commands.contains("/usr/bin/other-hook.sh"))
         #expect(commands.contains { $0.hasSuffix("agent-status.sh' active --blink") })
-        #expect(evts["PostToolUse"]?.count == 1)
+        #expect(evts["PostToolUse"]?.count == 2)
         #expect(evts["Stop"]?.count == 1)
         #expect(evts["Notification"]?.count == 1)
     }

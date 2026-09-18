@@ -32,6 +32,8 @@ struct ControlEventProtocolTests {
             ControlEvent(seq: 12, ts: 12.5, kind: .autoAnswer, window: "win", workspace: "work", session: "sess",
                          payload: ControlEventPayload(name: "agent", action: "held", reason: "destructive: sudo",
                                                       agent: "codex")),
+            ControlEvent(seq: 13, ts: 13.5, kind: .artifactAdded, window: "win", workspace: "work", session: "sess",
+                         payload: ControlEventPayload(name: "pitch.pdf", source: "open", path: "/tmp/pitch.pdf")),
         ]
 
         let data = try JSONEncoder().encode(events)

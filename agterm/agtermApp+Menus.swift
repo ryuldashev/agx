@@ -319,6 +319,10 @@ extension agtermApp {
                 Button { actions.toggleTerminalZoom() } label: { Label("Toggle Terminal Zoom", systemImage: "arrow.up.left.and.arrow.down.right") }
                     .keyboardShortcut(shortcut(for: .toggleTerminalZoom))
                     .disabled(!PaletteCommand.toggleTerminalZoom.isEnabled(in: context))
+                // the Artifacts window is app-global and its own window, so no modal cover disables it.
+                Button { actions.showArtifacts() } label: { Label("Artifacts", systemImage: "doc.on.doc") }
+                    .keyboardShortcut(shortcut(for: .showArtifacts))
+                    .disabled(!PaletteCommand.showArtifacts.isEnabled(in: context))
                 Divider()
                 // NO full screen item: AppKit appends its own "Enter Full Screen" (`toggleFullScreen:`,
                 // Globe+F) below this menu whenever it is displayed, and nothing suppresses it — removal

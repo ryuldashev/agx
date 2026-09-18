@@ -90,6 +90,12 @@ enum EventFormatter {
             if let session = event.session { parts.append("session=\(session)") }
             if let reason = event.payload.reason { parts.append("reason=\(reason)") }
             return parts.joined(separator: " ")
+        case .artifactAdded:
+            var parts = [time, event.kind.rawValue, name]
+            if let path = event.payload.path { parts.append("path=\(path)") }
+            if let source = event.payload.source { parts.append("source=\(source)") }
+            if let session = event.session { parts.append("session=\(session)") }
+            return parts.joined(separator: " ")
         case .autoAnswer:
             var parts = [time, event.kind.rawValue, name, event.payload.action ?? "-"]
             if let agent = event.payload.agent { parts.append("agent=\(agent)") }

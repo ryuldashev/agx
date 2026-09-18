@@ -71,6 +71,8 @@ final class AppActions {
     /// The scheduled-session, agent-failover and auto-answer owners, wired in the scene `.task` like `settingsModel`; the control server, the sidebar footer and the pane-exit path reach them here.
     var scheduler: SessionScheduler?
     var failover: AgentFailoverCoordinator?, autoAnswer: AutoAnswerCoordinator?
+    /// The artifact index (`<stateDir>/artifacts.json`), wired in the scene `.task` like `scheduler`.
+    var artifacts: ArtifactLibrary?
 
     /// Both theme slots captured when the picker opened, restored on Esc/cancel. Snapshotting the WHOLE pair
     /// keeps the revert flip-safe across a mid-preview macOS appearance switch, whichever slot the preview

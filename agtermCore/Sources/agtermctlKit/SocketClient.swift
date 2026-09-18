@@ -212,6 +212,10 @@ struct SocketClient {
         if let secrets = response.result?.secrets {
             return secrets.isEmpty ? "no secrets" : secrets.joined(separator: "\n")
         }
+        // `artifact.add` echoes the stored row, but the id is the scriptable answer there.
+        if let artifacts = response.result?.artifacts, !(echoID && response.result?.id != nil) {
+            return formatArtifacts(artifacts)
+        }
         if let text = response.result?.text {
             return text
         }
@@ -271,6 +275,21 @@ struct SocketClient {
             }
             if let cwd = node.cwd { parts.append(cwd) }
             if let command = node.restoreCommand { parts.append("↺ \(command)") }
+            return parts.joined(separator: "  ")
+        }.joined(separator: "\n")
+    }
+
+    /// Render `artifact.list` one row per line: the id's first 8 (what `artifact open` takes), when it was
+    /// shown, a pin mark, the name, its workspace › session, and the path — `(missing)` when the file is gone.
+    static func formatArtifacts(_ artifacts: [ControlArtifactNode]) -> String {
+        guard !artifacts.isEmpty else { return "no artifacts" }
+        return artifacts.map { node in
+            var parts = [String(node.id.prefix(8)), node.seen, node.pinned ? "★" : " ", "\"\(node.name)\""]
+            let origin = [node.workspace, node.session].compactMap { $0 }.joined(separator: " › ")
+            if !origin.isEmpty { parts.append("→ \(origin)") }
+            parts.append(node.path)
+            if node.exists == false { parts.append("(missing)") }
+            if node.hidden { parts.append("(hidden)") }
             return parts.joined(separator: "  ")
         }.joined(separator: "\n")
     }

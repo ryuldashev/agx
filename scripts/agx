@@ -161,6 +161,10 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
       Do not paste long markdown into the chat when the user should read it rendered. agx reader close gives
       the pane back; the user's "Open in Reader" button moves it to a window. (agtermctl session reader --target <id>
       for someone else's session.)
+  HAND OVER A RESULT FILE    agx artifact add <path|url> [--title "..."]   record a file you produced for the user
+    ^ a PDF, a rendered page, an export: `open`, `agx reader` and SendUserFile are recorded by a hook already;
+      call this for a file you name in chat but do not open. The user finds it later in View ▸ Artifacts (⌘⇧A)
+      without re-opening this conversation. agx artifact list [--session <id>] shows what was recorded.
   ephemeral term on a session agtermctl session overlay open --target <id> -- <cmd>   (read: overlay text --target <id>)
   set my own status glyph    agtermctl session status active|completed|blocked|idle [--blink]
   desktop notification       agtermctl notify "<body>" [--title "..."]     native picker: agtermctl pick ...
@@ -533,6 +537,220 @@ def cmd_reader(argv):
     return subprocess.call(ctl_args)
 
 
+def cmd_artifact(argv):
+    """`agx artifact add|list|...` — sugar over `agtermctl artifact`: `add` defaults the showing session
+    to this pane (agtermctl reads AGTERM_SESSION_ID itself) and the transcript to the CLAUDE_CODE_SESSION_ID
+    the agent inherits, so a manual add carries the way back to the conversation. `backfill` is local."""
+    a = list(argv[2:])
+    if a[:1] == ["backfill"]:
+        return cmd_artifact_backfill(a[1:])
+    if a[:1] == ["add"] and "--agent-session" not in a and os.environ.get("CLAUDE_CODE_SESSION_ID"):
+        a += ["--agent-session", os.environ["CLAUDE_CODE_SESSION_ID"]]
+    return subprocess.call([CTL, "artifact", *a])
+
+
+# --- artifact backfill: the hook's rule replayed over past Claude Code transcripts -------------------
+
+_SHELL_BREAKS = ("&&", "||", ";", ";;", "|", "&")
+_OPEN_VALUE_FLAGS = ("-a", "-b", "-s", "--env", "--stdin", "--stdout", "--stderr")
+_OPEN_BARE_FLAGS = ("-e", "-t", "-h")
+
+
+def _shown_refs(tool, inp, cwd):
+    """The files/URLs one tool call SHOWED the user, as (source, base, ref, title) — the same rule as
+    agx-artifacts.sh: Bash `open` args (flag values and redirections excluded, `cd` prefixes honoured),
+    `agx reader <md>`, and SendUserFile's files. Writes are never artifacts."""
+    import shlex
+    out = []
+
+    def emit(source, base, ref, title=""):
+        ref = str(ref).strip()
+        if not ref or ref in (".", "..") or ref.startswith("-"):
+            return
+        out.append((source, base, ref, " ".join(str(title).split())[:200]))
+
+    if tool == "SendUserFile":
+        for f in inp.get("files") or []:
+            emit("sendfile", cwd, f, inp.get("caption") or "")
+        return out
+    if tool != "Bash":
+        return out
+    text = inp.get("command") or ""
+    if "open" not in text and "reader" not in text:
+        return out
+    try:
+        lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        words = list(lexer)
+    except ValueError:
+        return out
+    base = cwd
+    segments, current = [], []
+    for w in words:
+        if w in _SHELL_BREAKS:
+            segments.append(current); current = []
+        else:
+            current.append(w)
+    segments.append(current)
+    for seg in segments:
+        while seg and (seg[0] == "env" or ("=" in seg[0] and not seg[0].startswith(("/", ".", "~")))):
+            seg = seg[1:]
+        if not seg:
+            continue
+        verb, rest = seg[0], seg[1:]
+        if verb == "cd" and rest:
+            target = os.path.expanduser(rest[0])
+            base = target if target.startswith("/") else os.path.join(base, target)
+        elif verb == "open":
+            skip = False
+            for a in rest:
+                if a in ("<", ">", ">>", "2>", "&>"):
+                    break
+                if skip:
+                    skip = False; continue
+                if a in _OPEN_VALUE_FLAGS:
+                    skip = True; continue
+                if a == "--args":
+                    break
+                if a in _OPEN_BARE_FLAGS or a.startswith("-"):
+                    continue
+                emit("open", base, a)
+        elif verb == "agx" and rest[:1] == ["reader"]:
+            args, title, i = rest[1:], "", 0
+            while i < len(args):
+                a = args[i]
+                if a == "--title" and i + 1 < len(args):
+                    title = args[i + 1]; i += 2; continue
+                if a.startswith("-") or a == "close":
+                    i += 1; continue
+                emit("reader", base, a, title); i += 1
+    return out
+
+
+def _agx_sessions_by_transcript():
+    """transcript uuid → (agx session id) from the window snapshots and the recent-closed list: the
+    SessionStart hook pins `claude --resume <uuid>` as each pane's restore command, so the uuid a pane
+    currently resumes is the transcript it is running."""
+    import glob, re
+    root = os.environ.get("AGTERM_STATE_DIR") or os.path.expanduser("~/Library/Application Support/agx")
+    found = {}
+    pat = re.compile(r"claude --resume ([0-9a-f-]{36})")
+
+    def note(snapshot):
+        m = pat.search(snapshot.get("restoreCommand") or "")
+        if m and snapshot.get("id"):
+            found.setdefault(m.group(1), snapshot["id"])
+
+    for f in glob.glob(root + "/windows/*.json"):
+        try:
+            d = json.load(open(f))
+        except (OSError, ValueError):
+            continue
+        for w in d.get("workspaces", []):
+            for sess in w.get("sessions", []):
+                note(sess)
+    try:
+        closed = json.load(open(root + "/recent-closed.json"))
+        entries = closed if isinstance(closed, list) else next((v for v in closed.values() if isinstance(v, list)), [])
+        for e in entries:
+            snap = ((e.get("session") or {}).get("snapshot")) or {}
+            note(snap)
+    except (OSError, ValueError, AttributeError):
+        pass
+    return found
+
+
+def cmd_artifact_backfill(args):
+    """agx artifact backfill [--days N | --all] [--dry-run] [--socket S]: replay the hook's rule over
+    the Claude Code transcripts in ~/.claude/projects and `artifact add --source backfill` every file
+    that was shown and still exists (URLs always). One add per path with its latest showing; a row the
+    live hook already holds is left alone by the index (an older backfill never overrides it)."""
+    import glob, time
+    from datetime import datetime, timezone
+    days, dry, socket = 30, False, None
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--days" and i + 1 < len(args):
+            days = int(args[i + 1]); i += 2; continue
+        if a == "--all":
+            days = None
+        elif a == "--dry-run":
+            dry = True
+        elif a == "--socket" and i + 1 < len(args):
+            socket = args[i + 1]; i += 1
+        else:
+            print(f"agx artifact backfill: unknown argument {a}", file=sys.stderr); return 2
+        i += 1
+    since = None if days is None else time.time() - days * 86400
+    sessions = _agx_sessions_by_transcript()
+    latest = {}  # ref key → (seen iso, source, base, ref, title, transcript uuid, cwd)
+    scanned = 0
+    for path in glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")):
+        try:
+            if since is not None and os.path.getmtime(path) < since:
+                continue
+        except OSError:
+            continue
+        uuid = os.path.splitext(os.path.basename(path))[0]
+        scanned += 1
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    if '"tool_use"' not in line or ('"Bash"' not in line and '"SendUserFile"' not in line):
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except ValueError:
+                        continue
+                    if rec.get("type") != "assistant":
+                        continue
+                    ts = rec.get("timestamp") or ""
+                    if since is not None and ts:
+                        try:
+                            if datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp() < since:
+                                continue
+                        except ValueError:
+                            pass
+                    cwd = rec.get("cwd") or os.path.expanduser("~")
+                    for block in (rec.get("message") or {}).get("content") or []:
+                        if not isinstance(block, dict) or block.get("type") != "tool_use":
+                            continue
+                        for source, base, ref, title in _shown_refs(block.get("name"), block.get("input") or {}, cwd):
+                            key = ref if ref.startswith(("http://", "https://")) else os.path.normpath(
+                                os.path.expanduser(ref if ref.startswith(("/", "~")) else os.path.join(base, ref)))
+                            if not key.startswith("http") and (not os.path.isfile(key)):
+                                continue
+                            if key not in latest or latest[key][0] < ts:
+                                latest[key] = (ts, source, base, ref, title, uuid, cwd)
+        except OSError:
+            continue
+    rows = sorted(latest.values())
+    print(f"scanned {scanned} transcripts, {len(rows)} artifacts to record ({len(sessions)} transcripts map to a session)")
+    added = 0
+    for ts, source, base, ref, title, uuid, cwd in rows:
+        sid = sessions.get(uuid)
+        cmd = [CTL, "artifact", "add", ref, "--source", "backfill", "--cwd", base, "--session", sid or "none",
+               "--agent-session", uuid]
+        if ts:
+            cmd += ["--seen", ts]
+        if title:
+            cmd += ["--title", title]
+        if socket:
+            cmd += ["--socket", socket]
+        if dry:
+            print(f"{ts}  {source:8} {ref}  ← {sid or '-'}")
+            continue
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode == 0:
+            added += 1
+        else:
+            print(f"skip {ref}: {r.stderr.strip() or r.stdout.strip()}", file=sys.stderr)
+    if not dry:
+        print(f"recorded {added}")
+    return 0
+
+
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else "context"
     if cmd in ("-h", "--help", "help"):
@@ -542,6 +760,9 @@ def main(argv):
               "  agx run \"<shell cmd>\" [--pane split]  run a FINITE command in THIS session's side pane, return output+exit\n"
               "  agx reader <path.md> [--target ID]   show a markdown file, live-reloading, in THIS session's right pane\n"
               "  agx reader close [--target ID]      give the pane back\n"
+              "  agx artifact add <path|url> [--title T]   record a result file for the user's Artifacts window\n"
+              "  agx artifact list|open|pin|hide|remove|show   (agtermctl artifact ...)\n"
+              "  agx artifact backfill [--days N|--all] [--dry-run]   replay past transcripts into the index\n"
               "  agx spawn --brief \"<task>\" [--name T] [--workspace-name W|--workspace ID]\n"
               "            [--cwd PATH] [--agent claude|codex] [--foreground] [--json]\n"
               "            create an agent session AND seed it with the brief as its first message\n"
@@ -559,6 +780,8 @@ def main(argv):
         return cmd_run(argv)
     if cmd == "reader":
         return cmd_reader(argv)
+    if cmd == "artifact":
+        return cmd_artifact(argv)
     if cmd != "context":
         print(f"agx: unknown command '{cmd}'", file=sys.stderr)
         return 2

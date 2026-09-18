@@ -26,6 +26,8 @@ when_to_use: >
   schedule.run, scheduled session, run this later, remind me tomorrow, continue at 09:00,
   session.failure, agent failover, out of usage credits, switch model and continue, hand the task to another agent,
   secret.add, secret.list, secret.remove, secret.insert, insert secret, keychain password, type a password into a session,
+  artifact.add, artifact.list, artifact.open, artifact.show, artifacts window, files I showed the user, where is that PDF,
+  find the report an agent made, backfill artifacts,
   workspace.new, workspace.select, workspace.go, workspace.move, workspace.focus, workspace.filter, window.new, window.list,
   window.select, window.resize, window.move, window.zoom, window.fullscreen, window.minimize, quick terminal, sidebar, sidebar.mode, sidebar.expand, sidebar.collapse, flagged, notify, font.inc, keymap.reload, keymap.list, config.reload,
   theme.set, theme.list, events, events.read, event subscription, select theme, edit keymap, show an image, display an image inline, show-image,
@@ -477,6 +479,16 @@ replaces an existing item) · `list` (labels, never values) · `remove <label>` 
 newline, value never in the response). The control half of Edit ▸ Insert Secret… (⌥⌘F, `insert_secret`),
 which lists the same labels in a palette and adds one through its Add Secret… row. Items live in the login keychain. When a pane asks for a
 password the user stored, `secret list` then `secret insert` instead of asking them to type it.
+
+**artifact** — `add <path|url> [--title T] [--source open|reader|sendfile|manual|backfill] [--session S|none]
+[--cwd DIR] [--agent-session UUID] [--seen ISO]` · `list [--query W] [--workspace N] [--kind K] [--session S]
+[--hidden] [--limit N]` · `open <id|path> [--reveal]` · `pin|hide <id|path> [--off]` · `remove <id|path>` ·
+`show`. The index of files and links agents SHOWED the user (`<stateDir>/artifacts.json`), listed in
+View ▸ Artifacts (⌘⇧A, `show_artifacts`) so a PDF or page from a closed conversation is two clicks away
+without an LLM. The installed Claude Code hook records every Bash `open`, `agx reader` and SendUserFile
+by itself; call `agx artifact add` for a result file you name in chat but do not open. Writes are not
+artifacts. `agx artifact backfill [--days N]` replays past transcripts. Rows keep the showing session's
+name and workspace frozen in, plus the transcript uuid as the way back to the conversation.
 
 **window** — `new [name] [--minimized]` · `list` · `select <id>` · `close <id>` · `rename <id> <name>` ·
 `delete <id>` · `resize <id> --width W --height H` · `move <id> --x X --y Y [--display N]` ·

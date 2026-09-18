@@ -449,7 +449,8 @@ final class ControlServer {
                 .windowFullscreen, .windowMinimize,
                 .restoreClear, .restoreList, .restoreOpen, .dashboard, .appRelaunch, .appQuit,
                 .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun, .sessionFailure, .sessionAutoAnswer,
-                .secretList, .secretAdd, .secretRemove, .secretInsert:
+                .secretList, .secretAdd, .secretRemove, .secretInsert,
+                .artifactAdd, .artifactList, .artifactRemove, .artifactPin, .artifactHide, .artifactOpen, .artifactShow:
             return ControlResponse(ok: false, error: "control dispatcher did not handle \(request.cmd.rawValue)")
         case .debugAppearance:
             return setDebugAppearance(args: request.args)

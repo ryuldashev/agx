@@ -913,6 +913,60 @@ pane that had focus. No command returns a value.
   client) instead of asking the user to type it: `agtermctl secret list` to see what exists, then
   `secret insert`. Never try to read a value back through `session text` on a prompt that echoes.
 
+## artifact
+
+The artifact index: the files and links an agent SHOWED the user, kept at `<stateDir>/artifacts.json`
+so they can be found and reopened later from View ▸ Artifacts (⌘⇧A, keymap action `show_artifacts`)
+without reopening the conversation. Rows are recorded by the installed Claude Code hook
+(`agx-artifacts.sh`, PostToolUse on `Bash|SendUserFile`) for a Bash `open <file|url>`, `agx reader <md>`
+and `SendUserFile`; `agx artifact backfill` replays past transcripts; `artifact add` records by hand.
+A write or edit is never an artifact — only what was put in front of the user. The key is the
+normalized absolute path (or the URL); a repeat showing of the same key folds into one row (count +1,
+newest session/title/source win, a hidden row comes back), never a second row.
+
+- `artifact add <path|url> [--title T] [--source open|reader|sendfile|manual|backfill] [--session S|none]
+  [--cwd DIR] [--agent-session UUID] [--seen ISO8601]` — record a showing. `path` may be absolute,
+  `~`-relative, an `http(s)` URL, or relative to `--cwd` (default: the caller's directory). `--session`
+  defaults to the caller's `$AGTERM_SESSION_ID`; the session's display name and workspace name are
+  frozen into the row at record time (the session may be closed when the row is read), `none` records
+  no session, and an id the tree no longer holds is kept bare. `--agent-session` is the Claude Code
+  transcript uuid — the way back to the conversation. `--seen` backdates a backfilled showing; an
+  older showing never overrides a newer row's session/title/source. Prints the artifact id;
+  `result.artifacts[0]` is the row (same shape as `artifact list`). Errors:
+  `artifact.add requires a path or URL`, `artifact.add: path must be absolute, ~-relative, an http(s)
+  URL, or relative with --cwd`, `title too long (max 200 characters)`, `title must not contain control
+  characters`, `invalid source: <s> (expected open, reader, sendfile, manual, backfill)`,
+  `invalid --seen: <s> (expected ISO 8601)`, `artifact index not started`.
+- `artifact list [--query WORDS] [--workspace NAME] [--kind pdf|image|document|sheet|slides|media|code|url|other]
+  [--session S] [--hidden] [--limit N]` — the rows, pinned first, then newest showing first. `--query`
+  matches every whitespace-separated word against the caption, path, session and workspace names,
+  case-insensitively. Hidden rows are left out unless `--hidden`. Human rows read
+  `<id8>  <iso seen>  ★|   "<name>"  → <workspace> › <session>  <path>  (missing)  (hidden)`
+  (`no artifacts` when empty); `--json` gives `result.artifacts`, an array of `{id, path, kind
+  (file|url), name, title?, type (lowercase extension|url|-), category, seen, firstSeen, count, source,
+  session? (name), sessionID?, workspace?, cwd?, agentSession?, pinned, hidden, exists?, size?}`.
+  `seen` is ISO 8601 with the local offset. `exists`/`size` are read from disk at list time, absent
+  for a URL. Errors: `invalid --kind (…)`, `limit must be at least 1`.
+- `artifact open <id|prefix|path> [--reveal]` — open the file in its default app, exactly as the
+  window's double-click does, or `--reveal` to select it in Finder; a URL opens in the browser.
+  `result.id`. Errors `no such artifact: <t>`, `file not found: <path>`, `invalid url: <u>`.
+- `artifact pin <id|prefix|path> [--off]` / `artifact hide <id|prefix|path> [--off]` — pin a row to
+  the top, or hide it from the default list without deleting it (a later showing unhides it). The
+  updated row is echoed in `result.artifacts[0]`.
+- `artifact remove <id|prefix|path>` — drop the row from the index. The file is never touched.
+  `result.id` + `result.affected: 1`.
+- `artifact show` — bring up the Artifacts window (the same as ⌘⇧A / View ▸ Artifacts / the palette
+  row). The window is app-global: one list, a search field, workspace and type pickers, a
+  "Show hidden" toggle, and a table (Name · Type · Where · When · Size) with double-click / Return to
+  open, Space for Quick Look, ⌘C to copy the path, Delete to remove, and a context menu with Open,
+  Quick Look, Reveal in Finder, Copy Path, Go to Session (selects the showing session when it is still
+  open), Pin, Hide, Remove from List.
+- An `artifact.added` event fires for every recorded showing (`name`, `path`, `source`, `session`).
+- `agx artifact add|list|…` is the same commands through the bundled `agx` script; `agx artifact
+  backfill [--days N | --all] [--dry-run]` scans `~/.claude/projects/*/*.jsonl` (30 days by default),
+  applies the hook's rule, maps each transcript uuid to the agx session that resumes it, and records
+  every shown file that still exists (URLs always) with `--source backfill` and the transcript time.
+
 ## window
 
 - `window new [name] [--minimized]` — create and open a window; returns its id. It replies only once
