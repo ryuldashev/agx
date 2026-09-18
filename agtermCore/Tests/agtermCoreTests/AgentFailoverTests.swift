@@ -31,11 +31,34 @@ struct AgentFailureClassifyTests {
         #expect(AgentFailure.classify(error: "server_error", message: "API Error: Unable to connect").kind == .transient)
         #expect(AgentFailure.classify(error: "authentication_failed", message: "Login expired · Please run /login").kind == .auth)
         #expect(AgentFailure.classify(error: "billing_error", message: "").kind == .auth)
-        #expect(AgentFailure.classify(error: "invalid_request", message: "safety measures flagged").kind == .blocked)
+        #expect(AgentFailure.classify(error: "invalid_request", message: "prompt is too long").kind == .blocked)
         #expect(AgentFailure.classify(error: "max_output_tokens", message: "").kind == .blocked)
         #expect(AgentFailure.classify(error: "model_not_found", message: "").kind == .modelExhausted)
         #expect(AgentFailure.classify(error: "process_exited", message: "").kind == .processExited)
         #expect(AgentFailure.classify(error: "something_new", message: "").kind == .unknown)
+    }
+
+    @Test func safeguardsFlagIsSafetyFlaggedAndNamesTheModel() {
+        let failure = AgentFailure.classify(
+            error: "invalid_request",
+            message: "API Error: Opus 5 (1M context)'s safeguards flagged this message (https://www.anthropic.com/legal/aup). "
+                + "Claude Code can't respond to this message with Opus 5 (1M context). Details: `[cyber]`")
+        #expect(failure.kind == .safetyFlagged)
+        #expect(failure.model == "Opus 5 (1M context)")
+        #expect(AgentFailure.classify(error: "invalid_request",
+                                      message: "This model's safeguards flagged this message.").model == nil)
+    }
+
+    @Test func modelVersionsAndIdentity() {
+        #expect(ModelFamily.version(of: "Opus 5 (1M context)") == "5")
+        #expect(ModelFamily.version(of: "Fable 5.1") == "5.1")
+        #expect(ModelFamily.version(of: "claude-opus-4-8[1m]") == "4.8")
+        #expect(ModelFamily.version(of: "opus[1m]") == nil)
+        #expect(ModelFamily.sameModel("Opus 5 (1M context)", "opus[1m]"))
+        #expect(!ModelFamily.sameModel("Opus 5 (1M context)", "claude-opus-4-8[1m]"))
+        #expect(ModelFamily.sameModel("Opus 4.8 (1M context)", "claude-opus-4-8[1m]"))
+        #expect(!ModelFamily.sameModel("Opus 4.8 (1M context)", "opus[1m]"))
+        #expect(!ModelFamily.sameModel("Opus 5", "sonnet[1m]"))
     }
 
     @Test func modelFamilies() {
@@ -130,6 +153,64 @@ struct FailoverPolicyTests {
         #expect(FailoverPolicy.advance(state, failure: failure, action: .retry(after: 1), now: later).retries == 1)
     }
 
+    @Test func aSafetyFlagRetriesOnceThenWalksTheLadderPastTheFlaggedModel() {
+        let now = Date()
+        let opus = AgentFailure(kind: .safetyFlagged, errorType: "invalid_request", message: "", model: "Opus 5 (1M context)")
+        var state = FailoverState()
+        var action = FailoverPolicy.decide(opus, state: state, ladder: ladder, handoffAvailable: true, now: now)
+        #expect(action == .retry(after: FailoverPolicy.flagRetryDelay))
+        state = FailoverPolicy.advance(state, failure: opus, action: action, now: now)
+        #expect(state.flagRetries == 1)
+        #expect(state.retries == 0)
+        action = FailoverPolicy.decide(opus, state: state, ladder: ladder, handoffAvailable: true, now: now)
+        #expect(action == .switchModel("claude-opus-4-8[1m]"))
+        state = FailoverPolicy.advance(state, failure: opus, action: action, now: now)
+        #expect(state.flagRetries == 0)
+        #expect(state.triedModels == ["claude-opus-4-8[1m]"])
+        #expect(state.flaggedModels == ["Opus 5 (1M context)"])
+        #expect(state.exhaustedFamilies.isEmpty)
+        let opus48 = AgentFailure(kind: .safetyFlagged, errorType: "invalid_request", message: "", model: "Opus 4.8 (1M context)")
+        action = FailoverPolicy.decide(opus48, state: state, ladder: ladder, handoffAvailable: true, now: now)
+        #expect(action == .retry(after: FailoverPolicy.flagRetryDelay))
+        state = FailoverPolicy.advance(state, failure: opus48, action: action, now: now)
+        action = FailoverPolicy.decide(opus48, state: state, ladder: ladder, handoffAvailable: true, now: now)
+        #expect(action == .switchModel("sonnet[1m]"))
+        state = FailoverPolicy.advance(state, failure: opus48, action: action, now: now)
+        let sonnet = AgentFailure(kind: .safetyFlagged, errorType: "invalid_request", message: "", model: "Sonnet 5 (1M context)")
+        state = FailoverPolicy.advance(state, failure: sonnet, action: .retry(after: 1), now: now)
+        #expect(FailoverPolicy.decide(sonnet, state: state, ladder: ladder, handoffAvailable: true, now: now)
+            == .handoff(reason: "every model in the ladder refused the request"))
+        if case .notify = FailoverPolicy.decide(sonnet, state: state, ladder: ladder, handoffAvailable: false, now: now) {} else {
+            Issue.record("expected notify without a handoff agent")
+        }
+    }
+
+    @Test func aSafetyFlagOnAFableSessionGoesToOpusFirst() {
+        let fable = AgentFailure(kind: .safetyFlagged, errorType: "invalid_request", message: "", model: "Fable 5.1")
+        var state = FailoverState()
+        state.flagRetries = 1
+        state.lastFailureAt = Date()
+        #expect(FailoverPolicy.decide(fable, state: state, ladder: ladder, handoffAvailable: true) == .switchModel("opus[1m]"))
+    }
+
+    @Test func anUnnamedSafetyFlagSkipsTheModelSwitchedTo() {
+        let unnamed = AgentFailure(kind: .safetyFlagged, errorType: "invalid_request", message: "", model: nil)
+        var state = FailoverPolicy.advance(FailoverState(), failure: unnamed, action: .switchModel("opus[1m]"))
+        state.flagRetries = 1
+        state.lastFailureAt = Date()
+        #expect(FailoverPolicy.decide(unnamed, state: state, ladder: ladder, handoffAvailable: true)
+            == .switchModel("claude-opus-4-8[1m]"))
+    }
+
+    @Test func anOldSafetyFlagDoesNotSkipTheRetry() {
+        let opus = AgentFailure(kind: .safetyFlagged, errorType: "invalid_request", message: "", model: "Opus 5")
+        var state = FailoverState()
+        state.flagRetries = 1
+        state.lastFailureAt = Date().addingTimeInterval(-FailoverPolicy.retryWindow - 1)
+        #expect(FailoverPolicy.decide(opus, state: state, ladder: ladder, handoffAvailable: true)
+            == .retry(after: FailoverPolicy.flagRetryDelay))
+    }
+
     @Test func blockedAndUnknownOnlyNotify() {
         for kind in [AgentFailureKind.blocked, .unknown] {
             let failure = AgentFailure(kind: kind, errorType: "x", message: "")
@@ -147,6 +228,8 @@ struct FailoverPolicyTests {
         #expect(node?.switches == 1)
         #expect(node?.retries == nil)
         #expect(node?.exhausted == ["fable"])
+        #expect(node?.tried == ["opus[1m]"])
+        #expect(node?.flagRetries == nil)
     }
 }
 

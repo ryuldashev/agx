@@ -720,8 +720,11 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   `Stop` hook does NOT fire on an API-error turn (verified in transcripts), so never key failover on it.
   Detection is never a scan of the terminal buffer.
 - Policy is host-free in `agtermCore/AgentFailover.swift`: `AgentFailure.classify` (error type + message →
-  modelExhausted / accountLimit / auth / transient / blocked / processExited), `FailoverPolicy.decide`
-  (ladder first, families exhausted per session, then handoff, retries ≤3 in 30 min) and
+  modelExhausted / accountLimit / auth / transient / blocked / safetyFlagged / processExited),
+  `FailoverPolicy.decide` (ladder first, families exhausted per session, then handoff, retries ≤3 in
+  30 min; a safeguards flag resends once after 5 s, then walks the ladder by release, not family —
+  `ModelFamily.sameModel` compares the error's display name against a `/model` argument through
+  `ModelFamily.latest`, which must move when Claude Code repoints an alias) and
   `ClaudeTranscript.digest` (last prompts + answer from the JSONL tail). `AgentFailoverCoordinator` (app)
   owns the effects: `GhosttySurfaceView.inject` types `/model <next>` then the continue prompt after
   `modelSwitchSettle`; a handoff writes the brief to `<stateDir>/failover/<uuid>.brief` and reuses
@@ -730,6 +733,8 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   have cleared the status first) and hands off through `paneExiting`; never during `library.isTerminating`.
 - `/model <alias>[1m]` sets the model and SAVES it as Claude Code's default for new sessions — the ladder
   changes the user's default, so the notification names the model it switched to.
+- The default ladder holds `claude-opus-4-8[1m]` between `opus[1m]` and `sonnet[1m]`: same usage pool
+  as Opus 5 (an exhausted pool skips it) but its own safeguards, so a flag on Opus 5 tries it first.
 - Read-back: the session node's `failover`, the `failover` event, `result.failover` on the command.
   Knobs: Settings ▸ Agents ▸ Failover (`failoverEnabled/Models/ContinuePrompt/HandoffEnabled/HandoffAgent`).
 

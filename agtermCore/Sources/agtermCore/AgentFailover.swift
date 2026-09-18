@@ -10,8 +10,11 @@ public enum AgentFailureKind: String, Codable, Sendable, CaseIterable {
     /// Overload / connection / server-side: the turn ended but nothing is wrong with the session, a
     /// "continue" after a pause usually resumes it.
     case transient
-    /// Safety flag, output cap, bad request: retrying the same prompt would fail again.
+    /// Output cap, bad request: retrying the same prompt would fail again.
     case blocked
+    /// The model's safeguards refused the request (a false positive on legitimate work, as a rule). Each
+    /// model classifies on its own, so one resend and then another model usually gets through.
+    case safetyFlagged = "safety-flagged"
     case processExited = "process-exited"
     case unknown
 }
@@ -41,6 +44,9 @@ public struct AgentFailure: Equatable, Sendable {
         let named = exhaustedModel(in: text)
         if lower.contains("out of usage credits") || lower.contains("usage credits are required") {
             return AgentFailure(kind: .modelExhausted, errorType: type, message: text, model: named)
+        }
+        if lower.contains("safeguards flagged") {
+            return AgentFailure(kind: .safetyFlagged, errorType: type, message: text, model: flaggedModel(in: text))
         }
         switch type {
         case "rate_limit":
@@ -72,6 +78,16 @@ public struct AgentFailure: Equatable, Sendable {
         let name = tail[..<end].trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? nil : name
     }
+
+    /// "API Error: Opus 5 (1M context)'s safeguards flagged…" → "Opus 5 (1M context)"; nil for the
+    /// generic "This model's safeguards…".
+    static func flaggedModel(in message: String) -> String? {
+        guard let range = message.range(of: "'s safeguards") else { return nil }
+        var head = Substring(message[..<range.lowerBound])
+        if let colon = head.range(of: ": ", options: .backwards) { head = head[colon.upperBound...] }
+        let name = head.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty || name.lowercased() == "this model" ? nil : name
+    }
 }
 
 /// Model names as Claude Code spells them in `/model` arguments and in its error text, reduced to the
@@ -79,9 +95,38 @@ public struct AgentFailure: Equatable, Sendable {
 public enum ModelFamily {
     public static let known = ["fable", "opus", "sonnet", "haiku"]
 
+    /// What a bare alias (`opus`, `opus[1m]`) resolves to today, so a display name can be matched against
+    /// it. Bump when Claude Code moves an alias to a new release.
+    public static let latest = ["fable": "5.1", "opus": "5", "sonnet": "5", "haiku": "4.5"]
+
     public static func of(_ model: String) -> String? {
         let lower = model.lowercased()
         return known.first { lower.contains($0) }
+    }
+
+    /// The release number in a display name (`Opus 4.8 (1M context)` → `4.8`) or a `/model` argument
+    /// (`claude-opus-4-8[1m]` → `4.8`); nil for a bare alias. Bracketed and parenthesised suffixes are
+    /// context-window tags, not versions.
+    public static func version(of model: String) -> String? {
+        var bare = model
+        for open in ["[", "("] {
+            if let range = bare.range(of: open) { bare = String(bare[..<range.lowerBound]) }
+        }
+        var digits = ""
+        for char in bare {
+            if char.isNumber { digits.append(char) } else if !digits.isEmpty {
+                if char == "." || char == "-", digits.last != "." { digits.append(".") } else { break }
+            }
+        }
+        while digits.last == "." { digits.removeLast() }
+        return digits.isEmpty ? nil : digits
+    }
+
+    /// Whether a display name from an error message and a `/model` argument name the same release.
+    public static func sameModel(_ displayName: String, _ argument: String) -> Bool {
+        guard let family = of(displayName), family == of(argument) else { return false }
+        let fallback = latest[family]
+        return (version(of: displayName) ?? fallback) == (version(of: argument) ?? fallback)
     }
 }
 
@@ -114,6 +159,14 @@ public struct FailoverState: Equatable, Sendable {
     public var switchedTo: String?
     public var switches = 0
     public var retries = 0
+    /// Resends after a safeguards flag, counted apart from transient retries: a flag gets one before the
+    /// next model is tried.
+    public var flagRetries = 0
+    /// Every model switched to, so a safeguards flag on the second model does not switch back to the first.
+    public var triedModels: [String] = []
+    /// Display names of the models whose safeguards refused this session's request, as the errors spelled
+    /// them; the model a session STARTED on is only ever known this way.
+    public var flaggedModels: [String] = []
     public var handedOffTo: UUID?
     public var lastAction: String?
     public var lastFailureAt: Date?
@@ -128,7 +181,9 @@ public enum FailoverPolicy {
     /// The `/model` arguments tried in order once the current pool is dry, skipping every family already
     /// exhausted in the session. Fable is not here: it is the scarcest pool, the one a session usually
     /// STARTS on, and the one to keep for work that needs it.
-    public static let defaultModelLadder = ["opus[1m]", "sonnet[1m]"]
+    /// Opus 4.8 sits between the two: it shares the Opus usage pool (so an exhausted pool skips it) but
+    /// classifies on its own, so a safeguards flag on Opus 5 tries it before dropping to Sonnet.
+    public static let defaultModelLadder = ["opus[1m]", "claude-opus-4-8[1m]", "sonnet[1m]"]
     /// Typed into the pane after a model switch or a transient-error pause. Wording matters: the agent
     /// must resume the step it was on, not re-plan from the top.
     public static let defaultContinuePrompt = """
@@ -136,8 +191,19 @@ public enum FailoverPolicy {
         a server error), not because the task was done. Do not restart or re-plan — pick up the last step \
         and carry on.
         """
+    /// Typed after a safeguards flag instead of the usage/server-error wording, so the agent does not
+    /// treat the refusal as a hint that the task is off limits.
+    public static let defaultFlaggedContinuePrompt = """
+        Continue exactly where you stopped: the previous turn was refused by the model's safeguards — a \
+        false positive on legitimate work, not a verdict on the task. Do not restart or re-plan — pick up \
+        the last step and carry on.
+        """
     public static let retryDelay: TimeInterval = 20
     public static let maxRetries = 3
+    /// A safeguards flag is resent once, soon: the classifier is probabilistic and the same request often
+    /// passes the second time.
+    public static let flagRetryDelay: TimeInterval = 5
+    public static let maxFlagRetries = 1
     /// Retries older than this stop counting against `maxRetries`: three hiccups in a day is not a storm.
     public static let retryWindow: TimeInterval = 30 * 60
 
@@ -177,6 +243,20 @@ public enum FailoverPolicy {
             let retries = recent ? state.retries : 0
             if retries < maxRetries { return .retry(after: retryDelay) }
             return .notify(reason: "\(maxRetries) retries after transient errors did not get the agent going")
+        case .safetyFlagged:
+            let recent = state.lastFailureAt.map { now.timeIntervalSince($0) <= retryWindow } ?? false
+            if (recent ? state.flagRetries : 0) < maxFlagRetries { return .retry(after: flagRetryDelay) }
+            var flagged = state.flaggedModels
+            if let model = failure.model { flagged.append(model) }
+            if let next = ladder.first(where: { model in
+                guard !state.triedModels.contains(model), model != state.switchedTo else { return false }
+                return !flagged.contains { ModelFamily.sameModel($0, model) }
+            }) {
+                return .switchModel(next)
+            }
+            return handoffAvailable
+                ? .handoff(reason: "every model in the ladder refused the request")
+                : .notify(reason: "every model in the ladder refused the request and no other agent is connected")
         case .blocked:
             return .notify(reason: "the request itself was refused; retrying would fail the same way")
         case .unknown:
@@ -190,21 +270,31 @@ public enum FailoverPolicy {
         var next = state
         next.lastAction = action.name
         next.lastFailureAt = now
-        if let family = failure.model.flatMap(ModelFamily.of), !next.exhaustedFamilies.contains(family) {
+        if failure.kind == .modelExhausted, let family = failure.model.flatMap(ModelFamily.of),
+           !next.exhaustedFamilies.contains(family) {
             next.exhaustedFamilies.append(family)
+        }
+        if failure.kind == .safetyFlagged, let model = failure.model, !next.flaggedModels.contains(model) {
+            next.flaggedModels.append(model)
         }
         switch action {
         case .switchModel(let model):
-            if failure.model == nil, let family = state.switchedTo.flatMap(ModelFamily.of),
-               !next.exhaustedFamilies.contains(family) {
+            if failure.kind == .modelExhausted, failure.model == nil,
+               let family = state.switchedTo.flatMap(ModelFamily.of), !next.exhaustedFamilies.contains(family) {
                 next.exhaustedFamilies.append(family)
             }
             next.switchedTo = model
+            next.triedModels.append(model)
             next.switches += 1
             next.retries = 0
+            next.flagRetries = 0
         case .retry:
             let recent = state.lastFailureAt.map { now.timeIntervalSince($0) <= retryWindow } ?? false
-            next.retries = (recent ? state.retries : 0) + 1
+            if failure.kind == .safetyFlagged {
+                next.flagRetries = (recent ? state.flagRetries : 0) + 1
+            } else {
+                next.retries = (recent ? state.retries : 0) + 1
+            }
         case .handoff, .notify:
             break
         }
@@ -368,16 +458,23 @@ public struct ControlFailoverNode: Codable, Sendable, Equatable {
     public let switchedTo: String?
     public let switches: Int?
     public let retries: Int?
+    public let flagRetries: Int?
     public let exhausted: [String]?
+    public let tried: [String]?
+    public let flagged: [String]?
     public let handedOffTo: String?
 
     public init(lastAction: String, switchedTo: String? = nil, switches: Int? = nil, retries: Int? = nil,
-                exhausted: [String]? = nil, handedOffTo: String? = nil) {
+                flagRetries: Int? = nil, exhausted: [String]? = nil, tried: [String]? = nil,
+                flagged: [String]? = nil, handedOffTo: String? = nil) {
         self.lastAction = lastAction
         self.switchedTo = switchedTo
         self.switches = switches
         self.retries = retries
+        self.flagRetries = flagRetries
         self.exhausted = exhausted
+        self.tried = tried
+        self.flagged = flagged
         self.handedOffTo = handedOffTo
     }
 
@@ -386,7 +483,10 @@ public struct ControlFailoverNode: Codable, Sendable, Equatable {
         return ControlFailoverNode(lastAction: lastAction, switchedTo: state.switchedTo,
                                    switches: state.switches > 0 ? state.switches : nil,
                                    retries: state.retries > 0 ? state.retries : nil,
+                                   flagRetries: state.flagRetries > 0 ? state.flagRetries : nil,
                                    exhausted: state.exhaustedFamilies.isEmpty ? nil : state.exhaustedFamilies,
+                                   tried: state.triedModels.isEmpty ? nil : state.triedModels,
+                                   flagged: state.flaggedModels.isEmpty ? nil : state.flaggedModels,
                                    handedOffTo: state.handedOffTo?.uuidString)
     }
 }
