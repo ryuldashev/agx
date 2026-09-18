@@ -435,13 +435,16 @@ omitted when expanded).
   session failed, so the app can act: `error` is the agent's error type (`rate_limit`, `overloaded`,
   `server_error`, `authentication_failed`, …) and `--message` the text it showed. "Out of usage credits …
   keep using X" switches the pane to the next model in the Settings ▸ Agents ▸ Failover ladder
-  (default `opus[1m]`, `sonnet[1m]`) by typing `/model <next>` and a continue prompt; a weekly/session
+  (default `opus[1m]`, `claude-opus-4-8[1m]`, `sonnet[1m]`) by typing `/model <next>` and a continue
+  prompt; "X's safeguards flagged this message" resends once after 5s, then walks the same ladder past
+  every release that flagged (Opus 4.8 has its own safeguards, so it is tried before Sonnet); a weekly/session
   account limit, a spent ladder, an auth error, or `--handoff` opens a peer session with another connected
   agent (Codex, …) seeded with a brief built from the transcript (`--transcript`, else derived from the
   pane's `claude --resume` line); `overloaded`/`server_error`/other `rate_limit` re-prompts after 20s, at
   most three times in 30 minutes; anything else only notifies the user. The answer's `result.failover`
-  says which: `{lastAction: switch-model|retry|handoff|notify, switchedTo?, switches, retries, exhausted,
-  handedOffTo?}` — the same object the session's tree node carries as `failover` once anything happened.
+  says which: `{lastAction: switch-model|retry|handoff|notify, switchedTo?, switches, retries, flagRetries,
+  exhausted, tried, flagged, handedOffTo?}` — the same object the session's tree node carries as `failover`
+  once anything happened.
   Claude Code's `StopFailure` hook (installed by Help ▸ Install Agent Status Hooks) calls this itself, so
   an agent normally never has to; a main-pane exit while the status is still `active` is treated as a
   crash and handed off the same way. Every action emits a `failover` event.

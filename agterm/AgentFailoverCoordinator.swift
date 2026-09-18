@@ -57,11 +57,11 @@ final class AgentFailoverCoordinator {
         var newSession: Session?
         switch action {
         case .switchModel(let model):
-            if !switchModel(model, in: session) {
+            if !switchModel(model, in: session, prompt: continuePrompt(for: failure)) {
                 action = .notify(reason: "could not type into the pane to switch the model")
             }
         case .retry(let delay):
-            if !retry(after: delay, in: session) {
+            if !retry(after: delay, in: session, prompt: continuePrompt(for: failure)) {
                 action = .notify(reason: "could not type into the pane to retry")
             }
         case .handoff(let reason):
@@ -94,18 +94,27 @@ final class AgentFailoverCoordinator {
 
     // MARK: - actions
 
-    private func switchModel(_ model: String, in session: Session) -> Bool {
+    /// A customised continue prompt covers every failure; the default splits so a safeguards flag is not
+    /// described to the agent as a usage or server error.
+    private func continuePrompt(for failure: AgentFailure) -> String {
+        if failure.kind == .safetyFlagged, settings.effectiveFailoverContinuePrompt == FailoverPolicy.defaultContinuePrompt {
+            return FailoverPolicy.defaultFlaggedContinuePrompt
+        }
+        return settings.effectiveFailoverContinuePrompt
+    }
+
+    private func switchModel(_ model: String, in session: Session, prompt: String) -> Bool {
         guard type("/model \(model)", into: session) else { return false }
         let id = session.id
         pressReturn(in: id, after: Self.returnSettle)
-        after(Self.modelSwitchSettle) { [weak self] in self?.submitPrompt(in: id) }
+        after(Self.modelSwitchSettle) { [weak self] in self?.submitPrompt(prompt, in: id) }
         return true
     }
 
-    private func retry(after delay: TimeInterval, in session: Session) -> Bool {
+    private func retry(after delay: TimeInterval, in session: Session, prompt: String) -> Bool {
         guard (session.surface as? GhosttySurfaceView)?.isRealized == true else { return false }
         let id = session.id
-        after(delay) { [weak self] in self?.submitPrompt(in: id) }
+        after(delay) { [weak self] in self?.submitPrompt(prompt, in: id) }
         return true
     }
 
@@ -113,8 +122,8 @@ final class AgentFailoverCoordinator {
     /// Claude Code treats a burst as a paste and swallows a Return that arrives inside it, so a prompt typed
     /// `text + "\n"` sits in the input box unsent. A second Return follows in case the first landed while
     /// the TUI was still digesting the paste; on an empty input it is a no-op.
-    private func submitPrompt(in id: UUID) {
-        guard let session = liveSession(id), type(settings.effectiveFailoverContinuePrompt, into: session) else { return }
+    private func submitPrompt(_ prompt: String, in id: UUID) {
+        guard let session = liveSession(id), type(prompt, into: session) else { return }
         pressReturn(in: id, after: Self.returnSettle)
         pressReturn(in: id, after: Self.returnSettle + Self.returnRepeat)
     }
@@ -174,7 +183,8 @@ final class AgentFailoverCoordinator {
         switch action {
         case .switchModel(let model):
             payload.model = model
-            body = "“\(name)”: \(failure.model ?? "the model") ran out of usage — switched to \(model) and continued."
+            let why = failure.kind == .safetyFlagged ? "refused the request" : "ran out of usage"
+            body = "“\(name)”: \(failure.model ?? "the model") \(why) — switched to \(model) and continued."
         case .retry(let delay):
             body = "“\(name)”: \(failure.errorType) — retrying in \(Int(delay))s."
         case .handoff(let reason):

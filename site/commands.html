@@ -1901,8 +1901,9 @@
               <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
                 "Out of usage credits … keep using X" marks X's family (fable / opus / sonnet / haiku) exhausted for this session and
                 types <span style="font-family: &quot;JetBrains Mono&quot;, monospace">/model &lt;next&gt;</span> from the Settings ▸ Agents ▸ Failover
-                ladder (default <span style="font-family: &quot;JetBrains Mono&quot;, monospace">opus[1m], sonnet[1m]</span>), then the continue
-                prompt 2.5 s later. A weekly or session account limit, an auth or billing error, a spent ladder, or
+                ladder (default <span style="font-family: &quot;JetBrains Mono&quot;, monospace">opus[1m], claude-opus-4-8[1m], sonnet[1m]</span>), then the continue
+                prompt 2.5 s later. "X's safeguards flagged this message" resends the continue prompt once after 5 s, then walks the
+                same ladder past every release that flagged — Opus 4.8 keeps its own safeguards, so it is tried before Sonnet. A weekly or session account limit, an auth or billing error, a spent ladder, or
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--handoff</span> opens
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">&lt;name&gt; → &lt;agent&gt;</span> in the same workspace and cwd, running the
                 configured handoff agent (default: the first connected agent of another kind, e.g. Codex) with a brief as its first
@@ -1911,7 +1912,7 @@
                 user prompts and the last answer. <span style="font-family: &quot;JetBrains Mono&quot;, monospace">overloaded</span>,
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">server_error</span> and any other
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">rate_limit</span> re-prompt after 20 s, at most three times in 30 minutes,
-                then hand off; <span style="font-family: &quot;JetBrains Mono&quot;, monospace">invalid_request</span> and
+                then hand off; any other <span style="font-family: &quot;JetBrains Mono&quot;, monospace">invalid_request</span> and
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">max_output_tokens</span> only notify. No other agent connected, or the
                 pane cannot be typed into, degrades to <span style="font-family: &quot;JetBrains Mono&quot;, monospace">notify</span>. A main-pane exit while
                 the agent's status is still <span style="font-family: &quot;JetBrains Mono&quot;, monospace">active</span> is treated as a crash and handed
