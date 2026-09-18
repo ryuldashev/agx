@@ -1,0 +1,332 @@
+# Artifact backfill — 2026-09-18
+
+agx on PATH = ~/agterm/scripts/agx (repo checkout, no backfill); used bundled /Applications/agx.app/Contents/Resources/agx + Contents/MacOS/agtermctl.
+
+## Dry run: agx artifact backfill --days 30 --dry-run
+
+scanned 1091 transcripts, 301 artifacts to record (39 transcripts map to a session)
+2026-08-19T13:42:32.248Z  sendfile /Users/rus/mars/rocket/PROGRAM.md  ← -
+2026-08-23T06:05:08.269Z  sendfile /Users/rus/projects/salt-crystal/concept/day.jpg  ← -
+2026-08-23T09:03:51.538Z  sendfile /Users/rus/mars/hackathon/out/judge/20260823-135840/cards.html  ← -
+2026-08-24T12:28:21.386Z  sendfile /Users/rus/memory/_curation/ai-enhance-batch1/from-sam/_compare/cmp_1.jpg  ← -
+2026-08-24T12:28:21.386Z  sendfile /Users/rus/memory/_curation/ai-enhance-batch1/from-sam/_compare/cmp_2.jpg  ← -
+2026-08-24T12:28:21.386Z  sendfile /Users/rus/memory/_curation/ai-enhance-batch1/from-sam/_compare/cmp_3.jpg  ← -
+2026-08-24T12:28:21.386Z  sendfile /Users/rus/memory/_curation/ai-enhance-batch1/from-sam/_compare/cmp_4.jpg  ← -
+2026-08-24T12:28:21.386Z  sendfile /Users/rus/memory/_curation/ai-enhance-batch1/from-sam/_compare/cmp_5.jpg  ← -
+2026-08-24T13:05:44.171Z  sendfile /Users/rus/Downloads/Награждения_ФД_Ферганская_долина_v2.xlsx  ← -
+2026-08-24T13:19:27.718Z  sendfile /Users/rus/memory/_shots/award-filter-1.png  ← -
+2026-08-24T13:19:27.718Z  sendfile /Users/rus/memory/_shots/award-filter-2-open.png  ← -
+2026-08-24T15:01:45.583Z  sendfile /Users/rus/memory/_curation/watermark/demo_all.jpg  ← -
+2026-08-25T04:35:39.023Z  open     glass_all.jpg  ← -
+2026-08-25T04:35:39.023Z  open     glass_badge.jpg  ← -
+2026-08-25T04:35:39.023Z  open     glass_pill.jpg  ← -
+2026-08-25T04:35:39.023Z  open     glass_strip.jpg  ← -
+2026-08-25T04:35:39.023Z  open     glass_zoom.jpg  ← -
+2026-08-25T04:35:39.023Z  open     light_badge.jpg  ← -
+2026-08-25T04:35:39.023Z  open     light_pill.jpg  ← -
+2026-08-25T04:35:39.023Z  open     light_strip.jpg  ← -
+2026-08-25T04:39:01.248Z  open     demo_corner.jpg  ← -
+2026-08-25T04:39:01.248Z  open     sign_center.jpg  ← -
+2026-08-25T04:39:01.248Z  open     sign_dark2.jpg  ← -
+2026-08-25T04:39:01.248Z  open     sign_light_right.jpg  ← -
+2026-08-25T04:39:01.248Z  open     sign_norule.jpg  ← -
+2026-08-25T04:39:01.248Z  open     sign_right.jpg  ← -
+2026-08-25T04:39:01.248Z  open     sign_zoom.jpg  ← -
+2026-08-25T12:15:19.371Z  sendfile /Users/rus/mars/brand/merch/tshirt-2026-08/mars-fonts-sheet.jpg  ← -
+2026-08-25T12:15:19.371Z  sendfile /Users/rus/mars/brand/merch/tshirt-2026-08/mars-tshirt-ai-refs.jpg  ← -
+2026-08-25T12:15:19.371Z  sendfile /Users/rus/mars/brand/merch/tshirt-2026-08/mars-tshirt-layouts.jpg  ← -
+2026-08-25T12:26:50.964Z  open     /Users/rus/mars/brand/merch/tshirt-2026-08/mars-fonts-sheet.png  ← -
+2026-08-25T12:26:50.964Z  open     /Users/rus/mars/brand/merch/tshirt-2026-08/mars-tshirt-ai-refs.png  ← -
+2026-08-25T12:26:50.964Z  open     /Users/rus/mars/brand/merch/tshirt-2026-08/mars-tshirt-layouts.png  ← -
+2026-08-25T12:44:11.480Z  sendfile /Users/rus/mars/brand/merch/tshirt-wall/mars-wall-compose.jpg  ← -
+2026-08-25T12:44:11.480Z  sendfile /Users/rus/mars/brand/merch/tshirt-wall/mars-wall-mockup.jpg  ← -
+2026-08-25T12:58:45.096Z  sendfile /Users/rus/mars/brand/merch/tshirt-wall/mars-wall-compose-calm.jpg  ← -
+2026-08-25T12:58:45.096Z  sendfile /Users/rus/mars/brand/merch/tshirt-wall/mars-wall-contact-sheet.jpg  ← -
+2026-08-25T12:58:45.096Z  sendfile /Users/rus/mars/brand/merch/tshirt-wall/mars-wall-mockup-calm.jpg  ← -
+2026-08-25T12:58:56.079Z  sendfile /Users/rus/mars/brand/merch/tshirt-wall/mars-wall-assets.zip  ← -
+2026-08-25T15:17:11.010Z  sendfile /Users/rus/mars/space/my-works/docs/incident-2026-08-25-lost-work-files.md  ← -
+2026-08-25T16:44:16.677Z  sendfile /Users/rus/mars/space/my-works/docs/mars-devs-draft.md  ← -
+2026-08-26T15:38:02.312Z  sendfile /Users/rus/sportup/docs/prototypes/chronicle-live.jpeg  ← -
+2026-08-26T16:03:02.100Z  sendfile /Users/rus/sportup/docs/prototypes/chronicle-prod.jpeg  ← -
+2026-08-26T16:03:02.100Z  sendfile /Users/rus/sportup/docs/prototypes/history-a.html  ← -
+2026-08-26T16:03:02.100Z  sendfile /Users/rus/sportup/docs/prototypes/history-b.html  ← -
+2026-08-26T16:03:02.100Z  sendfile /Users/rus/sportup/docs/prototypes/history-c.html  ← -
+2026-08-26T16:09:15.806Z  open     card-a.jpg  ← -
+2026-08-26T16:09:15.806Z  open     card-b.jpg  ← -
+2026-08-27T12:10:58.356Z  sendfile /Users/rus/mars/reports/yunusabad-cash-2026-08/README.md  ← -
+2026-08-27T12:10:58.356Z  sendfile /Users/rus/mars/reports/yunusabad-cash-2026-08/audio/2026-08-03_1535-1538_moment-skidki.mp3  ← -
+2026-08-28T10:24:09.424Z  open     /Users/rus/mars/reports/yunusabad-discounts/yunusabad-skidki-jul-aug-2026.pdf  ← -
+2026-08-28T11:09:07.045Z  open     ~/mars/reports/yunusabad-cash-2026-08/akrom-report.html  ← -
+2026-08-28T11:15:32.948Z  open     https://docs.google.com/spreadsheets/d/1-NZ4yMjFXsscwf3f9tbCNjSpxQvqIYygDk7bMmZQoJs/edit  ← -
+2026-08-28T12:08:12.107Z  open     /Users/rus/mars/reports/yunusabad-discounts/yunusobod-chegirmalar-iyul-avgust-2026.pdf  ← -
+2026-08-30T13:33:39.540Z  open     /Users/rus/здоровье/checkup.html  ← -
+2026-09-02T13:33:31.939Z  open     /Users/rus/mars/ceo/valuation/cb-report/2026-08-29-cb-valuation-report.pdf  ← -
+2026-09-02T16:46:43.095Z  open     ~/mars/ceo/valuation/valuation-2026-08.html  ← -
+2026-09-03T12:12:50.172Z  open     /Users/rus/mars/insta/creatives/2026-08-retarget/preview/preview.html  ← -
+2026-09-03T16:00:15.904Z  open     /Users/rus/mars/insta/creatives/2026-08-retarget/out/c5-ru.png  ← -
+2026-09-03T16:43:52.247Z  sendfile /Users/rus/mars/insta/creatives/2026-08-retarget/contact-sheet.jpg  ← -
+2026-09-03T16:43:52.247Z  sendfile /Users/rus/mars/insta/creatives/2026-08-retarget/preview/ads-preview.jpg  ← -
+2026-09-03T17:01:41.125Z  sendfile /Users/rus/mars/insta/creatives/2026-08-retarget/motion/c3-1-ru-sq.mp4  ← -
+2026-09-03T17:05:00.041Z  sendfile /Users/rus/mars/insta/data/schools/schools-2km.csv  ← -
+2026-09-03T17:05:00.041Z  sendfile /Users/rus/mars/insta/data/schools/schools-2km.md  ← -
+2026-09-03T17:20:12.842Z  sendfile /Users/rus/mars/insta/creatives/2026-08-retarget/contact-schools-ru.jpg  ← -
+2026-09-04T12:13:12.619Z  open     https://cambridge-ai.marshub.uz  ← -
+2026-09-04T19:02:45.170Z  open     ~/roblox/mars-hacker-tycoon/README.md  ← -
+2026-09-04T19:11:40.661Z  open     https://forms.marshub.uz/f/rocket  ← -
+2026-09-04T19:51:18.755Z  open     http://localhost:8777/rocket-ru.html  ← -
+2026-09-04T19:51:18.755Z  open     http://localhost:8777/rocket.html  ← -
+2026-09-04T20:01:12.081Z  open     http://localhost:3319/admin/analytics?key=testkey  ← -
+2026-09-04T20:01:12.081Z  open     http://localhost:3319/f/rocket-ru  ← -
+2026-09-04T20:03:56.023Z  open     /Users/rus/mars/ceo/valuation/cb-report/ru/otchet-ru-investor.pdf  ← -
+2026-09-04T20:27:15.641Z  open     https://rocket.marshub.uz/course  ← -
+2026-09-04T20:36:39.494Z  open     http://localhost:3319/f/rocket-ru?utm_campaign=preview  ← -
+2026-09-04T20:47:30.607Z  open     http://localhost:3319/f/rocket-ru?utm_campaign=preview2  ← -
+2026-09-04T21:02:30.240Z  open     http://localhost:3319/f/rocket-ru?utm_campaign=preview4  ← -
+2026-09-04T21:05:07.000Z  open     http://localhost:3319/f/rocket-ru?utm_campaign=preview5  ← -
+2026-09-04T21:12:30.518Z  open     docs/new-campaign-plan.md  ← -
+2026-09-05T05:40:41.038Z  open     http://localhost:3320/f/rocket-ru  ← -
+2026-09-05T12:43:39.187Z  open     bloggers-first-contact.md  ← -
+2026-09-05T16:36:17.061Z  open     docs/log/2026-09-05-rt1-first-day-check.md  ← -
+2026-09-05T17:27:21.895Z  open     ~/mars/DEPLOY-kopeck-debt-2026-09-04.md  ← -
+2026-09-06T09:33:48.172Z  open     http://demo.modme.localhost:8080/  ← -
+2026-09-06T10:29:11.958Z  open     artisan  ← -
+2026-09-06T10:29:11.958Z  open     tests/Feature/BranchServiceTest.php  ← -
+2026-09-06T10:29:11.958Z  open     tests/Feature/DashboardLayoutTest.php  ← -
+2026-09-06T10:30:06.948Z  open     ~/modme/docs/drafts/custom-dashboard-2026-09-06.jpeg  ← -
+2026-09-06T10:37:59.549Z  open     https://docs.marshub.uz/valuation-2026-08/  ← -
+2026-09-06T10:44:40.973Z  open     https://cloud.marsdot.uz/guide/?lang=ru  ← -
+2026-09-06T10:49:16.492Z  open     https://www.npmjs.com/login?next=/login/cli/d8684fa2-7ed8-4db0-ab05-44b5633087fb  ← -
+2026-09-06T10:50:21.556Z  open     http://demo.modme.localhost:8080/dashboard/default  ← -
+2026-09-06T13:11:53.614Z  open     ~/modme/docs/log/2026-09-06-dashboard-review-and-deploy.md  ← -
+2026-09-06T17:13:02.410Z  open     https://cloud.marsdot.uz/guide?lang=ru#steps  ← -
+2026-09-07T04:40:52.452Z  open     https://www.npmjs.com/auth/cli/dad18923-314a-4862-af6e-0838bb66f81b  ← -
+2026-09-07T04:54:09.284Z  open     /Users/rus/mars/ceo/meetings/2026-09-07-checklist.md  ← -
+2026-09-07T05:03:09.541Z  open     https://mars.modme.uz/auth/login  ← -
+2026-09-07T05:11:29.851Z  open     https://forms.marshub.uz/f/rocket-ru?utm_source=example  ← -
+2026-09-07T06:08:02.322Z  open     http://localhost:3218/f/rocket-ru  ← -
+2026-09-07T08:12:41.265Z  open     https://forms.marshub.uz/f/rocket-ru  ← -
+2026-09-07T08:31:07.319Z  open     https://docs.google.com/spreadsheets/d/1-NZ4yMjFXsscwf3f9tbCNjSpxQvqIYygDk7bMmZQoJs/edit?gid=1011067752#gid=1011067752  ← -
+2026-09-07T08:39:52.837Z  open     2026-09-07-planerka.md  ← -
+2026-09-07T10:59:52.482Z  open     https://core.marsit.uz/group-attendance/$(echo)  ← -
+2026-09-07T11:00:41.814Z  open     https://core.marsit.uz/group-attendance/3157  ← -
+2026-09-07T12:04:25.396Z  open     build_sheet.py  ← -
+2026-09-07T12:04:25.396Z  open     ~/mars/kassa/venv/bin/python  ← -
+2026-09-07T13:02:17.714Z  open     analysis.md  ← -
+2026-09-07T13:02:17.714Z  open     web/index.html  ← -
+2026-09-07T13:11:06.591Z  open     http://localhost:8081/my-payroll  ← -
+2026-09-07T13:11:18.628Z  open     http://localhost:8081/my-salary  ← -
+2026-09-07T16:10:51.625Z  open     ~/modme/docs/files-cleanup-plan-2026-09-07.md  ← -
+2026-09-08T07:45:28.651Z  open     https://cloud.marsdot.uz/dashboard  ← -
+2026-09-08T09:54:27.612Z  open     http://127.0.0.1:3299/program  ← -
+2026-09-08T09:58:05.077Z  open     docs/brand/pilot.md  ← -
+2026-09-08T12:46:04.902Z  open     https://my.soliq.uz  ← -
+2026-09-08T13:42:37.029Z  open     https://damin.marshub.uz/  ← -
+2026-09-08T13:42:37.029Z  open     https://pobeditel.marshub.uz/  ← -
+2026-09-08T19:08:26.320Z  open     ~/agterm/.claude/worktrees/release-2026-09-09/site/index.html  ← -
+2026-09-09T08:17:47.039Z  open     app/Http/Controllers/PaymentBotController.php  ← -
+2026-09-09T08:21:23.248Z  open     ~/modme/docs/payment-page-spec.md  ← -
+2026-09-10T05:48:21.334Z  open     task-stats-api.md  ← -
+2026-09-10T05:52:57.469Z  open     traefik-http2-audit.md  ← -
+2026-09-10T07:01:48.429Z  open     ~/agterm/docs/log/2026-09-10-reader-pane.md  ← -
+2026-09-10T08:27:16.681Z  open     ~/mars/src/marshub/site/voucher/index.html  ← -
+2026-09-10T08:55:04.850Z  open     ~/Downloads/coinshop-v2-vse.md  ← -
+2026-09-10T08:55:04.850Z  open     ~/mars/partnering/ictweek-2026/voucher/MECHANICS.md  ← -
+2026-09-10T08:55:04.850Z  open     ~/mmee/reader/docs/research/smart-reader/vision.md  ← -
+2026-09-10T09:13:51.567Z  open     ~/nmt/runs/2026-09-10-mars-online/REVIEW.md  ← -
+2026-09-10T09:13:51.567Z  open     ~/nmt/runs/2026-09-10-mars-online/value-proposition.md  ← -
+2026-09-10T09:23:17.410Z  open     src/API/v2/coinshop/router.py  ← -
+2026-09-10T09:23:17.410Z  open     src/app/components/__init__.py  ← -
+2026-09-10T09:26:52.225Z  open     web/app.js  ← -
+2026-09-10T10:08:37.139Z  reader   ~/cambridge/analysis/agent-audit-2026-08/REPORT.md  ← -
+2026-09-11T04:31:47.261Z  open     /Users/rus/me/tv-research/PLAN.md  ← -
+2026-09-11T04:45:11.424Z  open     https://claude.ai/code/artifact/2aa72d89-a6d2-42ef-85da-917c11dc9b0c  ← -
+2026-09-11T04:56:41.584Z  open     RELAUNCH.md  ← -
+2026-09-11T05:00:40.553Z  open     /Users/rus/me/tv-research/04-debloat-list.md  ← -
+2026-09-11T05:03:00.870Z  open     /Users/rus/me/tv-research/05-performance-tuning.md  ← -
+2026-09-11T05:18:11.630Z  open     ~/mars/ceo/orchestration/space-community/relaunch/prototype.html  ← -
+2026-09-11T09:51:34.538Z  open     ruslan-v1.png  ← -
+2026-09-11T09:51:34.538Z  open     ruslan-v2.png  ← -
+2026-09-11T09:51:34.538Z  open     ruslan-v3.png  ← -
+2026-09-11T13:27:09.487Z  open     https://space.marsit.uz/shop-v2  ← -
+2026-09-11T13:29:53.505Z  open     voucher/print/vouchers-ictweek-2026-print.pdf  ← -
+2026-09-11T13:40:12.326Z  open     ictweek-60s.mp4  ← -
+2026-09-11T13:56:19.997Z  open     https://github.com/matsituz/gamification/pull/1120/files  ← -
+2026-09-11T14:25:35.844Z  open     final.png  ← -
+2026-09-11T14:26:17.015Z  open     stepD.sh  ← -
+2026-09-11T14:35:06.292Z  open     https://plane.marshub.uz/hub/projects/a0000001-0000-0000-0000-000000000004/issues/  ← -
+2026-09-11T14:38:10.612Z  open     https://plane.marshub.uz/hub/projects/a0000001-0000-0000-0000-000000000004/issues  ← -
+2026-09-11T14:41:07.712Z  open     site/index.html  ← -
+2026-09-11T14:52:28.298Z  open     /Users/rus/agterm/.claude/worktrees/agent-profiles-2026-09-11/docs/reference/agents/hooks-result-window.png  ← -
+2026-09-11T15:01:56.732Z  open     https://id.marshub.uz/admin  ← -
+2026-09-11T18:06:29.866Z  open     tests/basic.md  ← -
+2026-09-11T18:06:29.866Z  open     tests/cyrillic.md  ← -
+2026-09-11T18:42:26.848Z  open     /Users/rus/mars/ceo/orchestration/space-community/product/PRODUCT.md  ← -
+2026-09-11T18:42:26.848Z  open     /Users/rus/mars/ceo/space-community-plan-2026-09-10.md  ← -
+2026-09-11T18:42:26.848Z  open     /Users/rus/mars/ceo/space-social-audit-2026-09-10.md  ← -
+2026-09-11T18:42:26.848Z  open     /Users/rus/mars/partnering/ictweek-2026/speech.md  ← -
+2026-09-11T18:42:26.848Z  open     /Users/rus/mars/reports/gorkiy-actions-2026-09/report.md  ← -
+2026-09-11T18:42:26.848Z  open     /Users/rus/modme/docs/log/2026-09-11-hostmaster-status.md  ← -
+2026-09-11T18:42:26.848Z  open     /Users/rus/nmt/runs/2026-09-10-mars-core-relaunch/diagnose.md  ← -
+2026-09-11T18:42:26.848Z  open     /Users/rus/nmt/runs/2026-09-10-mars-online/market-research.md  ← -
+2026-09-11T18:43:42.870Z  open     tools/smoke.sh  ← -
+2026-09-11T18:53:02.944Z  open     ~/mmee/reader/experiments/shortcuts/chords.html  ← -
+2026-09-11T18:58:15.059Z  open     ~/mmee/reader/experiments/shortcuts/learn.html  ← -
+2026-09-11T18:58:51.208Z  open     ~/mmee/reader/experiments/shortcuts/poster.html  ← -
+2026-09-11T18:59:36.602Z  open     ~/mmee/reader/experiments/shortcuts/anatomy.html  ← -
+2026-09-11T18:59:36.602Z  open     ~/mmee/reader/experiments/shortcuts/keymap.html  ← -
+2026-09-11T19:14:07.291Z  open     docs/shortcuts.md  ← -
+2026-09-11T19:23:27.055Z  open     ~/Applications/Reader.app/Contents/Resources/shortcuts.md  ← -
+2026-09-11T19:41:48.249Z  open     ~/CLAUDE.md  ← -
+2026-09-11T19:42:41.702Z  reader   docs/guide/README.md  ← -
+2026-09-11T20:01:51.537Z  sendfile docs/screenshots/keyboard-shortcuts.png  ← -
+2026-09-11T20:19:43.458Z  open     http://127.0.0.1:8793  ← -
+2026-09-11T20:20:38.287Z  open     http://127.0.0.1:8793/  ← -
+2026-09-11T20:30:00.698Z  reader   field-protocol.md  ← -
+2026-09-11T20:41:00.815Z  open     map/index.html  ← -
+2026-09-11T20:46:10.648Z  open     http://127.0.0.1:8765/site-3d/index.html  ← -
+2026-09-11T21:07:02.722Z  open     ~/mars/courses/self-paced/SPACE-STORE-CONCEPT.md  ← -
+2026-09-11T21:11:46.193Z  open     feedback/live/2026-09-12-0152/feedback.md  ← -
+2026-09-11T21:13:53.493Z  reader   PLAN.md  ← -
+2026-09-11T21:20:03.231Z  open     ~/home/iot/agrodela/site/index.html  ← -
+2026-09-11T21:35:25.383Z  open     ai.fred.dispatch.plist  ← -
+2026-09-11T21:40:12.409Z  open     https://board.marshub.uz/  ← -
+2026-09-11T21:52:28.492Z  open     assets/cover.jpg  ← -
+2026-09-11T22:09:29.471Z  open     http://127.0.0.1:8765/site-v4/index.html  ← -
+2026-09-11T22:39:12.042Z  open     assets/shot-01-diagnostic.png  ← -
+2026-09-11T22:39:12.042Z  open     assets/shot-06-binsearch.png  ← -
+2026-09-11T22:39:12.042Z  open     assets/shot-08-viz.png  ← -
+2026-09-11T22:42:26.189Z  open     ~/mars/courses/self-paced/ctf-cyberdetective/REPORT.md  ← -
+2026-09-11T22:42:26.189Z  open     ~/mars/courses/self-paced/ctf-cyberdetective/STORE-CARD.md  ← -
+2026-09-11T22:42:26.189Z  open     ~/mars/courses/self-paced/ctf-cyberdetective/assets/img/cover.jpg  ← -
+2026-09-11T23:12:41.229Z  open     assets/cover/cover-web.jpg  ← -
+2026-09-11T23:12:41.229Z  open     assets/shots/web-07-quiz-result-quiz.png  ← -
+2026-09-11T23:12:41.229Z  reader   REPORT.md  ← -
+2026-09-11T23:19:16.846Z  open     REPORT.md  ← -
+2026-09-11T23:29:26.562Z  reader   REPORT.md  ← -
+2026-09-12T00:10:54.380Z  open     REPORT.md  ← -
+2026-09-12T00:10:54.380Z  open     assets/cover/cover-tgbot.jpg  ← -
+2026-09-12T04:02:22.349Z  reader   docs/log/2026-09-12-pump-schedule-check.md  ← -
+2026-09-12T08:43:52.418Z  open     https://space.marsit.uz/blog  ← -
+2026-09-12T08:44:37.685Z  open     https://claude.ai/code/artifact/4208189e-ec3a-49e9-8e0b-e6c8c1a98365  ← -
+2026-09-12T12:37:05.195Z  open     index.html  ← -
+2026-09-12T12:41:08.774Z  open     http://localhost:8081/teacher-group/3139  ← -
+2026-09-12T12:44:50.674Z  open     http://localhost:8087/blog-page  ← -
+2026-09-12T12:48:14.748Z  open     http://localhost:8080/blog-page  ← -
+2026-09-12T13:02:01.321Z  reader   ~/mars/legal/apple-developer-check-2026-09-12.md  ← -
+2026-09-12T16:31:14.397Z  open     ~/me/meditations/index.html  ← -
+2026-09-13T10:15:39.784Z  open     scripts/agx  ← -
+2026-09-14T05:36:19.284Z  open     letter-531-modme-s3.docx  ← -
+2026-09-14T05:36:19.284Z  open     letter-919-yate-devmodme.docx  ← -
+2026-09-14T05:48:14.627Z  open     https://ruslan.marshub.uz  ← -
+2026-09-14T07:08:17.670Z  open     http://localhost:8081/admin-graduates  ← -
+2026-09-14T08:01:29.850Z  reader   ~/mars/ceo/meetings/2026-09-14/notes.md  ← -
+2026-09-14T08:19:54.718Z  open     ~/Downloads/IMG_1077.MOV  ← -
+2026-09-14T08:24:11.898Z  open     MARS_Pravila_Administrator_5_ru.pdf  ← -
+2026-09-14T08:24:11.898Z  open     MARS_Pravila_Kurator_3_ru.pdf  ← -
+2026-09-14T08:36:44.165Z  open     /Applications/Google Chrome.app/Contents/MacOS/Google Chrome  ← -
+2026-09-14T08:36:44.165Z  open     otchet-ru.html  ← -
+2026-09-14T08:36:44.165Z  open     otchet-ru.pdf  ← -
+2026-09-14T11:30:36.218Z  open     proposal-2026-09.pdf  ← -
+2026-09-14T11:31:23.828Z  reader   /Users/rus/mars/ceo/irl-iman/inventory.md  ← -
+2026-09-14T11:41:37.825Z  open     mirror/daemon.py  ← -
+2026-09-14T12:23:51.051Z  open     proposal-2026-09-alt.pdf  ← -
+2026-09-14T13:28:30.933Z  open     I_model/IRL_03_Model_2026-2027.xlsx  ← -
+2026-09-14T13:28:30.933Z  reader   ~/mars/ceo/irl-iman/work/SUMMARY.md  ← -
+2026-09-14T13:41:34.964Z  open     valuation-upside.pdf  ← -
+2026-09-14T13:46:59.143Z  open     src/modules/Admin/pages/Graduates/GraduatesBoard.vue  ← -
+2026-09-14T14:02:03.725Z  open     /Users/rus/mars/legal/docs/2021-10-29-guvohnoma-it-park-rezident-659.png  ← -
+2026-09-14T14:02:03.725Z  open     ~/mars/legal/finance-docs/INDEX.md  ← -
+2026-09-14T14:02:13.304Z  reader   PLAN-v2.md  ← -
+2026-09-14T14:14:16.273Z  open     work/A_pnl/IRL_01_PnL_monthly.xlsx  ← -
+2026-09-14T14:19:56.829Z  open     https://flagma.uz/ru/2204898/products/  ← -
+2026-09-14T14:19:56.829Z  open     https://flagma.uz/ru/products/tashkent/q=%D0%BB%D0%B8%D1%81%D1%82+%D0%BD%D0%B5%D1%80%D0%B6%D0%B0%D0%B2%D0%B5%D1%8E%D1%89%D0%B8%D0%B9+%D0%B7%D0%B5%D1%80%D0%BA%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9/  ← -
+2026-09-14T14:19:56.829Z  open     https://www.olx.uz/tashkent/q-%D0%BD%D0%B5%D1%80%D0%B6%D0%B0%D0%B2%D0%B5%D0%B9%D0%BA%D0%B0-%D0%B7%D0%B5%D1%80%D0%BA%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F-%D0%BB%D0%B8%D1%81%D1%82/  ← -
+2026-09-14T14:56:23.776Z  open     http://localhost:8899/damin-starfish/  ← -
+2026-09-14T15:02:39.691Z  reader   PLAN.md  ← -
+2026-09-14T15:04:41.504Z  open     bin/agx-next-waiting  ← -
+2026-09-14T15:20:55.801Z  reader   ~/modme/docs/drafts/ai-panel-2026-09-14.md  ← -
+2026-09-14T16:29:10.236Z  open     ~/modme/docs/log/2026-09-14-ai-panel-front.md  ← -
+2026-09-14T16:36:54.705Z  open     http://127.0.0.1:8901/damin-robohero/  ← -
+2026-09-14T16:48:21.657Z  reader   /Users/rus/modme/docs/s3-storage-decision-2026-09-14.md  ← -
+2026-09-14T16:54:35.870Z  open     artisan  ← -
+2026-09-14T16:58:12.408Z  open     export-tenant.sh  ← -
+2026-09-14T17:07:26.325Z  open     http://mars.modme.localhost:8080/local-login.html  ← -
+2026-09-14T17:07:26.325Z  reader   ~/modme/docs/log/2026-09-14-ai-panel-local-stand.md  ← -
+2026-09-14T19:41:43.487Z  open     https://damin-robohero.marshub.uz/  ← -
+2026-09-14T20:05:08.238Z  reader   /Users/rus/modme/docs/DR-runbook.md  ← -
+2026-09-15T04:00:13.054Z  open     upside/v2/doc/report.pdf  ← 44431C01-B657-4BFB-AF7A-C0B897AE5CC7
+2026-09-15T04:01:26.150Z  reader   STATUS.md  ← -
+2026-09-15T04:05:10.374Z  open     short.pdf  ← 44431C01-B657-4BFB-AF7A-C0B897AE5CC7
+2026-09-15T06:40:10.604Z  open     http://localhost:8081/  ← 47CCAEC5-E47D-4A1F-B5B7-BC6CAF1307B1
+2026-09-15T07:21:08.443Z  open     yunusabad-referral-plan.html  ← D2E82450-9FCE-44AE-B137-E77BDE5FE5F9
+2026-09-15T07:21:08.443Z  reader   yunusabad-referral-kickoff.md  ← D2E82450-9FCE-44AE-B137-E77BDE5FE5F9
+2026-09-15T07:57:02.512Z  open     https://marsit.uz/  ← -
+2026-09-15T10:11:52.477Z  reader   docs/log/2026-09-15-ai-panel-usage-audit.md  ← -
+2026-09-15T11:14:23.222Z  open     ~/mars/src/mars-drop/AGENTS.md  ← -
+2026-09-15T11:16:06.279Z  open     src/store/modules/ai.js  ← -
+2026-09-15T11:18:57.304Z  open     slide/slide-side.png  ← -
+2026-09-15T11:21:53.608Z  reader   work/N_answers/letters-2026-09-15.md  ← -
+2026-09-15T11:31:15.212Z  open     ~/mars/legal/vat-refund-research.md  ← -
+2026-09-15T11:43:21.954Z  open     https://fleet.marshub.uz/  ← D004719C-597B-49DF-BD23-9954A49AA69C
+2026-09-15T12:33:56.653Z  open     ~/mars/partnering/ictweek-2026/slide/slide.png  ← -
+2026-09-15T12:35:08.507Z  reader   /Users/rus/mars/ceo/irl-iman/work/O_tax/01-3-2_reconciliation.md  ← -
+2026-09-15T12:42:46.732Z  open     ictweek-60s-1920.mp4  ← -
+2026-09-15T12:51:42.962Z  reader   work/O_tax/01-3-2_full-by-year.md  ← -
+2026-09-15T14:08:22.950Z  open     ~/mars/ceo/valuation/upside/v2/doc/brief.pdf  ← 44431C01-B657-4BFB-AF7A-C0B897AE5CC7
+2026-09-16T04:46:36.847Z  reader   ~/modme/docs/log/2026-09-16-ai-panel-usage-audit-morning.md  ← -
+2026-09-16T08:29:47.369Z  open     abcdx/report.html  ← -
+2026-09-16T09:06:53.386Z  reader   ~/mars/legal/apple-developer-check-2026-09-16.md  ← -
+2026-09-16T10:16:16.537Z  open     analysis/sept-2026-funnel.md  ← CCC99980-1899-4D5C-86F4-7FA17821D7C3
+2026-09-16T11:29:23.262Z  open     ~/mars/legal/docs/2023-08-24-id-card-AD4400619-yuldashev-front-back.pdf  ← -
+2026-09-16T12:28:29.307Z  open     summary.md  ← 26F9EC7D-75C5-42E4-95BA-ACCDE874A2D9
+2026-09-16T12:44:42.865Z  open     code-audit.md  ← 49BD46C7-B7C5-48E7-89B9-2DF95FDD0E44
+2026-09-16T12:44:42.865Z  open     security-audit.md  ← 49BD46C7-B7C5-48E7-89B9-2DF95FDD0E44
+2026-09-16T12:44:42.865Z  open     technical-findings.md  ← 49BD46C7-B7C5-48E7-89B9-2DF95FDD0E44
+2026-09-16T12:44:42.865Z  open     tracking-tool.md  ← 49BD46C7-B7C5-48E7-89B9-2DF95FDD0E44
+2026-09-16T12:44:42.865Z  open     training-plan.md  ← 49BD46C7-B7C5-48E7-89B9-2DF95FDD0E44
+2026-09-16T12:44:42.865Z  reader   draft-madina.md  ← 49BD46C7-B7C5-48E7-89B9-2DF95FDD0E44
+2026-09-16T12:49:38.879Z  open     ~/.config/agx/agent-status/agx-session-context.sh  ← -
+2026-09-16T13:09:57.745Z  open     https://damin-robot.marshub.uz/  ← -
+2026-09-16T13:22:47.023Z  open     ~/me/qr/ruslan-card.png  ← -
+2026-09-16T13:28:05.595Z  open     https://marshub.uz/panel  ← 552FE926-3A8E-4B28-8218-6161ACC6F5E6
+2026-09-16T14:06:21.889Z  open     ~/amem/mem  ← 552FE926-3A8E-4B28-8218-6161ACC6F5E6
+2026-09-16T15:05:48.684Z  open     /private/tmp/claude-501/-Users-rus-mars/68a6a253-5d6c-4198-86f1-e4e1b9d0ad41/scratchpad/patch-idle.py  ← 552FE926-3A8E-4B28-8218-6161ACC6F5E6
+2026-09-17T04:28:24.281Z  open     https://suhbat.marshub.uz  ← BCA1EC2E-11EC-459B-8424-073E5AAAEB0E
+2026-09-17T04:28:24.281Z  open     interviews/pack.md  ← BCA1EC2E-11EC-459B-8424-073E5AAAEB0E
+2026-09-17T04:28:27.198Z  open     /Users/rus/mars/ceo/growth/yunusabad-proposal.html  ← 2E53EBC8-49FA-429E-8C1F-9A84CFE2ADC8
+2026-09-17T04:28:27.198Z  reader   /Users/rus/mars/ceo/growth/yunusabad-proposal.md  ← 2E53EBC8-49FA-429E-8C1F-9A84CFE2ADC8
+2026-09-17T08:13:19.506Z  open     https://marsitschoool.amocrm.ru/leads/detail/30473665  ← 30C3AA9D-2460-4D45-B42D-98081563B02B
+2026-09-17T08:21:14.643Z  open     ~/Downloads/Позитивная_предубежденность_Калменсон.pdf  ← 224DEA24-9A31-4DD6-9C1F-4782FCC4736E
+2026-09-17T08:23:03.405Z  open     ~/Downloads/Позитивная_предубежденность_Калменсон.epub  ← 224DEA24-9A31-4DD6-9C1F-4782FCC4736E
+2026-09-17T10:58:41.679Z  reader   docs/research/ideas/00-synthesis.md  ← 7ABA3F34-4479-48BC-AB58-8185334F5AD5
+2026-09-17T11:00:34.440Z  open     https://fleet.marshub.uz/?v=$(date +%s)  ← D004719C-597B-49DF-BD23-9954A49AA69C
+2026-09-18T09:02:14.582Z  open     ~/mars/legal/apple-developer-check-2026-09-18.md  ← 010DFDAA-1A7F-4831-94B0-4529CDE08B47
+2026-09-18T09:16:10.755Z  open     pitch.pdf  ← 44431C01-B657-4BFB-AF7A-C0B897AE5CC7
+2026-09-18T09:16:41.573Z  reader   docs/research/2026-09-18-static-funnel-decision.md  ← 30C3AA9D-2460-4D45-B42D-98081563B02B
+2026-09-18T09:22:46.867Z  open     mentors-one-pager.md  ← -
+2026-09-18T09:22:46.867Z  open     pilot.md  ← -
+2026-09-18T09:39:01.184Z  reader   ~/mars/ceo/funding/kids-ai-credits/README.md  ← 7F98A4A9-A8FF-49BB-9321-2D7460D1CA81
+
+## Real run: agx artifact backfill --days 30
+
+scanned 1091 transcripts, 301 artifacts to record (39 transcripts map to a session)
+recorded 301
+
+## Итог
+
+- Записано: 301 (open 234, reader 30, sendfile 37). Транскриптов просканировано 1091, из них 39 мапятся
+  на AGX-сессии → 31 артефакт с сессией, 270 без (старые сессии закрыты / открыты не в AGX).
+- pitch.pdf → mars › «Оценка v2 — короткая версия и рассылка», /Users/rus/mars/ceo/valuation/upside/v2/doc/pitch.pdf. ✓
+- `agtermctl artifact list | wc -l` = 301. Ничего не фильтровал и не удалял.
+- По типам: md 93, jpg 39, html 31, png 20, pdf 17, URL ~20, скрипты/код ~20.
+
+Шум для правила хука (открывалось через `open`, но это не артефакт для юзера):
+- исполняемые файлы и скрипты: `~/mars/kassa/venv/bin/python`, `build_sheet.py`, `stepD.sh`, `tools/smoke.sh`,
+  `export-tenant.sh`, `mirror/daemon.py`, `artisan` (x2) — вероятно `open` в составе команды-конвейера
+  (`open` как аргумент/подстрока: `python build_sheet.py`, `php artisan`), не показ файла;
+- исходники, открытые в редакторе: `*.php` (tests/Feature/*Test.php, PaymentBotController.php), `*.vue`,
+  `*.js` (web/app.js, src/store/modules/ai.js), `src/**/__init__.py`, `~/.config/agx/agent-status/agx-session-context.sh`;
+- URL с неразвёрнутыми подстановками: `https://core.marsit.uz/group-attendance/$(echo)`,
+  `https://fleet.marshub.uz/?v=$(date +%s)`;
+- файлы из scratchpad: `/private/tmp/claude-501/.../scratchpad/patch-idle.py` — умирают вместе с сессией;
+- URL с дефисом/кириллицей в query (`q=%D0%BB...`) — поисковые страницы, не результат работы.
