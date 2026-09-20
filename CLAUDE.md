@@ -273,3 +273,7 @@ spans intact, and format long catalogs as lists.
 - `app-icon.md`: adaptive Icon Composer build.
 - `ci.md`: jobs, filters, coverage, badge.
 - `release.md`: local signing, notarization, release, Homebrew, changelog.
+- Deploy and publish are routine here, not a public surface to confirm: the user's own app on the
+  user's own Mac and GitHub. Local `.claude/settings.json` (gitignored) allowlists `make deploy|dist|gc`
+  and `./scripts/*.sh`. Allow rules match only a BARE command — run `./scripts/release.sh …` from the
+  repo root, never `cd ~/agterm && …`.
