@@ -87,7 +87,9 @@ C-boundary concurrency before changing the bridge.
   targets for resources. The stamp is what makes the other three count as current — without it `setup.sh`
   rebuilds libghostty in every new worktree. They remain untracked and disappear with worktree removal.
 - After merge, verify the PR merge commit on fetched `origin/master`, then remove the worktree without
-  changing the main checkout's branch. Squash/rebase makes removal report unmerged commits; after
+  changing the main checkout's branch. `make gc` (also run by `make deploy`) removes merged worktrees and
+  drops `build/` + `agtermCore/.build` from worktrees idle ≥3 days — each one holds ~2.3 GB of regenerable
+  output, and ten of them once filled the disk. Squash/rebase makes removal report unmerged commits; after
   verification, discard the worktree safely. Native removal may leave a renamed branch, which must be
   deleted separately after checking the remote.
 - Debug Swift code lives in `agterm.debug.dylib`; inspect it or object files, not the stub executable.

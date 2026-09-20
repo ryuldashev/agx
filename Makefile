@@ -5,7 +5,7 @@ INSTALL_DIR := /Applications
 RELEASE_APP := build/DerivedData/Build/Products/Release/agx.app
 
 .DEFAULT_GOAL := help
-.PHONY: help prep generate build run release deploy test test-app lint dist clean sync-reader
+.PHONY: help prep generate build run release deploy test test-app lint dist clean gc sync-reader
 
 help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -33,6 +33,7 @@ deploy: release ## release build + swap into /Applications
 	[ -d "$(INSTALL_DIR)/agx.app" ] && mv "$(INSTALL_DIR)/agx.app" "$(INSTALL_DIR)/agx.app.old" || true
 	mv "$(INSTALL_DIR)/agx.app.new" "$(INSTALL_DIR)/agx.app"
 	@echo "installed $(INSTALL_DIR)/agx.app (running instance keeps agx.app.old until the next deploy)"
+	@./scripts/gc.sh || true
 
 test: ## host-free agtermCore unit tests (scripts/test.sh)
 	./scripts/test.sh
@@ -52,3 +53,6 @@ sync-reader: ## copy the reader page from ~/mmee/reader/web into agterm/Resource
 
 clean: ## remove build artifacts (build/)
 	rm -rf build
+
+gc: ## remove merged Claude worktrees, drop build output of idle ones (scripts/gc.sh; AGTERM_GC_DAYS=3)
+	./scripts/gc.sh
