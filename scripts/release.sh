@@ -276,6 +276,9 @@ else
 fi
 rm -f "$NOTES_FILE"
 gh release upload "$TAG" "$DMG" "$APPCAST" --clobber
+# The tag was minted on GitHub; scripts/build.sh reads the nearest LOCAL v-tag for the
+# app version, so without this the next `make deploy` still stamps the previous version.
+git -C "$ROOT" fetch -q origin "refs/tags/$TAG:refs/tags/$TAG"
 
 SHA="$(shasum -a 256 "$DMG" | awk '{print $1}')"
 TAP_DIR="$(mktemp -d)"
