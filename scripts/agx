@@ -193,7 +193,11 @@ def render(ctx):
                  f'· running {run}{flss}')
     else:
         L.append(f'me: session {(e["session_id"] or "?")[:8]} (not found in tree) · pane {e["pane"]}')
-    L.append(f'AGX v{e["version"]}  ·  socket ok' if e["socket"] else 'AGX')
+    line = f'AGX v{e["version"]}  ·  socket ok' if e["socket"] else 'AGX'
+    upd = ctx["tree"].get("update") or {}
+    if upd.get("available"):
+        line += f'  ·  update {upd["available"]} available (agtermctl update install — agents reattach after the relaunch)'
+    L.append(line)
 
     v = ctx["view"]
     L.append("")

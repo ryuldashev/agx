@@ -73,6 +73,8 @@ final class AppActions {
     var failover: AgentFailoverCoordinator?, autoAnswer: AutoAnswerCoordinator?
     /// The artifact index (`<stateDir>/artifacts.json`), wired in the scene `.task` like `scheduler`.
     var artifacts: ArtifactLibrary?
+    /// The updater (ADR 0004), wired in the scene `.task` like `scheduler`; the control server and menu reach it here.
+    var updater: AppUpdater?
 
     /// Both theme slots captured when the picker opened, restored on Esc/cancel. Snapshotting the WHOLE pair
     /// keeps the revert flip-safe across a mid-preview macOS appearance switch, whichever slot the preview

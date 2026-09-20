@@ -450,7 +450,8 @@ final class ControlServer {
                 .restoreClear, .restoreList, .restoreOpen, .dashboard, .appRelaunch, .appQuit,
                 .scheduleAdd, .scheduleList, .scheduleCancel, .scheduleRun, .sessionFailure, .sessionAutoAnswer,
                 .secretList, .secretAdd, .secretRemove, .secretInsert,
-                .artifactAdd, .artifactList, .artifactRemove, .artifactPin, .artifactHide, .artifactOpen, .artifactShow:
+                .artifactAdd, .artifactList, .artifactRemove, .artifactPin, .artifactHide, .artifactOpen, .artifactShow,
+                .updateCheck, .updateStatus, .updateInstall:
             return ControlResponse(ok: false, error: "control dispatcher did not handle \(request.cmd.rawValue)")
         case .debugAppearance:
             return setDebugAppearance(args: request.args)
@@ -660,7 +661,8 @@ final class ControlServer {
             },
             // the store holds the agent id; only settings know its name and launch line.
             workspaceDefaults: { [weak self] defaults in self?.controlDefaults(defaults) },
-            scheduled: { [weak self] in self?.scheduledNodes() }
+            scheduled: { [weak self] in self?.scheduledNodes() },
+            update: { [weak self] in self?.actions.updater?.node }
         )
     }
 

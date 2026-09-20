@@ -138,6 +138,7 @@ renumbering. Do not reintroduce a count anywhere.
 - `schedule.add`, `.list`, `.cancel`, `.run`
 - `secret.list`, `.add`, `.remove`, `.insert`
 - `artifact.add`, `.list`, `.remove`, `.pin`, `.hide`, `.open`, `.show`
+- `update.check`, `.status`, `.install`
 
 `debug.appearance` is a private `Command` case, absent from the list above, used only by `AppearanceFlipUITests`.
 It accepts light/dark, sets `NSApp.appearance`, posts `.agtermSystemAppearanceChanged`, echoes the effective

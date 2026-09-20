@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.25.0 - unreleased
+
+- **Auto-update.** agx checks for a new version once a day and offers it in-app (agx ▸ Check for
+  Updates…): download, verify, "Install and Relaunch" — and your agent panes reattach after the relaunch
+  with their context intact. Updates are signed (Sparkle EdDSA on top of the Developer ID signature) and
+  come from the latest GitHub release. `agtermctl update check|status|install`, `tree` → `update`,
+  `update.available` / `update.installing` events; `agx context` names an available update.
+  Installs of v0.24.0 do not have the updater yet — install this version once by DMG or
+  `brew upgrade --cask agx`, and every version after it arrives by itself.
+- Agent failover: a Claude Code pane that stops on a spent model pool switches to the next model on
+  the Settings ▸ Agents ▸ Failover ladder and continues; an account limit, auth or billing error, or an
+  agent that dies mid-turn hands the task to another connected agent with a brief built from the
+  transcript. `agtermctl session failure`, `failover` event, session node `failover`.
+- Reader pane: `agx reader <file.md>` renders markdown in the session's right pane, live-reloading.
+
 ## v0.24.0 - 2026-09-09
 
 First packaged release of agx (fork of umputun/agterm at the v0.23.0 line, see `FORK.md`).

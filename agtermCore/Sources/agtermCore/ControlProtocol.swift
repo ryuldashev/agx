@@ -103,6 +103,9 @@ public enum Command: String, Codable, Sendable {
     case artifactHide = "artifact.hide"
     case artifactOpen = "artifact.open"
     case artifactShow = "artifact.show"
+    case updateCheck = "update.check"
+    case updateStatus = "update.status"
+    case updateInstall = "update.install"
     /// UI-TEST-ONLY: forces the app-level appearance (`light`|`dark` via `args.name`) so an XCUITest can
     /// simulate a macOS light/dark flip; with NO name it READS the side the last config feed applied, so a
     /// test can assert the flip drove the reload. Refused outside an XCUITest launch, and EXEMPT from the
@@ -533,6 +536,8 @@ public struct ControlResult: Codable, Sendable, Equatable {
     public var secrets: [String]?
     /// The artifact rows for `artifact.list`, and the stored/updated row for the `artifact.*` writes.
     public var artifacts: [ControlArtifactNode]?
+    /// `update.*` and the in-app updater state (ADR 0004); nil when the updater is disabled.
+    public var update: ControlUpdateNode?
 
     public init(id: String? = nil, tree: ControlTree? = nil, text: String? = nil,
                 windows: [ControlWindowNode]? = nil, exitCode: Int? = nil, count: Int? = nil,
@@ -544,7 +549,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
                 scheduled: [ControlScheduledNode]? = nil,
                 closed: [ControlRecentClosedNode]? = nil, failover: ControlFailoverNode? = nil,
                 autoAnswer: ControlAutoAnswerNode? = nil, secrets: [String]? = nil,
-                artifacts: [ControlArtifactNode]? = nil) {
+                artifacts: [ControlArtifactNode]? = nil, update: ControlUpdateNode? = nil) {
         self.id = id
         self.tree = tree
         self.text = text
@@ -568,6 +573,7 @@ public struct ControlResult: Codable, Sendable, Equatable {
         self.autoAnswer = autoAnswer
         self.secrets = secrets
         self.artifacts = artifacts
+        self.update = update
     }
 }
 

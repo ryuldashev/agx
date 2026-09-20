@@ -110,6 +110,9 @@ final class MockControlActions: ControlActions {
         case artifactSetHidden(Bool, target: String)
         case artifactOpen(target: String, reveal: Bool)
         case artifactShow(window: String?)
+        case updateCheck
+        case updateStatus
+        case updateInstall
     }
 
     var calls: [Call] = []
@@ -718,5 +721,22 @@ final class MockControlActions: ControlActions {
     func artifactShow(window: String?) -> ControlResponse {
         calls.append(.artifactShow(window: window))
         return nextArtifactResponse
+    }
+
+    var nextUpdateResponse = ControlResponse(ok: true)
+
+    func updateCheck() -> ControlResponse {
+        calls.append(.updateCheck)
+        return nextUpdateResponse
+    }
+
+    func updateStatus() -> ControlResponse {
+        calls.append(.updateStatus)
+        return nextUpdateResponse
+    }
+
+    func updateInstall() -> ControlResponse {
+        calls.append(.updateInstall)
+        return nextUpdateResponse
     }
 }

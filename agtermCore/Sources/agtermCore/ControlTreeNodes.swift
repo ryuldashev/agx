@@ -388,6 +388,8 @@ public struct ControlTree: Codable, Sendable, Equatable {
     public let pickPending: String?
     /// App-wide jobs from `schedule.add`, omitted when none is pending or missed.
     public let scheduled: [ControlScheduledNode]?
+    /// The in-app updater (ADR 0004), omitted when `AppUpdatePolicy` disables it.
+    public let update: ControlUpdateNode?
 
     public init(workspaces: [ControlWorkspaceNode], idleMs: Int? = nil, autoFollowMs: Int? = nil,
                 sidebarVisible: Bool? = nil, sidebarMode: String? = nil, workspaceFilter: Bool? = nil,
@@ -395,7 +397,7 @@ public struct ControlTree: Codable, Sendable, Equatable {
                 zoomedSurface: String? = nil, dashboardMembers: [String]? = nil,
                 dashboardHighlighted: String? = nil, dashboardFontSize: Double? = nil,
                 dashboardFontMode: String? = nil, pickPending: String? = nil,
-                scheduled: [ControlScheduledNode]? = nil) {
+                scheduled: [ControlScheduledNode]? = nil, update: ControlUpdateNode? = nil) {
         self.workspaces = workspaces
         self.idleMs = idleMs
         self.autoFollowMs = autoFollowMs
@@ -410,6 +412,7 @@ public struct ControlTree: Codable, Sendable, Equatable {
         self.dashboardFontMode = dashboardFontMode
         self.pickPending = pickPending
         self.scheduled = scheduled
+        self.update = update
     }
 }
 

@@ -158,6 +158,11 @@ public protocol ControlActions {
     func artifactOpen(_ target: String, reveal: Bool) -> ControlResponse
     /// Show (or raise) the Artifacts window.
     func artifactShow(window: String?) -> ControlResponse
+    /// `update.*` (ADR 0004): a background check, the current node, and the user-visible install flow.
+    /// Each answers `result.update`, or an error when `AppUpdatePolicy` disabled the updater.
+    func updateCheck() -> ControlResponse
+    func updateStatus() -> ControlResponse
+    func updateInstall() -> ControlResponse
 }
 
 public extension ControlActions {
@@ -226,6 +231,12 @@ public struct ControlDispatcher {
             return await dispatchSecretCommand(request)
         case .artifactAdd, .artifactList, .artifactRemove, .artifactPin, .artifactHide, .artifactOpen, .artifactShow:
             return dispatchArtifactCommand(request)
+        case .updateCheck:
+            return actions.updateCheck()
+        case .updateStatus:
+            return actions.updateStatus()
+        case .updateInstall:
+            return actions.updateInstall()
         }
     }
 

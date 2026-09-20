@@ -20,6 +20,14 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>GitCommit</key>
 	<string>$(GIT_COMMIT)</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/ryuldashev/agx/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>$(SPARKLE_PUBLIC_ED_KEY)</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>LSMinimumSystemVersion</key>

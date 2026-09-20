@@ -21,6 +21,10 @@ public enum ControlEventKind: String, Codable, CaseIterable, Sendable, Equatable
     case autoAnswer = "auto_answer"
     /// A showing entered the artifact index: `payload.name` the caption, `path` the key, `source` how.
     case artifactAdded = "artifact.added"
+    /// The updater found a newer version; `version` carries it (ADR 0004).
+    case updateAvailable = "update.available"
+    /// The update is being installed; the app relaunches into `version` next.
+    case updateInstalling = "update.installing"
 }
 
 /// Kind-specific event data. Optional fields keep the encoded payload compact while preserving one
@@ -50,12 +54,14 @@ public struct ControlEventPayload: Codable, Sendable, Equatable {
     public var agent: String?
     /// `artifact.added`: the stored key (absolute path or URL).
     public var path: String?
+    /// `update.*`: the version the event is about.
+    public var version: String?
 
     public init(name: String? = nil, status: String? = nil, pane: String? = nil,
                 blink: Bool? = nil, color: String? = nil, shape: String? = nil,
                 title: String? = nil, body: String? = nil, attached: Bool? = nil, at: String? = nil,
                 action: String? = nil, model: String? = nil, reason: String? = nil, source: String? = nil,
-                agent: String? = nil, path: String? = nil) {
+                agent: String? = nil, path: String? = nil, version: String? = nil) {
         self.name = name
         self.status = status
         self.pane = pane
@@ -72,6 +78,7 @@ public struct ControlEventPayload: Codable, Sendable, Equatable {
         self.source = source
         self.agent = agent
         self.path = path
+        self.version = version
     }
 }
 

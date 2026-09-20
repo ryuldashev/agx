@@ -15,7 +15,7 @@ description: >
   window/workspace/session addressing model and the AGTERM_* environment a spawned shell sees, plus
   subscribe to status, notification, session lifecycle, and tree-change events; schedule a session to
   open later with a brief as the agent's first message; report an agent failure so the app switches the
-  model or hands the task to another agent; diagnose problems
+  model or hands the task to another agent; check for, and install, an in-app update; diagnose problems
   (keymap editor, custom actions, logs); and file a bug as a GitHub issue or a
   feature request / question as a GitHub Discussion.
 when_to_use: >
@@ -28,6 +28,7 @@ when_to_use: >
   secret.add, secret.list, secret.remove, secret.insert, insert secret, keychain password, type a password into a session,
   artifact.add, artifact.list, artifact.open, artifact.show, artifacts window, files I showed the user, where is that PDF,
   find the report an agent made, backfill artifacts,
+  update.check, update.status, update.install, check for updates, app update, new version,
   workspace.new, workspace.select, workspace.go, workspace.move, workspace.focus, workspace.filter, window.new, window.list,
   window.select, window.resize, window.move, window.zoom, window.fullscreen, window.minimize, quick terminal, sidebar, sidebar.mode, sidebar.expand, sidebar.collapse, flagged, notify, font.inc, keymap.reload, keymap.list, config.reload,
   theme.set, theme.list, events, events.read, event subscription, select theme, edit keymap, show an image, display an image inline, show-image,

@@ -10,6 +10,9 @@ cask "agx" do
   desc "Native macOS terminal for running many coding agents at once (fork of agterm)"
   homepage "https://github.com/ryuldashev/agx"
 
+  # the app updates itself through Sparkle (ADR 0004); brew upgrade skips it unless --greedy
+  auto_updates true
+
   depends_on macos: :sonoma
   depends_on arch: :arm64
 

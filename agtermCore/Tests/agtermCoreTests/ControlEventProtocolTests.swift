@@ -34,6 +34,8 @@ struct ControlEventProtocolTests {
                                                       agent: "codex")),
             ControlEvent(seq: 13, ts: 13.5, kind: .artifactAdded, window: "win", workspace: "work", session: "sess",
                          payload: ControlEventPayload(name: "pitch.pdf", source: "open", path: "/tmp/pitch.pdf")),
+            ControlEvent(seq: 14, ts: 14.5, kind: .updateAvailable, payload: ControlEventPayload(name: "agx", version: "0.25.0")),
+            ControlEvent(seq: 15, ts: 15.5, kind: .updateInstalling, payload: ControlEventPayload(name: "agx", version: "0.25.0")),
         ]
 
         let data = try JSONEncoder().encode(events)

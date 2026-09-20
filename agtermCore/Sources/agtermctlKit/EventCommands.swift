@@ -102,6 +102,8 @@ enum EventFormatter {
             if let session = event.session { parts.append("session=\(session)") }
             if let reason = event.payload.reason { parts.append("reason=\(reason)") }
             return parts.joined(separator: " ")
+        case .updateAvailable, .updateInstalling:
+            return "\(time) \(event.kind.rawValue) \(event.payload.version ?? "?")"
         }
     }
 }
