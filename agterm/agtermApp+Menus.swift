@@ -48,7 +48,7 @@ extension agtermApp {
     @CommandsBuilder
     var appCommands: some Commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Agterm") { showAboutPanel() }
+                Button("About \(Brand.productName)") { showAboutPanel() }
                 Button("Check for Updates…") { _ = actions.updater?.checkForUpdates() }
                     .disabled(!(actions.updater?.enabled ?? false))
             }
@@ -421,12 +421,20 @@ extension agtermApp {
                 .disabled(!PaletteCommand.focusRightPane.isEnabled(in: context))
             }
             CommandGroup(replacing: .help) {
+                Button("Getting Started…") {
+                    WelcomeWindow.present(settingsModel: settingsModel, library: library, tracker: discoveries)
+                }
+                Button("\(Brand.productName) Guide…") { actions.openGuide() }
+                Button("Keyboard Shortcuts…") { actions.showKeyboardShortcuts() }
+                    .keyboardShortcut(shortcut(for: .keyboardShortcuts))
+                    .disabled(!PaletteCommand.keyboardShortcuts.isEnabled(in: actions.paletteContext))
+                Divider()
                 Button("\(Brand.productName) on GitHub…") {
                     if let url = URL(string: Brand.homepage) {
                         NSWorkspace.shared.open(url)
                     }
                 }
-                Button("Developer Documentation (\(Brand.upstreamName))…") {
+                Button("\(Brand.upstreamName) Control API Reference…") {
                     if let url = URL(string: Brand.upstreamDocs + "#agtermctl") {
                         NSWorkspace.shared.open(url)
                     }

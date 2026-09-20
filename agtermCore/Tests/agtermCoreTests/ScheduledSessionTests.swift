@@ -107,6 +107,10 @@ struct ScheduledSessionTests {
         #expect(line == #"/bin/zsh -lc 'b="$(cat '\''/tmp/it'\''\'\'''\''s.brief'\'')"; rm -f '\''/tmp/it'\''\'\'''\''s.brief'\''; exec claude "$b"'"#)
         #expect(ScheduledLaunch.commandLine(launch: "  ", briefFile: "/b").hasSuffix(#"exec claude "$b"'"#))
         #expect(ScheduledLaunch.commandLine(launch: "codex --full-auto", briefFile: "/b").contains(#"exec codex --full-auto "$b""#))
+        // the profile's seed puts the brief where that CLI reads it; an unknown agent stays positional
+        #expect(ScheduledLaunch.commandLine(launch: "gemini", briefFile: "/b").hasSuffix(#"exec gemini -i "$b"'"#))
+        #expect(ScheduledLaunch.commandLine(launch: "opencode -m x", briefFile: "/b").hasSuffix(#"exec opencode -m x --prompt "$b"'"#))
+        #expect(ScheduledLaunch.commandLine(launch: "my-agent", briefFile: "/b").hasSuffix(#"exec my-agent "$b"'"#))
     }
 
     @Test func nodeProjectsCountdownStateAndLocalIso() {

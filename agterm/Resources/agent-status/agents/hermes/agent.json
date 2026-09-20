@@ -1,0 +1,9 @@
+{
+  "order": 14,
+  "name": "Hermes",
+  "binary": "hermes",
+  "icon": {
+    "glyph": "⇝",
+    "tint": "#0EA5E9"
+  }
+}

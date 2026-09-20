@@ -1,0 +1,11 @@
+{
+  "order": 4,
+  "name": "Cursor Agent",
+  "binary": "cursor-agent",
+  "icon": {
+    "glyph": "◆",
+    "tint": "#3B3B3F"
+  },
+  "resume": "cursor-agent --resume {id}",
+  "configDirectory": ".cursor"
+}

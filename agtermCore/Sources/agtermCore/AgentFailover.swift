@@ -307,13 +307,7 @@ public enum FailoverPolicy {
 public enum AgentBinary {
     /// The binary name when the shell line names one of the known agents, nil otherwise.
     public static func of(commandLine: String?) -> String? {
-        guard let commandLine else { return nil }
-        let tokens = commandLine.split(whereSeparator: { $0 == " " || $0 == ";" || $0 == "'" || $0 == "\"" })
-        for token in tokens {
-            let base = token.split(separator: "/").last.map(String.init) ?? String(token)
-            if AgentCatalog.known.contains(where: { $0.binary == base }) { return base }
-        }
-        return nil
+        AgentCatalog.profile(forCommandLine: commandLine)?.binary
     }
 }
 

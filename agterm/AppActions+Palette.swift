@@ -100,6 +100,7 @@ extension AppActions {
         case .quickTerminal: toggleQuickTerminal()
         case .dashboard: toggleDashboard()
         case .toggleFullscreen: toggleFullscreen()
+        case .keyboardShortcuts: showKeyboardShortcuts()
         case .increaseFontSize: increaseFontSize()
         case .decreaseFontSize: decreaseFontSize()
         case .resetFontSize: resetFontSize()
@@ -121,6 +122,7 @@ extension AppActions {
         case .toggleWorkspaceCollapse: toggleActiveWorkspaceCollapse()
         case .focusLeftPane: focusPane(.main)
         case .focusRightPane: focusPane(.split)
+        case .openGuide: openGuide()
         }
     }
 

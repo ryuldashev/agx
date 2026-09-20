@@ -1,46 +1,49 @@
 import AppKit
 import XCTest
+import agtermCore
 @testable import agterm
 
-/// NSAlert sizes itself to fit `informativeText`, with no scroll and no height cap, so any text long enough
-/// pushes the buttons off the bottom of the screen. Issue #430: the Codex manual-merge cases embedded the
-/// whole 29-line hooks block and did exactly that.
+/// The result window shows one plain line per agent. Issue #430: the alert this replaced embedded the whole
+/// 29-line Codex hooks block and grew past the bottom of the screen — nothing here may inline it.
 @MainActor
 final class AgentHooksInstallerTests: XCTestCase {
-    private let allCodexResults: [AgentHooksInstaller.CodexResult] =
-        [.merged, .alreadyConfigured, .hooksExist, .unparseable, .unreadable, .noCodex]
+    private let allResults: [AgentHooksInstaller.IntegrationResult] = [
+        .merged, .unchanged, .notInstalled,
+        .skipped(reason: "already defines its own hooks", manual: true),
+        .skipped(reason: "isn't valid TOML", manual: true),
+        .skipped(reason: "exists but couldn't be read", manual: false),
+    ]
 
-    func testNoCodexOutcomeEmbedsTheHooksBlock() {
-        for result in allCodexResults {
-            let text = AgentHooksInstaller.codexText(result)
-            XCTAssertFalse(text.contains("[[hooks."), "\(result) should point at the docs, not inline the block")
-            XCTAssertFalse(text.contains("\n"), "\(result) should stay a single line")
+    private var codex: AgentProfile { AgentCatalog.profile(binary: "codex")! }
+
+    func testNoDetailEmbedsTheHooksBlockOrAHomePath() {
+        for result in allResults {
+            let detail = AgentHooksInstaller.Row(profile: codex, result: result).detail
+            XCTAssertFalse(detail.contains("[[hooks."), "\(result) should point at the docs, not inline the block")
+            XCTAssertFalse(detail.contains("\n"), "\(result) should stay a single line")
+            XCTAssertFalse(detail.contains("/Users/"), "\(result) should not print a home path")
         }
     }
 
     func testOnlyTheManualMergeOutcomesOfferTheDocsButton() {
-        for result in allCodexResults {
-            let expected = result == .hooksExist || result == .unparseable
+        for result in allResults {
+            let expected: Bool
+            if case .skipped(_, let manual) = result { expected = manual } else { expected = false }
             XCTAssertEqual(result.needsManualMerge, expected, "\(result) offers the docs button: \(expected)")
         }
     }
 
-    func testManualMergeTextNamesTheDocsSection() {
-        for result in allCodexResults where result.needsManualMerge {
-            XCTAssertTrue(AgentHooksInstaller.codexText(result).contains("Add Codex hooks by hand"),
-                          "\(result) should name the docs section the button opens")
-        }
+    func testSkippedDetailNamesTheFileNotItsPath() {
+        let detail = AgentHooksInstaller.Row(profile: codex, result: .skipped(reason: "isn't valid TOML", manual: true)).detail
+        XCTAssertTrue(detail.hasPrefix("config.toml isn't valid TOML"))
+        XCTAssertTrue(detail.contains("docs"))
     }
 
-    func testDocsButtonIsSecondSoTheDefaultStaysOK() {
-        let alert = AgentHooksInstaller.makeAlert(style: .warning, title: "t", text: "x",
-                                                  docs: AgentHooksInstaller.codexManualDocsURL)
-        XCTAssertEqual(alert.buttons.map(\.title), ["OK", "Open Docs"])
-    }
-
-    func testAlertWithoutDocsKeepsTheSingleDefaultButton() {
-        let alert = AgentHooksInstaller.makeAlert(style: .informational, title: "t", text: "x", docs: nil)
-        XCTAssertEqual(alert.buttons.map(\.title), ["OK"])
+    func testMergedDetailCarriesTheAgentsActivateStep() {
+        XCTAssertEqual(AgentHooksInstaller.Row(profile: codex, result: .merged).detail,
+                       "Hooks added. Run /hooks in Codex to review and approve them before they take effect.")
+        let opencode = AgentCatalog.profile(binary: "opencode")!
+        XCTAssertTrue(AgentHooksInstaller.Row(profile: opencode, result: .merged).detail.hasPrefix("Plugin installed."))
     }
 
     func testDocsURLPointsAtTheManualMergeAnchor() throws {

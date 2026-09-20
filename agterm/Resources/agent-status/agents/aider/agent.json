@@ -1,0 +1,9 @@
+{
+  "order": 7,
+  "name": "Aider",
+  "binary": "aider",
+  "icon": {
+    "glyph": "⟡",
+    "tint": "#14B8A6"
+  }
+}

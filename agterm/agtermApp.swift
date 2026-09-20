@@ -17,6 +17,7 @@ struct agtermApp: App {
     @State private var undoCloseShortcut: UndoCloseShortcut
     @State private var globalHotkey: GlobalHotkey
     @State var settingsModel: SettingsModel
+    @State var discoveries: DiscoveryTracker
     @State private var controlServer: ControlServer
     @State private var customCommandRunner: CustomCommandRunner
     @State private var appearanceObserver: SystemAppearanceObserver
@@ -62,6 +63,11 @@ struct agtermApp: App {
         _library = State(initialValue: library)
         let actions = AppActions(library: library)
         _actions = State(initialValue: actions)
+        // the discovery map listens to the journal from here on, so a first move made before the Welcome
+        // panel is ever opened still counts.
+        let discoveries = DiscoveryTracker(store: DiscoveryStore(directory: stateDirectory))
+        discoveries.attach(to: ActionJournal.shared)
+        _discoveries = State(initialValue: discoveries)
         // settings persist alongside the workspace snapshot (same AGTERM_STATE_DIR override); built before the
         // control server so it can drive `keymap.reload`, safe since both need only the library.
         let settingsStore = SettingsStore(directory: stateDirectory)
@@ -223,11 +229,10 @@ struct agtermApp: App {
                         // fully wired before it opens. `presentOnce` latches, so the per-window .task is safe.
                         // the wall follows the welcome rather than opening beside it — see `presentOnce`.
                         if welcomeDue {
-                            WelcomeAlert.presentOnce(settingsModel: settingsModel) {
-                                if permissionsPrimerDue {
-                                    PermissionsAlert.presentOnce(settingsModel: settingsModel, library: library)
-                                }
-                            }
+                            // non-modal, so it neither blocks the rest of this task nor stacks with the wall
+                            // (its Permissions row IS the wall's entry now).
+                            WelcomeWindow.presentOnFirstLaunch(settingsModel: settingsModel, library: library,
+                                                               tracker: discoveries)
                         } else if permissionsPrimerDue {
                             PermissionsAlert.presentOnce(settingsModel: settingsModel, library: library)
                         }

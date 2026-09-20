@@ -90,12 +90,13 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
     case firstSession, lastSession, showAttention
     case toggleSplit, toggleHorizontalSplit, closeSplit, toggleScratch, toggleTerminalZoom
     case toggleSidebar, toggleFlag, togglePrivate, focusWorkspace
-    case find, quickTerminal, dashboard, toggleFullscreen
+    case find, quickTerminal, dashboard, toggleFullscreen, keyboardShortcuts
     case increaseFontSize, decreaseFontSize, resetFontSize, selectTheme, insertSecret, showArtifacts
     case editKeymap, reloadKeymap, editGhosttyConfig, reloadConfig
     case deleteWorkspace, toggleFlaggedView, clearFlagged, clearFocus
     case addWorkspaceToFocus, toggleWorkspaceFilter
     case expandWorkspaces, collapseWorkspaces, toggleWorkspaceCollapse, focusLeftPane, focusRightPane
+    case openGuide
 
     /// Whether the command can RUN right now — the single owner of menu enablement, read by the menu item's
     /// `.disabled(…)`, by the palette row (which stays listed but renders inert) and by the key monitor's
@@ -107,7 +108,8 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .togglePrivate, .toggleSplit,
              .toggleHorizontalSplit, .toggleScratch,
              .find, .previousSession, .nextSession, .previousAttentionSession, .nextAttentionSession,
-             .firstSession, .lastSession, .insertSecret:
+             .firstSession, .lastSession, .insertSecret, .keyboardShortcuts:
+            // Keyboard Shortcuts opens the reader in the active session's split pane, so it needs one.
             return context.hasActiveSession
         case .renameWorkspace, .focusWorkspace, .addWorkspaceToFocus, .toggleWorkspaceCollapse:
             return context.hasCurrentWorkspace
@@ -215,6 +217,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .quickTerminal: return "Quick Terminal"
         case .dashboard: return "Dashboard"
         case .toggleFullscreen: return "Toggle Full Screen"
+        case .keyboardShortcuts: return "Keyboard Shortcuts…"
         case .increaseFontSize: return "Increase Font Size"
         case .decreaseFontSize: return "Decrease Font Size"
         case .resetFontSize: return "Actual Font Size"
@@ -236,6 +239,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .toggleWorkspaceCollapse: return context.activeWorkspaceCollapsed ? "Expand Workspace" : "Collapse Workspace"
         case .focusLeftPane: return context.activeSplitAxis == .topBottom ? "Focus Top Pane" : "Focus Left Pane"
         case .focusRightPane: return context.activeSplitAxis == .topBottom ? "Focus Bottom Pane" : "Focus Right Pane"
+        case .openGuide: return "\(Brand.productName) Guide"
         }
     }
 
@@ -274,6 +278,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .quickTerminal: return .quickTerminal
         case .dashboard: return .dashboard
         case .toggleFullscreen: return .toggleFullscreen
+        case .keyboardShortcuts: return .keyboardShortcuts
         case .increaseFontSize: return .increaseFontSize
         case .decreaseFontSize: return .decreaseFontSize
         case .resetFontSize: return .resetFontSize
@@ -287,7 +292,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .focusRightPane: return .focusRightPane
         case .editKeymap, .reloadKeymap, .editGhosttyConfig, .reloadConfig,
              .clearFlagged, .clearFocus, .addWorkspaceToFocus, .expandWorkspaces, .collapseWorkspaces,
-             .closeSplit:
+             .closeSplit, .openGuide:
             return nil
         }
     }

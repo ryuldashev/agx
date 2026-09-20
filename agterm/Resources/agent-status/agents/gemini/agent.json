@@ -1,0 +1,72 @@
+{
+  "order": 2,
+  "name": "Gemini CLI",
+  "binary": "gemini",
+  "icon": {
+    "glyph": "✦",
+    "tint": "#4E8BF5"
+  },
+  "seedFlag": "-i",
+  "resume": "gemini -r {id}",
+  "configDirectory": ".gemini",
+  "context": "sessionStartHook",
+  "trust": {
+    "kind": "geminiTrustedFolders",
+    "file": "~/.gemini/trustedFolders.json"
+  },
+  "status": {
+    "kind": "jsonHooks",
+    "file": ".gemini/settings.json",
+    "dialect": "claude",
+    "hooks": [
+      {
+        "event": "BeforeAgent",
+        "script": "agterm-agent-status.sh",
+        "args": [
+          "active",
+          "--blink"
+        ]
+      },
+      {
+        "event": "AfterTool",
+        "script": "agterm-agent-status.sh",
+        "args": [
+          "active",
+          "--blink"
+        ]
+      },
+      {
+        "event": "AfterAgent",
+        "script": "agterm-agent-status.sh",
+        "args": [
+          "completed",
+          "--auto-reset"
+        ]
+      },
+      {
+        "event": "Notification",
+        "matcher": "ToolPermission",
+        "script": "agterm-agent-status.sh",
+        "args": [
+          "blocked"
+        ]
+      },
+      {
+        "event": "SessionStart",
+        "script": "agx-session-restore.sh",
+        "args": [
+          "--resume-line",
+          "gemini -r {id}"
+        ]
+      },
+      {
+        "event": "SessionStart",
+        "script": "agx-session-context.sh",
+        "args": [
+          "--format",
+          "claude"
+        ]
+      }
+    ]
+  }
+}

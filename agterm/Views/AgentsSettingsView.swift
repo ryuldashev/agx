@@ -15,7 +15,7 @@ struct AgentsSettingsView: View {
 
     /// Detected once per Settings open: probing `PATH` on every keystroke would stat the disk while typing
     /// a command, and an agent installed mid-session is picked up by the explicit Rescan.
-    @State private var detected: [KnownAgent] = []
+    @State private var detected: [AgentProfile] = []
 
     var body: some View {
         Form {
@@ -41,7 +41,8 @@ struct AgentsSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(available) { known in
-                    HStack {
+                    HStack(spacing: 10) {
+                        AgentTile(profile: known, size: 24)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(known.name)
                             Text(known.binary)
@@ -146,7 +147,7 @@ struct AgentsSettingsView: View {
 
     /// Detected agents not already connected — matched on the launch line, so re-adding `claude` after
     /// renaming its row to "Work Claude" is still recognized as connected.
-    private var available: [KnownAgent] {
+    private var available: [AgentProfile] {
         let commands = Set(agents.map { $0.command.trimmingCharacters(in: .whitespaces) })
         return detected.filter { !commands.contains($0.command) }
     }

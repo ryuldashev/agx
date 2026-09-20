@@ -281,6 +281,7 @@ struct SocketClientTests {
             dashboard                   cmd+shift+g
             insert_secret               cmd+opt+f
             show_artifacts              cmd+shift+a
+            keyboard_shortcuts          cmd+/
 
         commands:
             Deploy  cmd+shift+y

@@ -28,11 +28,25 @@ final class MarkdownReaderView: NSView {
     var onPopOut: (() -> Void)?
     /// The web view gained (true) or lost first responder; the owner mirrors it into split focus.
     var onFocusChange: ((Bool) -> Void)?
+    /// A relative `.md` link was clicked; the owner opens that file in this pane, so a chaptered document
+    /// (the bundled guide) reads in place. Unset, the link goes to the system's `.md` handler.
+    var onOpenMarkdown: ((String) -> Void)?
     /// A pane is narrower and closer than the standalone window, so the page runs smaller and tighter than
     /// its own 17px/64px defaults; ⌘+/⌘−/⌘0 step and reset from here, like a terminal's font zoom.
     static let defaultFontSize = 14
     private static let fontSizeRange = 10...28
-    private static let embeddedCSS = ".md{padding:28px 28px 30vh}"
+    /// Injected on top of the synced page (`Resources/reader/` stays a verbatim copy of `~/mmee/reader/web`,
+    /// so pane-specific styling lives here): tighter pane margins, plus the `<kbd>` capsule and right-aligned
+    /// nowrap Keys column the Keyboard Shortcuts sheet renders.
+    private static let embeddedCSS = """
+    .md{padding:28px 28px 30vh}
+    .md kbd{display:inline-block;min-width:1.4em;padding:.05em .45em;font:600 .8em/1.35 var(--mono);\
+    text-align:center;color:var(--fg);background:var(--code-bg);border:1px solid var(--rule);\
+    border-bottom-width:2px;border-radius:5px}
+    .md kbd+kbd{margin-left:.16em}
+    .md td:has(> kbd:first-child){white-space:nowrap;width:1%;text-align:right}
+    .md table:has(td > kbd:first-child) th:last-child{text-align:right}
+    """
     /// The standalone MmeeReader (`~/mmee/reader`); the system's `.md` handler stands in when it is absent.
     static let standaloneReaderBundleID = "uz.marshub.mmee.reader"
 
@@ -235,8 +249,8 @@ final class MarkdownReaderView: NSView {
         }
 
         /// Only the bundled page itself may load in the panel. A clicked web link opens in the browser, a
-        /// clicked file opens in whatever handles it (another `.md` lands in the user's markdown app); the
-        /// panel shows the document an agent named and nothing else.
+        /// clicked `.md` replaces the document when the owner takes it, any other file opens in whatever
+        /// handles it; the panel never navigates its own web view away from the page.
         func webView(_ web: WKWebView, decidePolicyFor action: WKNavigationAction,
                      decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
             guard let url = action.request.url else { return decisionHandler(.cancel) }
@@ -246,6 +260,11 @@ final class MarkdownReaderView: NSView {
             }
             if url.isFileURL, url.readerDeletingFragment() == web.url?.readerDeletingFragment() {
                 return decisionHandler(.allow)
+            }
+            if url.isFileURL, url.pathExtension.lowercased() == "md", let open = owner?.onOpenMarkdown,
+               FileManager.default.isReadableFile(atPath: url.path) {
+                open(url.readerDeletingFragment().path)
+                return decisionHandler(.cancel)
             }
             if ["http", "https", "mailto"].contains(url.scheme ?? "") || url.isFileURL {
                 NSWorkspace.shared.open(url)

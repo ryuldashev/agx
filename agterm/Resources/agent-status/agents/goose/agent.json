@@ -1,0 +1,9 @@
+{
+  "order": 9,
+  "name": "Goose",
+  "binary": "goose",
+  "icon": {
+    "glyph": "◍",
+    "tint": "#5B6CFF"
+  }
+}

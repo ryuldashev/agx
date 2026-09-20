@@ -1,0 +1,9 @@
+{
+  "order": 12,
+  "name": "Droid",
+  "binary": "droid",
+  "icon": {
+    "glyph": "⌬",
+    "tint": "#22C55E"
+  }
+}

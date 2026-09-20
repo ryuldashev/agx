@@ -1,0 +1,9 @@
+{
+  "order": 6,
+  "name": "Crush",
+  "binary": "crush",
+  "icon": {
+    "glyph": "♥",
+    "tint": "#FF5FA2"
+  }
+}

@@ -5,6 +5,28 @@ import Testing
 struct AgentHooksInstallTests {
     private let scriptDir = "/Users/me/.config/agterm/agent-status"
 
+    private func agent(_ binary: String) -> AgentProfile {
+        AgentCatalog.profile(binary: binary)!
+    }
+
+    /// The Claude Code merge: the claude manifest's bindings into `~/.claude/settings.json`.
+    private func mergeClaudeSettings(existing: String?, scriptDir: String) throws -> (json: String, changed: Bool) {
+        try AgentHooksInstall.mergeJSONHooks(existing: existing, scriptDir: scriptDir, bindings: agent("claude").jsonHookBindings)
+    }
+
+    /// The Codex merge: the codex manifest's adapter and events into `~/.codex/config.toml`.
+    private func mergeCodexConfig(existing: String, scriptDir: String) -> AgentHooksInstall.TOMLMergeOutcome {
+        guard case .tomlHooks(_, let script, let events) = agent("codex").status else { fatalError("codex is not tomlHooks") }
+        return AgentHooksInstall.mergeTOMLHooks(existing: existing, scriptDir: scriptDir, script: script, events: events)
+    }
+
+    private func codexHooksBlock(scriptDir: String) -> String {
+        guard case .tomlHooks(_, let script, let events) = agent("codex").status else { fatalError("codex is not tomlHooks") }
+        return AgentHooksInstall.tomlHooksBlock(scriptDir: scriptDir, script: script, events: events)
+    }
+
+    private let codexAdapter = "agents/codex/status.sh"
+
     private func object(_ json: String) -> [String: Any] {
         let data = json.data(using: .utf8)!
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
@@ -24,7 +46,7 @@ struct AgentHooksInstallTests {
     }
 
     @Test func mergeWhenAbsentAddsAllFourHooks() throws {
-        let result = try AgentHooksInstall.mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
+        let result = try mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
         #expect(result.changed)
         let evts = events(result.json)
         #expect(evts["UserPromptSubmit"]?.count == 1)
@@ -51,9 +73,77 @@ struct AgentHooksInstallTests {
         #expect(evts["PostToolUse"]![1]["matcher"] as? String == "Bash|SendUserFile")
     }
 
+    /// An older install wrote the SessionStart hooks without arguments; the probe is by script path, so
+    /// a re-run neither duplicates them nor rewrites them (the scripts default to Claude's lines).
+    @Test func legacyArgumentlessSessionStartHooksAreKept() throws {
+        let existing = """
+        {"hooks": {"SessionStart": [
+          {"hooks": [{"type": "command", "command": "'\(scriptDir)/agx-session-restore.sh'"}]},
+          {"hooks": [{"type": "command", "command": "'\(scriptDir)/agx-session-context.sh'"}]}
+        ]}}
+        """
+        let result = try mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
+        let starts = events(result.json)["SessionStart"]!
+        #expect(starts.count == 2)
+        #expect(command(starts[0]) == "'\(scriptDir)/agx-session-restore.sh'")
+    }
+
+    @Test func geminiMergeUsesGeminiEventsInTheClaudeShape() throws {
+        let result = try AgentHooksInstall.mergeJSONHooks(existing: nil, scriptDir: scriptDir,
+                                                          bindings: agent("gemini").jsonHookBindings)
+        let evts = events(result.json)
+        #expect(command(evts["BeforeAgent"]![0])?.hasSuffix("agent-status.sh' active --blink") == true)
+        #expect(command(evts["AfterAgent"]![0])?.hasSuffix("agent-status.sh' completed --auto-reset") == true)
+        #expect(evts["Notification"]![0]["matcher"] as? String == "ToolPermission")
+        #expect(evts["Stop"] == nil)
+        #expect(evts["StopFailure"] == nil)
+        #expect(command(evts["SessionStart"]![0])?.contains("--resume-line 'gemini -r {id}'") == true)
+        let again = try AgentHooksInstall.mergeJSONHooks(existing: result.json, scriptDir: scriptDir,
+                                                         bindings: agent("gemini").jsonHookBindings)
+        #expect(!again.changed)
+    }
+
+    /// Cursor's dialect, exercised with hand-built bindings: no manifest uses it yet (Cursor ships
+    /// launch + resume only until its hooks are measured in a live pane).
+    private let cursorBindings = [
+        HookBinding(event: "beforeSubmitPrompt", script: AgentHooksInstall.wrapperName, args: ["active", "--blink"]),
+        HookBinding(event: "stop", script: AgentHooksInstall.wrapperName, args: ["completed", "--auto-reset"]),
+        HookBinding(event: "sessionStart", script: "agx-session-restore.sh", args: ["--resume-line", "cursor-agent --resume {id}"]),
+        HookBinding(event: "sessionStart", script: "agx-session-context.sh", args: ["--format", "cursor"]),
+    ]
+
+    @Test func cursorMergeWritesFlatRowsUnderVersionOne() throws {
+        let existing = """
+        {"version": 1, "hooks": {"afterFileEdit": [{"command": "./mine.sh"}]}}
+        """
+        let result = try AgentHooksInstall.mergeJSONHooks(existing: existing, scriptDir: scriptDir, dialect: .cursor,
+                                                          bindings: cursorBindings)
+        #expect(result.changed)
+        let root = try #require(JSONSerialization.jsonObject(with: Data(result.json.utf8)) as? [String: Any])
+        #expect(root["version"] as? Int == 1)
+        let evts = try #require(root["hooks"] as? [String: [[String: Any]]])
+        #expect(evts["afterFileEdit"]?.first?["command"] as? String == "./mine.sh")
+        #expect(evts["beforeSubmitPrompt"]?.first?["command"] as? String == "'\(scriptDir)/agterm-agent-status.sh' active --blink")
+        #expect(evts["stop"]?.first?["command"] as? String == "'\(scriptDir)/agterm-agent-status.sh' completed --auto-reset")
+        #expect(evts["beforeSubmitPrompt"]?.first?["hooks"] == nil)
+        #expect(evts["sessionStart"]?.count == 2)
+        #expect(evts["sessionStart"]?[0]["command"] as? String == "'\(scriptDir)/agx-session-restore.sh' --resume-line 'cursor-agent --resume {id}'")
+        #expect(evts["sessionStart"]?[1]["command"] as? String == "'\(scriptDir)/agx-session-context.sh' --format cursor")
+        let again = try AgentHooksInstall.mergeJSONHooks(existing: result.json, scriptDir: scriptDir, dialect: .cursor,
+                                                         bindings: cursorBindings)
+        #expect(!again.changed)
+    }
+
+    @Test func cursorMergeIntoAnEmptyFileAddsVersion() throws {
+        let result = try AgentHooksInstall.mergeJSONHooks(existing: nil, scriptDir: scriptDir, dialect: .cursor,
+                                                          bindings: cursorBindings)
+        let root = try #require(JSONSerialization.jsonObject(with: Data(result.json.utf8)) as? [String: Any])
+        #expect(root["version"] as? Int == 1)
+    }
+
     @Test func mergeWhenPresentIsNoOp() throws {
-        let first = try AgentHooksInstall.mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
-        let second = try AgentHooksInstall.mergeClaudeSettings(existing: first.json, scriptDir: scriptDir)
+        let first = try mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
+        let second = try mergeClaudeSettings(existing: first.json, scriptDir: scriptDir)
         #expect(!second.changed)
         #expect(second.json == first.json)
     }
@@ -72,7 +162,7 @@ struct AgentHooksInstallTests {
           }
         }
         """
-        let result = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
+        let result = try mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
         #expect(result.changed)
         let root = object(result.json)
         #expect(root["model"] as? String == "opus")
@@ -92,8 +182,8 @@ struct AgentHooksInstallTests {
         let existing = """
         {"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "/usr/bin/other.sh"}]}]}}
         """
-        let first = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
-        let second = try AgentHooksInstall.mergeClaudeSettings(existing: first.json, scriptDir: scriptDir)
+        let first = try mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
+        let second = try mergeClaudeSettings(existing: first.json, scriptDir: scriptDir)
         #expect(!second.changed)
         let commands = events(second.json)["UserPromptSubmit"]!.compactMap { command($0) }
         #expect(commands.contains("/usr/bin/other.sh"))
@@ -102,32 +192,32 @@ struct AgentHooksInstallTests {
     @Test func mergeRefusesMalformedExisting() {
         // refusing leaves the user's hand-maintained settings.json untouched
         #expect(throws: AgentHooksInstall.MergeError.self) {
-            try AgentHooksInstall.mergeClaudeSettings(existing: "{ this is not json", scriptDir: scriptDir)
+            try mergeClaudeSettings(existing: "{ this is not json", scriptDir: scriptDir)
         }
         #expect(throws: AgentHooksInstall.MergeError.self) {
-            try AgentHooksInstall.mergeClaudeSettings(existing: "[1, 2, 3]", scriptDir: scriptDir)
+            try mergeClaudeSettings(existing: "[1, 2, 3]", scriptDir: scriptDir)
         }
     }
 
     @Test func mergeWhitespaceOnlyStartsFresh() throws {
         // a whitespace-only file has no content to lose, so it starts fresh like an empty file
-        let result = try AgentHooksInstall.mergeClaudeSettings(existing: "   \n\t\n", scriptDir: scriptDir)
+        let result = try mergeClaudeSettings(existing: "   \n\t\n", scriptDir: scriptDir)
         #expect(result.changed)
         #expect(events(result.json).count == 6)
     }
 
     @Test func mergeHandlesEmptyExisting() throws {
-        let result = try AgentHooksInstall.mergeClaudeSettings(existing: "", scriptDir: scriptDir)
+        let result = try mergeClaudeSettings(existing: "", scriptDir: scriptDir)
         #expect(result.changed)
         #expect(events(result.json).count == 6)
     }
 
     @Test func mergeAddsBothSessionStartHooksRestoreFirst() throws {
-        let result = try AgentHooksInstall.mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
+        let result = try mergeClaudeSettings(existing: nil, scriptDir: scriptDir)
         let start = try #require(events(result.json)["SessionStart"])
         #expect(start.count == 2)
-        #expect(command(start[0]) == "'\(scriptDir)/agx-session-restore.sh'")
-        #expect(command(start[1]) == "'\(scriptDir)/agx-session-context.sh'")
+        #expect(command(start[0])?.hasPrefix("'\(scriptDir)/agx-session-restore.sh'") == true)
+        #expect(command(start[1])?.hasPrefix("'\(scriptDir)/agx-session-context.sh'") == true)
         #expect(start[0]["matcher"] == nil)
         #expect(start[1]["matcher"] == nil)
     }
@@ -140,15 +230,15 @@ struct AgentHooksInstallTests {
           {"hooks": [{"type": "command", "command": "'\(scriptDir)/agx-session-restore.sh'"}]}
         ]}}
         """
-        let result = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
+        let result = try mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
         #expect(result.changed)
         let commands = try #require(events(result.json)["SessionStart"]).compactMap { command($0) }
         #expect(commands == [
             "/usr/bin/other-start.sh",
             "'\(scriptDir)/agx-session-restore.sh'",
-            "'\(scriptDir)/agx-session-context.sh'",
+            "'\(scriptDir)/agx-session-context.sh' --format claude",
         ])
-        let again = try AgentHooksInstall.mergeClaudeSettings(existing: result.json, scriptDir: scriptDir)
+        let again = try mergeClaudeSettings(existing: result.json, scriptDir: scriptDir)
         #expect(!again.changed)
     }
 
@@ -159,12 +249,12 @@ struct AgentHooksInstallTests {
           {"hooks": [{"type": "command", "command": "'\(scriptDir)/something-else.sh'"}]}
         ]}}
         """
-        let result = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
+        let result = try mergeClaudeSettings(existing: existing, scriptDir: scriptDir)
         #expect(try #require(events(result.json)["SessionStart"]).count == 3)
     }
 
     @Test func codexHooksBlockContainsAllSixEvents() {
-        let block = AgentHooksInstall.codexHooksBlock(scriptDir: scriptDir)
+        let block = codexHooksBlock(scriptDir: scriptDir)
         for event in ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PermissionRequest", "Stop"] {
             #expect(block.contains("[[hooks.\(event)]]"))
             #expect(block.contains("[[hooks.\(event).hooks]]"))
@@ -173,8 +263,8 @@ struct AgentHooksInstallTests {
     }
 
     @Test func codexHooksBlockMapsActionsAndBakesWrapperPath() {
-        let block = AgentHooksInstall.codexHooksBlock(scriptDir: scriptDir)
-        let hook = scriptDir + "/agterm-codex-status.sh"
+        let block = codexHooksBlock(scriptDir: scriptDir)
+        let hook = scriptDir + "/" + codexAdapter
         // Codex-specific behavior stays in the installed adapter; agterm only generates the six
         // lifecycle entries.
         #expect(block.contains("command = \"'\(hook)' session-start\""))
@@ -188,19 +278,19 @@ struct AgentHooksInstallTests {
 
     @Test func codexHooksBlockShellQuotesPathWithSpace() {
         let dir = "/Users/my name/.config/agterm/agent-status"
-        let block = AgentHooksInstall.codexHooksBlock(scriptDir: dir)
+        let block = codexHooksBlock(scriptDir: dir)
         // the path keeps its space as ONE shell token via single-quoting inside the TOML value
-        #expect(block.contains("command = \"'\(dir)/agterm-codex-status.sh' session-start\""))
+        #expect(block.contains("command = \"'\(dir)/\(codexAdapter)' session-start\""))
     }
 
     @Test func codexHooksBlockEscapesApostropheInPath() {
         // a username with an apostrophe: shellQuote emits '\'' (a backslash), which the TOML basic
         // string must escape as \\ so the parsed value is a valid /bin/sh command again
-        let block = AgentHooksInstall.codexHooksBlock(scriptDir: "/Users/O'Brien/agent-status")
-        #expect(block.contains("'/Users/O'\\\\''Brien/agent-status/agterm-codex-status.sh' session-start"))
+        let block = codexHooksBlock(scriptDir: "/Users/O'Brien/agent-status")
+        #expect(block.contains("'/Users/O'\\\\''Brien/agent-status/agents/codex/status.sh' session-start"))
     }
 
-    private func mergedContents(_ outcome: AgentHooksInstall.CodexMergeOutcome) -> String {
+    private func mergedContents(_ outcome: AgentHooksInstall.TOMLMergeOutcome) -> String {
         guard case .merged(let contents) = outcome else {
             Issue.record("expected .merged, got \(outcome)")
             return ""
@@ -209,7 +299,7 @@ struct AgentHooksInstallTests {
     }
 
     @Test func mergeCodexConfigAppendsHooksToEmpty() {
-        let contents = mergedContents(AgentHooksInstall.mergeCodexConfig(existing: "", scriptDir: scriptDir))
+        let contents = mergedContents(mergeCodexConfig(existing: "", scriptDir: scriptDir))
         #expect(contents.contains(AgentHooksInstall.rcMarkerBegin))
         #expect(contents.contains(AgentHooksInstall.rcMarkerEnd))
         for event in ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PermissionRequest", "Stop"] {
@@ -218,9 +308,9 @@ struct AgentHooksInstallTests {
     }
 
     @Test func mergeCodexConfigIsIdempotent() {
-        let first = mergedContents(AgentHooksInstall.mergeCodexConfig(existing: "model = \"gpt-5\"\n", scriptDir: scriptDir))
+        let first = mergedContents(mergeCodexConfig(existing: "model = \"gpt-5\"\n", scriptDir: scriptDir))
         // second run sees our marker → .unchanged (checked before the hooks-present probe)
-        #expect(AgentHooksInstall.mergeCodexConfig(existing: first, scriptDir: scriptDir) == .unchanged)
+        #expect(mergeCodexConfig(existing: first, scriptDir: scriptDir) == .unchanged)
         #expect(first.components(separatedBy: AgentHooksInstall.rcMarkerBegin).count - 1 == 1)
     }
 
@@ -246,8 +336,8 @@ struct AgentHooksInstallTests {
         trusted_hash = "sha256:stale-but-preserved"
         \(AgentHooksInstall.rcMarkerEnd)
         """
-        let contents = mergedContents(AgentHooksInstall.mergeCodexConfig(existing: existing, scriptDir: scriptDir))
-        let hook = scriptDir + "/agterm-codex-status.sh"
+        let contents = mergedContents(mergeCodexConfig(existing: existing, scriptDir: scriptDir))
+        let hook = scriptDir + "/" + codexAdapter
         for action in ["session-start", "user-prompt-submit", "pre-tool-use", "post-tool-use", "permission-request", "stop"] {
             #expect(contents.contains("'\(hook)' \(action)"))
         }
@@ -263,12 +353,12 @@ struct AgentHooksInstallTests {
         model = "gpt-5"
         \(AgentHooksInstall.rcMarkerEnd)
         """
-        #expect(AgentHooksInstall.mergeCodexConfig(existing: existing, scriptDir: scriptDir) == .unchanged)
+        #expect(mergeCodexConfig(existing: existing, scriptDir: scriptDir) == .unchanged)
     }
 
     @Test func mergeCodexConfigStripsLegacyNotifyLine() {
         let existing = "notify = [\"/Users/me/.config/agterm/agent-status/codex-notify.sh\"]\n"
-        let contents = mergedContents(AgentHooksInstall.mergeCodexConfig(existing: existing, scriptDir: scriptDir))
+        let contents = mergedContents(mergeCodexConfig(existing: existing, scriptDir: scriptDir))
         #expect(!contents.contains("codex-notify.sh"))
         #expect(contents.contains("[[hooks.Stop]]"))
     }
@@ -279,7 +369,7 @@ struct AgentHooksInstallTests {
         model = "gpt-5"
         notify = ["/home/me/my-own-notify.sh"]
         """
-        let contents = mergedContents(AgentHooksInstall.mergeCodexConfig(existing: existing, scriptDir: scriptDir))
+        let contents = mergedContents(mergeCodexConfig(existing: existing, scriptDir: scriptDir))
         #expect(contents.contains("# my codex config")) // surgical append, no reserialize
         #expect(contents.contains("model = \"gpt-5\""))
         #expect(contents.contains("notify = [\"/home/me/my-own-notify.sh\"]"))
@@ -290,7 +380,7 @@ struct AgentHooksInstallTests {
     @Test func mergeCodexConfigKeepsNotifyWhenCodexNameOnlyInComment() {
         // over-match guard: codex-notify.sh appears only in a COMMENT, so the parsed value never names it
         let existing = "notify = [\"/home/me/custom.sh\"] # replaces codex-notify.sh\n"
-        let contents = mergedContents(AgentHooksInstall.mergeCodexConfig(existing: existing, scriptDir: scriptDir))
+        let contents = mergedContents(mergeCodexConfig(existing: existing, scriptDir: scriptDir))
         #expect(contents.contains("notify = [\"/home/me/custom.sh\"]"))
     }
 
@@ -302,11 +392,11 @@ struct AgentHooksInstallTests {
         type = "command"
         command = "echo done"
         """
-        #expect(AgentHooksInstall.mergeCodexConfig(existing: existing, scriptDir: scriptDir) == .hooksExist)
+        #expect(mergeCodexConfig(existing: existing, scriptDir: scriptDir) == .hooksExist)
     }
 
     @Test func mergeCodexConfigReportsUnparseable() {
-        #expect(AgentHooksInstall.mergeCodexConfig(existing: "this = is = not = toml\n", scriptDir: scriptDir) == .unparseable)
+        #expect(mergeCodexConfig(existing: "this = is = not = toml\n", scriptDir: scriptDir) == .unparseable)
     }
 
     @Test func appendShellRCAddsLineAndMarkersOnce() {
@@ -339,41 +429,42 @@ struct AgentHooksInstallTests {
         #expect(result.contents.contains("source '\(scriptDir)/shell/integration.fish'"))
     }
 
-    @Test func piExtensionPathsUsePiGlobalExtensionsDirectory() {
-        #expect(AgentHooksInstall.piExtensionDirectory(home: "/Users/me") == "/Users/me/.pi/agent/extensions")
-        #expect(AgentHooksInstall.piExtensionPath(home: "/Users/me") == "/Users/me/.pi/agent/extensions/agterm-status.ts")
+    @Test func pluginManifestsNameTheirAutoDiscoveredDestinations() {
+        guard case .plugin(let piSource, let piDestination, let piRequires, let piMarker) = agent("pi").status else {
+            Issue.record("pi is not a plugin"); return
+        }
+        #expect(piSource == "agents/pi/extension.ts")
+        #expect(piDestination == ".pi/agent/extensions/agterm-status.ts")
+        #expect(piRequires == ".pi/agent")
+        #expect(piMarker == "// agterm-pi-status-extension")
+        guard case .plugin(let source, let destination, let requires, let marker) = agent("opencode").status else {
+            Issue.record("opencode is not a plugin"); return
+        }
+        #expect(source == "agents/opencode/plugin.js")
+        #expect(destination == ".config/opencode/plugins/agterm-status.js")
+        #expect(requires == ".config/opencode")
+        #expect(marker == "// agterm-opencode-status-plugin")
     }
 
-    @Test func piExtensionOwnershipProtectsUserExtension() {
-        #expect(AgentHooksInstall.mayOverwritePiExtension(fileExists: false, existingContents: nil))
-        #expect(AgentHooksInstall.mayOverwritePiExtension(
-            fileExists: true,
-            existingContents: "// agterm-pi-status-extension\nexport default () => {}\n"
-        ))
-        #expect(!AgentHooksInstall.mayOverwritePiExtension(fileExists: true, existingContents: "export default () => {}\n"))
-        #expect(!AgentHooksInstall.mayOverwritePiExtension(fileExists: true, existingContents: nil))
+    /// The bundled plugin sources carry the marker their manifest names, or a reinstall would refuse to
+    /// refresh them.
+    @Test func bundledPluginsCarryTheirOwnershipMarker() throws {
+        let package = AgentCatalog.sourceDirectory.deletingLastPathComponent()
+        for profile in AgentCatalog.known {
+            guard case .plugin(let source, _, _, let marker) = profile.status else { continue }
+            let contents = try String(contentsOf: package.appendingPathComponent(source), encoding: .utf8)
+            #expect(contents.contains(marker), "\(source) lacks \(marker)")
+        }
     }
 
-    @Test func opencodePluginPathsUseOpenCodePluginsDirectory() {
-        #expect(AgentHooksInstall.opencodePluginDirectory(home: "/Users/me")
-                == "/Users/me/.config/opencode/plugins")
-        #expect(AgentHooksInstall.opencodePluginPath(home: "/Users/me")
-                == "/Users/me/.config/opencode/plugins/agterm-status.js")
-        #expect(AgentHooksInstall.opencodePluginRelativePath == "opencode/agterm-status.js")
-        #expect(AgentHooksInstall.opencodePluginMarker == "// agterm-opencode-status-plugin")
-    }
-
-    @Test func opencodePluginOwnershipProtectsUserPlugin() {
-        #expect(AgentHooksInstall.mayOverwriteOpenCodePlugin(fileExists: false, existingContents: nil))
-        #expect(AgentHooksInstall.mayOverwriteOpenCodePlugin(
-            fileExists: true,
-            existingContents: "// agterm-opencode-status-plugin\nexport const AgtermStatusPlugin = async () => ({})\n"
+    @Test func pluginOwnershipProtectsUserFiles() {
+        let marker = "// agterm-pi-status-extension"
+        #expect(AgentHooksInstall.mayOverwritePlugin(fileExists: false, existingContents: nil, marker: marker))
+        #expect(AgentHooksInstall.mayOverwritePlugin(
+            fileExists: true, existingContents: "\(marker)\nexport default () => {}\n", marker: marker
         ))
-        #expect(!AgentHooksInstall.mayOverwriteOpenCodePlugin(
-            fileExists: true,
-            existingContents: "export const Other = async () => ({})\n"
-        ))
-        #expect(!AgentHooksInstall.mayOverwriteOpenCodePlugin(fileExists: true, existingContents: nil))
+        #expect(!AgentHooksInstall.mayOverwritePlugin(fileExists: true, existingContents: "export default () => {}\n", marker: marker))
+        #expect(!AgentHooksInstall.mayOverwritePlugin(fileExists: true, existingContents: nil, marker: marker))
     }
 
     @Test func shippedShellIntegrationsOmitLifecycleAgentsFromDefaultRegex() throws {

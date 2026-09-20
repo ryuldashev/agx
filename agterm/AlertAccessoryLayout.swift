@@ -3,7 +3,7 @@ import AppKit
 /// Places an NSAlert accessory view under the alert's TEXT column.
 ///
 /// AppKit parks an accessory narrower than the alert at the window's left margin — the icon column — so
-/// without this every option row hangs left of every line of text. Extracted from `WelcomeAlert` when the
+/// without this every option row hangs left of every line of text. Extracted from the first-run alert when the
 /// permissions primer needed the same alignment; the measurement is the interesting part and there is no
 /// second way to do it.
 @MainActor

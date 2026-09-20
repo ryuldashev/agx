@@ -7,11 +7,11 @@ import SwiftUI
 /// per-session chrome buttons; recent-sessions / attention / dashboard buttons live in their own extensions.
 extension WindowContentView {
     /// The titlebar title (first line): the active session's display name, suffixed as "session — window" for
-    /// a custom (user-set) window name; auto "window N" names are omitted, and "Agterm" when nothing is
+    /// a custom (user-set) window name; auto "window N" names are omitted, and the product name when nothing is
     /// selected. Non-private: the body's `WindowAccessor` uses it as the OS window title, always the real
     /// name, regardless of the Interface toggles that gate only the on-screen `titleText`.
     var windowTitle: String {
-        let session = (activeSessionPrivate ? "🔒 " : "") + (store.activeSession?.displayName ?? "Agterm")
+        let session = (activeSessionPrivate ? "🔒 " : "") + (store.activeSession?.displayName ?? Brand.productName)
         guard let name = customWindowName else { return session }
         return "\(session) — \(name)"
     }
@@ -36,7 +36,7 @@ extension WindowContentView {
     /// the custom window name (hidden by `.windowName`), or both as "session — window"; empty when both are
     /// hidden or absent. `windowTitle` still feeds the OS title, so Mission Control / Window stay labelled.
     private var titleText: String {
-        let sessionPart = shows(.sessionName) ? (store.activeSession?.displayName ?? "Agterm") : nil
+        let sessionPart = shows(.sessionName) ? (store.activeSession?.displayName ?? Brand.productName) : nil
         let windowPart = shows(.windowName) ? customWindowName : nil
         switch (sessionPart, windowPart) {
         case let (session?, window?): return "\(session) — \(window)"

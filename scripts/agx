@@ -123,10 +123,11 @@ def gather():
 
 MANIFEST = """you can drive this UI (agtermctl — the app's control socket, already reachable here):
   see everything again      agx context            (this call; --json for structured)
-  DELEGATE to a fresh agent  agx spawn --brief "<task>" --name "<title>" [--workspace-name <W>] [--cwd <PATH>] [--agent claude|codex] [--foreground] [--private]
+  DELEGATE to a fresh agent  agx spawn --brief "<task>" --name "<title>" [--workspace-name <W>] [--cwd <PATH>] [--agent {AGENT_CHOICES}] [--foreground] [--private]
     ^ makes the session and launches the agent with the brief as its FIRST MESSAGE (no TUI-typing race).
-      A spawned pane is a FULL peer Claude Code session (it already gets CLAUDE.md, skills, and this
-      UI-context hook) — so the brief is a self-contained TASK, not a context dump: goal, constraints,
+      A spawned pane is a FULL peer agent session (a Claude one already gets CLAUDE.md, skills, and this
+      UI-context hook; other agents get `agx context` via their own hook or a line in front of the brief)
+      — so the brief is a self-contained TASK, not a context dump: goal, constraints,
       where to look, what "done" means. It cannot ask you back, so leave nothing implicit. Tell it to
       write output to a file incrementally (a crash should leave half the work, not nothing).
       A bare session for an agent = an agent with no task (the empty-session bug) — always spawn+seed.
@@ -169,6 +170,10 @@ MANIFEST = """you can drive this UI (agtermctl — the app's control socket, alr
       without re-opening this conversation. agx artifact list [--session <id>] shows what was recorded.
   ephemeral term on a session agtermctl session overlay open --target <id> -- <cmd>   (read: overlay text --target <id>)
   set my own status glyph    agtermctl session status active|completed|blocked|idle [--blink]
+  close MY OWN session       agtermctl session close --target "$AGTERM_SESSION_ID"   (mine, never `active`)
+    ^ when the user says "close this session / tab" they mean THIS pane, not a hand-off and not "end the
+      conversation": finish the log/handoff note first, then close. Outside agx (AGTERM_ENABLED unset)
+      there is nothing to close — just end the turn.
   desktop notification       agtermctl notify "<body>" [--title "..."]     native picker: agtermctl pick ...
   watch UI events (stream)   agtermctl events
 
@@ -244,7 +249,8 @@ def render(ctx):
         L.append(f'  {w.get("name")}: {col}')
 
     L.append("")
-    L.append(MANIFEST)
+    installed = _installed_agents() or ["claude"]
+    L.append(MANIFEST.replace("{AGENT_CHOICES}", "|".join(installed)))
     return "\n".join(L)
 
 
@@ -315,14 +321,111 @@ def _codex_trusts(path):
     return re.search(r'^\s*trust_level\s*=\s*"trusted"', m.group(1), re.M) is not None
 
 
+def _gemini_trusts(path):
+    """Gemini CLI's folder trust: `~/.gemini/trustedFolders.json` maps a path to TRUST_FOLDER /
+    TRUST_PARENT / DO_NOT_TRUST. An untrusted folder is a hard stop for a seeded `-i` launch."""
+    if not path:
+        return None
+    try:
+        real = os.path.realpath(os.path.expanduser(path))
+        cfg = json.load(open(os.path.expanduser(os.environ.get("GEMINI_CLI_TRUSTED_FOLDERS_PATH")
+                                                or "~/.gemini/trustedFolders.json")))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(cfg, dict):
+        return None
+    for folder, rule in cfg.items():
+        f = os.path.realpath(os.path.expanduser(folder))
+        if rule == "TRUST_FOLDER" and real == f:
+            return True
+        if rule == "TRUST_PARENT" and (real == f or real.startswith(f.rstrip("/") + "/")):
+            return True
+    return False
+
+
+def _mimo_trusts(path):
+    """Mimo's workspace trust: `~/.local/share/mimocode/trusted-workspaces.json` → {"trustedPaths": [...]}."""
+    if not path:
+        return None
+    try:
+        real = os.path.realpath(os.path.expanduser(path))
+        cfg = json.load(open(os.path.expanduser("~/.local/share/mimocode/trusted-workspaces.json")))
+    except (OSError, ValueError):
+        return None
+    paths = cfg.get("trustedPaths") if isinstance(cfg, dict) else None
+    if not isinstance(paths, list):
+        return None
+    return any(os.path.realpath(os.path.expanduser(p)) == real for p in paths if isinstance(p, str))
+
+
+TRUST_PROBES = {
+    "claudeProjects": _claude_trusts,
+    "codexProjects": _codex_trusts,
+    "geminiTrustedFolders": _gemini_trusts,
+    "mimoTrustedWorkspaces": _mimo_trusts,
+}
+
+CONTEXT_PREFIX = ("You are running inside AGX, an agent terminal. Run `agx context` first: it tells you "
+                  "which pane you are, what the user sees, and what you can do to this UI.\n\n")
+
+
+def _agents_dir():
+    """The `agents/<binary>/agent.json` manifests — the same files the app reads (AgentCatalog.swift):
+    the bundled package beside this script, else the installed copy, else the source checkout."""
+    here = os.path.dirname(os.path.realpath(__file__))
+    for d in (os.environ.get("AGTERM_AGENTS_DIR"),
+              os.path.join(here, "agent-status", "agents"),
+              os.path.expanduser("~/.config/agx/agent-status/agents"),
+              os.path.normpath(os.path.join(here, "..", "agterm", "Resources", "agent-status", "agents"))):
+        if d and os.path.isdir(d):
+            return d
+    return None
+
+
+def _load_agents():
+    """{binary: manifest} in catalog order; a malformed manifest is skipped, no directory → {}."""
+    d = _agents_dir()
+    if not d:
+        return {}
+    agents = []
+    for name in os.listdir(d):
+        try:
+            m = json.load(open(os.path.join(d, name, "agent.json")))
+        except (OSError, ValueError):
+            continue
+        if isinstance(m, dict) and isinstance(m.get("binary"), str) and isinstance(m.get("name"), str):
+            agents.append(m)
+    agents.sort(key=lambda m: (m.get("order", 1 << 30), m["binary"]))
+    return {m["binary"]: m for m in agents}
+
+
+AGENTS = _load_agents()
+
+
+def _agent_exe(agent):
+    return os.path.basename((agent or "").strip().split(" ", 1)[0])
+
+
+def _agent_profile(agent):
+    """The manifest behind a launch line (`claude`, `codex --model x`); an unknown binary gets the
+    launch-only floor: positional brief, no context hook, no trust probe."""
+    return AGENTS.get(_agent_exe(agent), {})
+
+
+def _installed_agents():
+    """Known agent binaries on PATH plus the per-user tool dirs a GUI-spawned shell may lack."""
+    extra = [os.path.expanduser(d) for d in ("~/.local/bin", "~/.bun/bin", "~/.cargo/bin", "~/.npm-global/bin")]
+    path = os.environ.get("PATH", "") + ":" + ":".join(extra) + ":/opt/homebrew/bin:/usr/local/bin"
+    return [b for b in AGENTS if shutil.which(b, path=path)]
+
+
 def _agent_trusts(agent, path):
     """Dispatch the trust probe on the agent's executable (`claude`, `codex --model x`, …). Agents we
     don't know how to probe → None (no warning either way)."""
-    exe = os.path.basename((agent or "").strip().split(" ", 1)[0])
-    if exe == "claude":
-        return _claude_trusts(path)
-    if exe == "codex":
-        return _codex_trusts(path)
+    trust = _agent_profile(agent).get("trust") or {}
+    probe = TRUST_PROBES.get(trust.get("kind"))
+    if probe:
+        return probe(path)
     return None
 
 
@@ -378,7 +481,14 @@ def cmd_spawn(argv):
     with os.fdopen(fd, "w") as f:
         f.write(opts["brief"])
     # brief lives in the file, never inline, so its quotes/newlines/$ can't break the command string.
-    body = 'b="$(cat %s)"; rm -f %s; exec %s "$b"' % (briefpath, briefpath, _agent_launch(opts["agent"]))
+    # Where "$b" goes is the agent's profile (`gemini -i "$b"`, `opencode --prompt "$b"`); an agent with
+    # no SessionStart context hook gets a one-line pointer to `agx context` in front of the brief.
+    profile = _agent_profile(opts["agent"])
+    if profile.get("context") != "sessionStartHook":
+        with open(briefpath, "w") as f:
+            f.write(CONTEXT_PREFIX + opts["brief"])
+    seed = " ".join(([profile["seedFlag"]] if profile.get("seedFlag") else []) + ['"$b"'])
+    body = 'b="$(cat %s)"; rm -f %s; exec %s %s' % (briefpath, briefpath, opts["agent"], seed)
     command = "zsh -lc '" + body + "'"
     args = ["session", "new", "--command", command]
     if not opts["foreground"]:

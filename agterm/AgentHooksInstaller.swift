@@ -1,17 +1,17 @@
 import AppKit
+import SwiftUI
 import agtermCore
 
-/// Installs the bundled agent-status hooks package into the user's home: the scripts into
-/// `~/.config/<brand>/agent-status/`, the bundled `agtermctl`/`agx` absolute paths baked into the wrappers, a
-/// marker-guarded `source` line in `~/.zshrc`/`~/.bashrc`/`~/.config/fish/config.fish`, the four Claude Code
-/// status hooks plus two agx `SessionStart` hooks merged into `~/.claude/settings.json`, the six Codex
-/// lifecycle hooks into `~/.codex/config.toml`,
-/// and — when each is configured — Pi's lifecycle extension into `~/.pi/agent/extensions/` and OpenCode's
-/// plugin into `~/.config/opencode/plugins/`. Claude/Codex configs get a `.bak` first; the Codex step parses
-/// TOML and points at the docs for a manual merge when that file already has hooks or does not parse. The
-/// host-free string/JSON/TOML transforms and the Pi/OpenCode ownership policy live in
+/// Installs the bundled agent-status package into the user's home: the scripts into
+/// `~/.config/<brand>/agent-status/`, the bundled `agtermctl`/`agx` absolute paths baked into every shell
+/// script that resolves them, a marker-guarded `source` line in `~/.zshrc`/`~/.bashrc`/
+/// `~/.config/fish/config.fish`, and then one step per agent manifest (`agents/<binary>/agent.json`) by its
+/// `status.kind`: JSON hooks merged into the agent's hook file, a TOML `[[hooks.*]]` block into its config,
+/// or a plugin copied into its plugins directory — each only when the agent's own directory already exists.
+/// Hook files get a `.bak` first; a TOML step that finds foreign hooks or no parseable TOML points at the
+/// docs for a manual merge. The result is one row per agent (`AgentHooksResultView`). The host-free string/JSON/TOML transforms and the plugin ownership policy live in
 /// `agtermCore.AgentHooksInstall`; this type owns the AppKit filesystem glue. Idempotent: a re-run refreshes
-/// the baked `agtermctl` path (healing a moved bundle) and no-ops on already-present entries.
+/// the baked tool paths (healing a moved bundle) and no-ops on already-present entries.
 @MainActor
 enum AgentHooksInstaller {
     private struct InstallError: Error { let message: String }
@@ -30,72 +30,109 @@ enum AgentHooksInstaller {
             .appendingPathComponent(".config/\(Brand.configDirectoryName)/agent-status")
     }
 
-    // the outcome of the Codex config.toml merge, decided by parsing the existing file.
-    enum CodexResult {
-        case merged, alreadyConfigured, hooksExist, unparseable, unreadable, noCodex
+    /// The outcome of one agent's install step, whatever its integration kind.
+    enum IntegrationResult: Equatable {
+        /// The hooks were merged or the plugin written.
+        case merged
+        /// Already current — nothing to do.
+        case unchanged
+        /// The agent's directory does not exist, so nothing was seeded.
+        case notInstalled
+        /// The file was left untouched; `reason` completes "Your ~/<file> <reason>". `manual` sends the user
+        /// to the docs for a hand merge (a TOML config with its own hooks, or one that does not parse).
+        case skipped(reason: String, manual: Bool)
 
-        // warning: agterm could not auto-merge and the user must act (add the block by hand, or fix config).
         var isWarning: Bool {
-            switch self {
-            case .hooksExist, .unparseable, .unreadable: return true
-            case .merged, .alreadyConfigured, .noCodex: return false
-            }
+            if case .skipped = self { return true }
+            return false
         }
 
-        // the two outcomes whose alert text sends the user to the docs for the block to paste in by hand.
         var needsManualMerge: Bool {
-            switch self {
-            case .hooksExist, .unparseable: return true
-            case .merged, .alreadyConfigured, .unreadable, .noCodex: return false
+            if case .skipped(_, let manual) = self { return manual }
+            return false
+        }
+    }
+
+    /// One agent's line in the result window: the profile (name, tile) and what happened to it.
+    struct Row {
+        let profile: AgentProfile
+        let result: IntegrationResult
+
+        /// The one-liner under the name. No paths: the file is named only when it was left untouched,
+        /// and then by its basename, so the user knows WHICH file to look at without a column of homes.
+        var detail: String {
+            switch result {
+            case .merged:
+                return [installed, profile.activate].compactMap { $0 }.joined(separator: " ")
+            case .unchanged:
+                return "Already set up."
+            case .notInstalled:
+                return "Not installed on this Mac."
+            case .skipped(let reason, let manual):
+                return "\(targetName) \(reason) — left untouched." + (manual ? " See the docs for the block to add by hand." : "")
+            }
+        }
+
+        private var installed: String {
+            if case .plugin = profile.status { return "Plugin installed." }
+            return "Hooks added."
+        }
+
+        private var targetName: String {
+            switch profile.status {
+            case .jsonHooks(let file, _, _), .tomlHooks(let file, _, _): return (file as NSString).lastPathComponent
+            case .plugin(_, let destination, _, _): return (destination as NSString).lastPathComponent
+            case .none: return ""
             }
         }
     }
 
-    // the Pi extension-install outcome, mirroring CodexResult.
-    private enum PiResult {
-        case installed, alreadyConfigured, userOwned, unreadable, writeFailed, noPi
+    /// Read-only: which agents on this Mac already carry the hooks, and which could. Decided by the same
+    /// merges the install runs (a merge that would change nothing = installed), so the Welcome checklist
+    /// and the installer can never disagree; nothing is written.
+    struct Status: Equatable {
+        var installed: [String]
+        var eligible: [String]
+        var packagePresent: Bool
+    }
 
-        // warning: the user must act (move the user-owned file, or fix the unreadable/unwritable path).
-        var isWarning: Bool {
-            switch self {
-            case .userOwned, .unreadable, .writeFailed: return true
-            case .installed, .alreadyConfigured, .noPi: return false
-            }
+    static func status() -> Status {
+        let fm = FileManager.default
+        var status = Status(installed: [], eligible: [], packagePresent: fm.fileExists(atPath: destinationFolder.path))
+        for profile in AgentCatalog.known where profile.hasStatusIntegration {
+            guard let configDirectory = profile.configDirectory, exists(configDirectory) else { continue }
+            status.eligible.append(profile.name)
+            if status.packagePresent, isInstalled(profile) { status.installed.append(profile.name) }
+        }
+        return status
+    }
+
+    private static func isInstalled(_ profile: AgentProfile) -> Bool {
+        let scriptDir = destinationFolder.path
+        switch profile.status {
+        case .jsonHooks(let file, let dialect, let hooks):
+            guard let existing = try? readExistingConfig(at: home.appendingPathComponent(file)), !existing.isEmpty,
+                  let merged = try? AgentHooksInstall.mergeJSONHooks(existing: existing, scriptDir: scriptDir,
+                                                                     dialect: dialect, bindings: hooks) else { return false }
+            return !merged.changed
+        case .tomlHooks(let file, let script, let events):
+            guard let existing = try? readExistingConfig(at: home.appendingPathComponent(file)) else { return false }
+            return AgentHooksInstall.mergeTOMLHooks(existing: existing, scriptDir: scriptDir, script: script,
+                                                    events: events) == .unchanged
+        case .plugin(_, let destination, _, let marker):
+            guard let existing = try? readExistingConfig(at: home.appendingPathComponent(destination)) else { return false }
+            return existing.contains(marker)
+        case .none:
+            return false
         }
     }
 
-    // OpenCode plugin-install outcome (same shape as Pi; host term is plugin, not extension).
-    private enum OpenCodeResult {
-        case installed, alreadyConfigured, userOwned, unreadable, writeFailed, noOpenCode
-
-        var isWarning: Bool {
-            switch self {
-            case .userOwned, .unreadable, .writeFailed: return true
-            case .installed, .alreadyConfigured, .noOpenCode: return false
-            }
-        }
-    }
-
-    // aggregates per-integration outcomes so `install()` stays under the large_tuple lint (max 3 members).
-    private struct InstallOutcome {
-        let settingsSkipped: Bool
-        let codex: CodexResult
-        let pi: PiResult
-        let opencode: OpenCodeResult
-
-        var isWarning: Bool {
-            settingsSkipped || codex.isWarning || pi.isWarning || opencode.isWarning
-        }
-    }
-
-    /// Run the install and show a result alert.
+    /// Run the install and show the result window.
     static func run() {
         do {
-            let outcome = try install()
-            present(style: outcome.isWarning ? .warning : .informational,
-                    title: outcome.isWarning ? "Agent Status Hooks Installed — with a warning" : "Agent Status Hooks Installed",
-                    text: successText(outcome),
-                    docs: outcome.codex.needsManualMerge ? codexManualDocsURL : nil)
+            let rows = try install()
+            let docs = rows.contains { $0.result.needsManualMerge } ? codexManualDocsURL : nil
+            presentResult(rows: rows, docs: docs)
         } catch let error as InstallError {
             present(style: .warning, title: "Install Failed", text: error.message)
         } catch {
@@ -103,16 +140,25 @@ enum AgentHooksInstaller {
         }
     }
 
-    // every step runs regardless of an earlier one's outcome; each reports its own result.
-    private static func install() throws -> InstallOutcome {
+    // every step runs regardless of an earlier one's outcome; each agent reports its own result.
+    private static func install() throws -> [Row] {
         try copyBundledFolder()
-        try bakeAgtermctlPath()
-        let settingsSkipped = try mergeClaudeSettings()
+        try bakeToolPaths()
         try appendShellRC()
-        let codex = try mergeCodexConfig()
-        let pi = try installPiExtension()
-        let opencode = try installOpenCodePlugin()
-        return InstallOutcome(settingsSkipped: settingsSkipped, codex: codex, pi: pi, opencode: opencode)
+        return try AgentCatalog.known.filter(\.hasStatusIntegration).map { Row(profile: $0, result: try install($0)) }
+    }
+
+    private static func install(_ profile: AgentProfile) throws -> IntegrationResult {
+        switch profile.status {
+        case .jsonHooks(let file, let dialect, let hooks):
+            return try mergeJSONHooks(profile, file: file, dialect: dialect, bindings: hooks)
+        case .tomlHooks(let file, let script, let events):
+            return try mergeTOMLHooks(profile, file: file, script: script, events: events)
+        case .plugin(let source, let destination, let requires, let marker):
+            return try installPlugin(source: source, destination: destination, requires: requires, marker: marker)
+        case .none:
+            return .unchanged
+        }
     }
 
     private static func copyBundledFolder() throws {
@@ -126,45 +172,31 @@ enum AgentHooksInstaller {
         try fm.copyItem(at: source, to: destination)
     }
 
-    // sentinel for the installer-baked tool-path default; a re-run replaces it instead of duplicating it.
-    private static let agtermctlMarker = "# >>> agterm agtermctl path (installer-baked) >>>"
+    // sentinel for the installer-baked tool-path defaults, so a reader knows the lines are generated.
+    private static let bakedMarker = "# >>> agterm tool paths (installer-baked) >>>"
 
-    // bake the bundled tools' absolute paths into the installed wrappers so the hooks fire even when the CLIs
-    // were never symlinked into PATH: agtermctl into the status, Codex and session-restore wrappers, agx into
-    // the session-context one. `[ -n "${VAR:-}" ] ||` assigns only when unset, so an explicit env override
-    // still wins (order 1 > 2 > PATH); shellQuote keeps spaces / metacharacters inert.
-    private static func bakeAgtermctlPath() throws {
-        let ctl = bundledTool?.path
-        let bakes: [(wrapper: String, variable: String, path: String?)] = [
-            (AgentHooksInstall.wrapperName, "AGTERMCTL", ctl),
-            (AgentHooksInstall.codexWrapperName, "AGTERMCTL", ctl),
-            (AgentHooksInstall.sessionRestoreHookName, "AGTERMCTL", ctl),
-            (AgentHooksInstall.sessionContextHookName, "AGX", CLIInstaller.bundledAgx?.path),
-            (AgentHooksInstall.agentFailureHookName, "AGTERMCTL", ctl),
-            (AgentHooksInstall.artifactsHookName, "AGTERMCTL", ctl),
+    // bake the bundled tools' absolute paths into every installed shell script that resolves them
+    // (`${AGTERMCTL:-agtermctl}`, `${AGX:-…}`), so the hooks fire even when the CLIs were never symlinked
+    // into PATH. `[ -n "${VAR:-}" ] ||` assigns only when unset, so an explicit env override still wins
+    // (order 1 > 2 > PATH); shellQuote keeps spaces / metacharacters inert. The package was just copied
+    // fresh, so there is never a prior block to strip.
+    private static func bakeToolPaths() throws {
+        let tools: [(variable: String, path: String?)] = [
+            ("AGTERMCTL", bundledTool?.path),
+            ("AGX", CLIInstaller.bundledAgx?.path),
         ]
-        for bake in bakes {
-            guard let path = bake.path else { continue } // not bundled: leave the PATH fallback in place
-            let wrapper = destinationFolder.appendingPathComponent(bake.wrapper)
-            let original = try String(contentsOf: wrapper, encoding: .utf8)
-            let stripped = stripBakedBlock(from: original)
-            let block = agtermctlMarker
-                + "\n[ -n \"${\(bake.variable):-}\" ] || \(bake.variable)=\(AgentHooksInstall.shellQuote(path))\n"
-            let baked = insertAfterShebang(stripped, block: block)
-            try writePreservingSymlink(baked, to: wrapper)
+        let fm = FileManager.default
+        guard let files = fm.enumerator(at: destinationFolder, includingPropertiesForKeys: nil) else { return }
+        for case let file as URL in files where file.pathExtension == "sh" {
+            let original = try String(contentsOf: file, encoding: .utf8)
+            let lines = tools.compactMap { tool -> String? in
+                guard let path = tool.path, original.contains("${\(tool.variable):-") else { return nil }
+                return "[ -n \"${\(tool.variable):-}\" ] || \(tool.variable)=\(AgentHooksInstall.shellQuote(path))"
+            }
+            guard !lines.isEmpty else { continue }
+            let baked = insertAfterShebang(original, block: ([bakedMarker] + lines).joined(separator: "\n") + "\n")
+            try writePreservingSymlink(baked, to: file)
         }
-    }
-
-    private static func stripBakedBlock(from text: String) -> String {
-        let lines = text.components(separatedBy: "\n")
-        var result: [String] = []
-        var skip = 0
-        for line in lines {
-            if skip > 0 { skip -= 1; continue }
-            if line == agtermctlMarker { skip = 1; continue } // drop the marker and the assignment below it
-            result.append(line)
-        }
-        return result.joined(separator: "\n")
     }
 
     private static func insertAfterShebang(_ text: String, block: String) -> String {
@@ -203,42 +235,116 @@ enum AgentHooksInstaller {
         }
     }
 
-    // merge the Claude Code hooks (status + SessionStart) into ~/.claude/settings.json, writing a .bak first when anything
-    // changes. returns true when the merge was SKIPPED (invalid JSON, or unreadable) and the file left as is.
-    private static func mergeClaudeSettings() throws -> Bool {
-        let claudeDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude")
-        let settings = claudeDir.appendingPathComponent("settings.json")
+    // write a config file through its symlink with the target's mode, backing up the prior contents beside
+    // the link first (NOT beside the resolved target, which may be a git-tracked dotfiles dir we must not
+    // litter; only the MODE comes from the target).
+    private static func writeConfig(_ contents: String, to url: URL, backingUp existing: String?) throws {
+        let target = symlinkTarget(of: url) ?? url
+        let mode = AgentHooksInstall.posixMode(ofFile: target.path)
+        if let existing, !existing.isEmpty {
+            try AgentHooksInstall.writeFile(existing, toPath: AgentHooksInstall.backupPath(for: url.path), posixMode: mode)
+        }
+        try writePreservingSymlink(contents, to: url, posixMode: mode)
+    }
+
+    private static var home: URL { FileManager.default.homeDirectoryForCurrentUser }
+
+    private static func exists(_ relative: String) -> Bool {
+        FileManager.default.fileExists(atPath: home.appendingPathComponent(relative).path)
+    }
+
+    // merge a profile's hooks into its JSON hook file. Gated on the agent's config directory existing so a
+    // home without the agent isn't seeded with its settings file.
+    private static func mergeJSONHooks(_ profile: AgentProfile, file: String, dialect: HookDialect,
+                                       bindings: [HookBinding]) throws -> IntegrationResult {
+        guard let configDirectory = profile.configDirectory, exists(configDirectory) else { return .notInstalled }
+        let settings = home.appendingPathComponent(file)
         let existing: String?
         do {
             existing = try readExistingConfig(at: settings)
         } catch {
-            return true // unreadable: leave it untouched rather than clobber it with no backup
+            return .skipped(reason: "exists but couldn't be read", manual: false)
         }
         let merged: (json: String, changed: Bool)
         do {
-            merged = try AgentHooksInstall.mergeClaudeSettings(existing: existing, scriptDir: destinationFolder.path)
+            merged = try AgentHooksInstall.mergeJSONHooks(existing: existing, scriptDir: destinationFolder.path,
+                                                          dialect: dialect, bindings: bindings)
         } catch AgentHooksInstall.MergeError.malformedExistingSettings {
-            return true // invalid JSON: leave the user's file untouched
+            return .skipped(reason: "isn't valid JSON", manual: false)
         }
-        guard merged.changed else { return false }
-        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
-        // resolve the symlink target FIRST (a dotfiles-managed link must survive) and read its mode once, so
-        // the rewrite AND the .bak inherit it instead of an atomic rename widening a chmod-600 file to 0644.
-        let target = symlinkTarget(of: settings) ?? settings
-        let mode = AgentHooksInstall.posixMode(ofFile: target.path)
-        if let existing { // back up before overwriting, with the source's mode
-            // keep the .bak beside the symlink, NOT the resolved target — that resolves into a git-tracked
-            // dotfiles dir we must not litter; only the MODE comes from the target.
-            let backup = AgentHooksInstall.backupPath(for: settings.path)
-            try AgentHooksInstall.writeFile(existing, toPath: backup, posixMode: mode)
+        guard merged.changed else { return .unchanged }
+        try writeConfig(merged.json, to: settings, backingUp: existing)
+        return .merged
+    }
+
+    // merge a profile's `[[hooks.*]]` block into its TOML config. The host-free
+    // `AgentHooksInstall.mergeTOMLHooks` PARSES the file and decides the outcome; this only reads/writes.
+    private static func mergeTOMLHooks(_ profile: AgentProfile, file: String, script: String,
+                                       events: [TOMLHookEvent]) throws -> IntegrationResult {
+        guard let configDirectory = profile.configDirectory, exists(configDirectory) else { return .notInstalled }
+        let config = home.appendingPathComponent(file)
+        let existing: String?
+        do {
+            existing = try readExistingConfig(at: config)
+        } catch {
+            return .skipped(reason: "exists but couldn't be read", manual: false)
         }
-        try writePreservingSymlink(merged.json, to: settings, posixMode: mode)
-        return false
+        switch AgentHooksInstall.mergeTOMLHooks(existing: existing ?? "", scriptDir: destinationFolder.path,
+                                                script: script, events: events) {
+        case .unchanged:
+            return .unchanged
+        case .hooksExist:
+            return .skipped(reason: "already defines its own hooks", manual: true)
+        case .unparseable:
+            return .skipped(reason: "isn't valid TOML — fix it and run this again", manual: true)
+        case .merged(let contents):
+            try writeConfig(contents, to: config, backingUp: existing)
+            return .merged
+        }
+    }
+
+    // copy a bundled plugin into the agent's auto-discovered plugins directory, only once `requires` exists.
+    // an UNMARKED same-named file is user-owned and left untouched; a marked one refreshes from the copied
+    // package. no backup, unlike the hook files: the plugin carries no user state.
+    private static func installPlugin(source: String, destination: String, requires: String,
+                                      marker: String) throws -> IntegrationResult {
+        guard exists(requires) else { return .notInstalled }
+        let sourceURL = destinationFolder.appendingPathComponent(source)
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            throw InstallError(message: "\(source) is not bundled in this build.")
+        }
+        let contents = try String(contentsOf: sourceURL, encoding: .utf8)
+        guard contents.contains(marker) else {
+            throw InstallError(message: "The bundled \(source) is missing its ownership marker.")
+        }
+        let target = home.appendingPathComponent(destination)
+        // nil = absent, throw = exists-but-unreadable: a non-ENOENT stat error must not masquerade as
+        // "absent" and slip past the ownership-marker gate.
+        let existing: String?
+        do {
+            existing = try readExistingConfig(at: target)
+        } catch {
+            return .skipped(reason: "exists but couldn't be read", manual: false)
+        }
+        guard AgentHooksInstall.mayOverwritePlugin(fileExists: existing != nil, existingContents: existing,
+                                                   marker: marker) else {
+            return .skipped(reason: "is user-owned", manual: false)
+        }
+        guard existing != contents else { return .unchanged }
+        // a filesystem error degrades to a warning like every sibling integration, rather than aborting the
+        // whole install and hiding that the other steps ran.
+        do {
+            try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let mode = AgentHooksInstall.posixMode(ofFile: (symlinkTarget(of: target) ?? target).path)
+            try writePreservingSymlink(contents, to: target, posixMode: mode)
+        } catch {
+            return .skipped(reason: "couldn't be written (check the directory's permissions)", manual: false)
+        }
+        return .merged
     }
 
     // append the marker-guarded source line to ~/.zshrc, ~/.bashrc, ~/.config/fish/config.fish (idempotent).
     private static func appendShellRC() throws {
-        let home = FileManager.default.homeDirectoryForCurrentUser
         for name in [".zshrc", ".bashrc", ".config/fish/config.fish"] {
             let rc = home.appendingPathComponent(name)
             if name.hasSuffix(".fish") {
@@ -253,200 +359,31 @@ enum AgentHooksInstaller {
         }
     }
 
-    // install Pi's auto-discovered global extension only when Pi has already created ~/.pi/agent. an UNMARKED
-    // same-named extension is user-owned and left untouched; a marked one refreshes from the copied package.
-    // no backup, unlike the Claude/Codex configs: the extension carries no user state.
-    private static func installPiExtension() throws -> PiResult {
-        let fm = FileManager.default
-        let home = fm.homeDirectoryForCurrentUser
-        let piAgentDirectory = home.appendingPathComponent(".pi/agent")
-        guard fm.fileExists(atPath: piAgentDirectory.path) else { return .noPi }
-
-        let source = destinationFolder.appendingPathComponent(AgentHooksInstall.piExtensionRelativePath)
-        guard fm.fileExists(atPath: source.path) else {
-            throw InstallError(message: "The Pi status extension is not bundled in this build.")
-        }
-        let sourceContents = try String(contentsOf: source, encoding: .utf8)
-        guard sourceContents.contains(AgentHooksInstall.piExtensionMarker) else {
-            throw InstallError(message: "The bundled Pi status extension is missing its ownership marker.")
-        }
-
-        let destination = URL(fileURLWithPath: AgentHooksInstall.piExtensionPath(home: home.path))
-        // nil = absent, throw = exists-but-unreadable (folded to .unreadable): reusing readExistingConfig
-        // stops a non-ENOENT stat error masquerading as "absent" and slipping past the ownership-marker gate.
-        let existing: String?
-        do {
-            existing = try readExistingConfig(at: destination)
-        } catch {
-            return .unreadable
-        }
-        guard AgentHooksInstall.mayOverwritePiExtension(fileExists: existing != nil, existingContents: existing) else {
-            return .userOwned
-        }
-        guard existing != sourceContents else { return .alreadyConfigured }
-
-        // a filesystem error degrades to a warning like every sibling integration, rather than aborting the
-        // whole install and hiding that the Claude/Codex/shell steps ran.
-        do {
-            try fm.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let target = symlinkTarget(of: destination) ?? destination
-            let mode = AgentHooksInstall.posixMode(ofFile: target.path)
-            try writePreservingSymlink(sourceContents, to: destination, posixMode: mode)
-        } catch {
-            return .writeFailed
-        }
-        return .installed
+    // the result window, run modally like the alert it replaces so the callers' queueing (welcome →
+    // skill → hooks) keeps working.
+    private static func presentResult(rows: [Row], docs: URL?) {
+        let holder = WindowHolder()
+        let view = AgentHooksResultView(rows: rows, docs: docs, onOpenDocs: {
+            if let docs { NSWorkspace.shared.open(docs) }
+            holder.close()
+        }, onClose: { holder.close() })
+        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+        window.styleMask = [.titled, .closable]
+        window.title = "Agent Status Hooks"
+        window.center()
+        holder.window = window
+        NSApp.runModal(for: window)
     }
 
-    // install OpenCode's auto-discovered global plugin only when ~/.config/opencode exists. same ownership /
-    // degrade-to-warning policy as Pi, and no backup.
-    private static func installOpenCodePlugin() throws -> OpenCodeResult {
-        let fm = FileManager.default
-        let home = fm.homeDirectoryForCurrentUser
-        let opencodeDirectory = home.appendingPathComponent(".config/opencode")
-        guard fm.fileExists(atPath: opencodeDirectory.path) else { return .noOpenCode }
+    @MainActor
+    private final class WindowHolder {
+        var window: NSWindow?
 
-        let source = destinationFolder.appendingPathComponent(AgentHooksInstall.opencodePluginRelativePath)
-        guard fm.fileExists(atPath: source.path) else {
-            throw InstallError(message: "The OpenCode status plugin is not bundled in this build.")
-        }
-        let sourceContents = try String(contentsOf: source, encoding: .utf8)
-        guard sourceContents.contains(AgentHooksInstall.opencodePluginMarker) else {
-            throw InstallError(message: "The bundled OpenCode status plugin is missing its ownership marker.")
-        }
-
-        let destination = URL(fileURLWithPath: AgentHooksInstall.opencodePluginPath(home: home.path))
-        let existing: String?
-        do {
-            existing = try readExistingConfig(at: destination)
-        } catch {
-            return .unreadable
-        }
-        guard AgentHooksInstall.mayOverwriteOpenCodePlugin(fileExists: existing != nil, existingContents: existing) else {
-            return .userOwned
-        }
-        guard existing != sourceContents else { return .alreadyConfigured }
-
-        do {
-            try fm.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let target = symlinkTarget(of: destination) ?? destination
-            let mode = AgentHooksInstall.posixMode(ofFile: target.path)
-            try writePreservingSymlink(sourceContents, to: destination, posixMode: mode)
-        } catch {
-            return .writeFailed
-        }
-        return .installed
-    }
-
-    // merge the Codex lifecycle hooks into ~/.codex/config.toml, writing a .bak first when anything changes.
-    // gated on ~/.codex existing so a non-Codex home isn't seeded with a config.toml. the host-free
-    // `AgentHooksInstall.mergeCodexConfig` PARSES the file and decides the outcome; this only reads/writes.
-    private static func mergeCodexConfig() throws -> CodexResult {
-        let codexDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")
-        guard FileManager.default.fileExists(atPath: codexDir.path) else { return .noCodex }
-        let config = codexDir.appendingPathComponent("config.toml")
-        let existing: String?
-        do {
-            existing = try readExistingConfig(at: config)
-        } catch {
-            return .unreadable // unreadable: leave it untouched rather than clobber it
-        }
-        switch AgentHooksInstall.mergeCodexConfig(existing: existing ?? "", scriptDir: destinationFolder.path) {
-        case .unchanged:
-            return .alreadyConfigured
-        case .hooksExist:
-            return .hooksExist
-        case .unparseable:
-            return .unparseable
-        case .merged(let contents):
-            // same symlink-target-then-mode handling as mergeClaudeSettings.
-            let target = symlinkTarget(of: config) ?? config
-            let mode = AgentHooksInstall.posixMode(ofFile: target.path)
-            if let existing, !existing.isEmpty { // back up the prior file before overwriting it
-                let backup = AgentHooksInstall.backupPath(for: config.path)
-                try AgentHooksInstall.writeFile(existing, toPath: backup, posixMode: mode)
-            }
-            try writePreservingSymlink(contents, to: config, posixMode: mode)
-            return .merged
-        }
-    }
-
-    // the success-alert text, calling out anything an integration could not safely update and left alone.
-    private static func successText(_ outcome: InstallOutcome) -> String {
-        let claudeLine = outcome.settingsSkipped
-            ? "Your ~/.claude/settings.json isn't valid JSON (or couldn't be read), so the Claude Code hooks were NOT added "
-              + "(the file was left untouched). Fix it and run this again, or add the hooks manually."
-            : "Claude Code hooks (status, plus the two agx SessionStart hooks) merged into ~/.claude/settings.json."
-        return """
-        Scripts installed to \(destinationFolder.path).
-        \(claudeLine)
-        \(codexText(outcome.codex))
-        \(piText(outcome.pi))
-        \(opencodeText(outcome.opencode))
-        The source line was added to ~/.zshrc, ~/.bashrc (and ~/.config/fish/config.fish if fish is installed).
-
-        Open a new terminal for the shell integration to take effect.
-        """
-    }
-
-    // the Codex portion of the alert. Every case stays one line and embeds no generated block: NSAlert sizes
-    // itself to fit `informativeText` with no scroll and no cap, so the hooks block's long `command =` lines
-    // wrapped several times each and grew the window past the bottom of a laptop screen (#430). Sentence
-    // count is not the constraint — the two manual-merge cases send the user to the docs instead.
-    static func codexText(_ codex: CodexResult) -> String {
-        let approve = "Run /hooks in Codex to review and approve them before they take effect."
-        let manual = "See the Add Codex hooks by hand section of the agterm docs for the block to add, then run /hooks in Codex."
-        switch codex {
-        case .merged:
-            return "Codex lifecycle hooks merged into ~/.codex/config.toml (any old codex-notify.sh notify line was removed). " + approve
-        case .alreadyConfigured:
-            return "Codex lifecycle hooks are already present in ~/.codex/config.toml. " + approve
-        case .hooksExist:
-            return "Your ~/.codex/config.toml already defines its own hooks, so agterm left it untouched. " + manual
-        case .unparseable:
-            return "Your ~/.codex/config.toml isn't valid TOML, so agterm left it untouched. Fix it and run this again. " + manual
-        case .unreadable:
-            return "Your ~/.codex/config.toml exists but couldn't be read, so agterm left it untouched."
-        case .noCodex:
-            return "No ~/.codex found, so Codex hooks were skipped. Install Codex, then run this again."
-        }
-    }
-
-    // Pi's extension-install outcome. Pi extensions auto-discover on the next startup or `/reload`.
-    private static func piText(_ pi: PiResult) -> String {
-        switch pi {
-        case .installed:
-            return "Pi lifecycle extension installed to ~/.pi/agent/extensions/agterm-status.ts. Restart Pi or run /reload."
-        case .alreadyConfigured:
-            return "Pi lifecycle extension is already current at ~/.pi/agent/extensions/agterm-status.ts."
-        case .userOwned:
-            return "~/.pi/agent/extensions/agterm-status.ts is user-owned, so agterm left it untouched."
-        case .unreadable:
-            return "~/.pi/agent/extensions/agterm-status.ts exists but could not be read, so agterm left it untouched."
-        case .writeFailed:
-            return "Pi's lifecycle extension couldn't be written to ~/.pi/agent/extensions/ (check that directory's permissions), so it was skipped."
-        case .noPi:
-            return "No ~/.pi/agent found, so Pi's lifecycle extension was skipped. Start Pi once, then run this again."
-        }
-    }
-
-    // OpenCode's plugin-install outcome. plugins load on the next OpenCode start.
-    private static func opencodeText(_ opencode: OpenCodeResult) -> String {
-        switch opencode {
-        case .installed:
-            return "OpenCode lifecycle plugin installed to ~/.config/opencode/plugins/agterm-status.js. Restart OpenCode."
-        case .alreadyConfigured:
-            return "OpenCode lifecycle plugin is already current at ~/.config/opencode/plugins/agterm-status.js."
-        case .userOwned:
-            return "~/.config/opencode/plugins/agterm-status.js is user-owned, so agterm left it untouched."
-        case .unreadable:
-            return "~/.config/opencode/plugins/agterm-status.js exists but could not be read, so agterm left it untouched."
-        case .writeFailed:
-            return "OpenCode's lifecycle plugin couldn't be written to ~/.config/opencode/plugins/ (check that directory's permissions), so it was skipped."
-        case .noOpenCode:
-            return "No ~/.config/opencode found, so OpenCode's lifecycle plugin was skipped. "
-                + "Coarse shell detection for opencode is off by default — status comes from the lifecycle plugin "
-                + "once ~/.config/opencode exists. Start OpenCode once, then run this again."
+        func close() {
+            guard let window else { return }
+            self.window = nil
+            NSApp.stopModal()
+            window.close()
         }
     }
 
@@ -454,23 +391,12 @@ enum AgentHooksInstaller {
     /// renders `informativeText` as plain, unselectable text, so a printed URL would have to be retyped.
     static let codexManualDocsURL = URL(string: "https://agterm.com/docs#codex-hooks-manual")
 
-    /// The result alert, with a second button when `docs` is set. Split out of `present()` so a hosted test
-    /// can check the buttons without running a modal.
-    static func makeAlert(style: NSAlert.Style, title: String, text: String, docs: URL?) -> NSAlert {
+    // the install-failed alert: the package could not even be copied, so there are no rows to show.
+    private static func present(style: NSAlert.Style, title: String, text: String) {
         let alert = NSAlert()
         alert.alertStyle = style
         alert.messageText = title
         alert.informativeText = text
-        if docs != nil {
-            alert.addButton(withTitle: "OK")
-            alert.addButton(withTitle: "Open Docs")
-        }
-        return alert
-    }
-
-    private static func present(style: NSAlert.Style, title: String, text: String, docs: URL? = nil) {
-        let alert = makeAlert(style: style, title: title, text: text, docs: docs)
-        guard alert.runModal() == .alertSecondButtonReturn, let docs else { return }
-        NSWorkspace.shared.open(docs)
+        alert.runModal()
     }
 }

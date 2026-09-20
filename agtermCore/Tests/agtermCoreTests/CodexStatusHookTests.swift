@@ -10,7 +10,7 @@ struct CodexStatusHookTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("agterm/Resources/agent-status/agterm-codex-status.sh")
+            .appendingPathComponent("agterm/Resources/agent-status/agents/codex/status.sh")
             .path
     }
 

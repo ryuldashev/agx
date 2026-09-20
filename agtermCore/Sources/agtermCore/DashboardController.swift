@@ -81,6 +81,7 @@ public final class DashboardController {
     /// `members`, otherwise on the first member. `fontMode` picks how member fonts are sized.
     public func open(members: [DashboardMember], highlighted: DashboardMember? = nil,
                      fontMode: DashboardFontMode = .untouched) {
+        if self.members.isEmpty, !members.isEmpty { ActionJournal.shared.log("state", ["dashboard": "on"]) }
         self.members = members
         self.fontMode = fontMode
         if let highlighted, members.contains(highlighted) {

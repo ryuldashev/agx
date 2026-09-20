@@ -37,6 +37,7 @@ struct PaletteCatalogTests {
             "Quick Terminal",
             "Dashboard",
             "Toggle Full Screen",
+            "Keyboard Shortcuts…",
             "Increase Font Size",
             "Decrease Font Size",
             "Actual Font Size",
@@ -57,11 +58,12 @@ struct PaletteCatalogTests {
             "Collapse Workspace",
             "Focus Left Pane",
             "Focus Right Pane",
+            "agx Guide",
         ])
     }
 
     @Test func catalogHasTheExpectedStaticCommandCount() {
-        #expect(PaletteCommand.allCases.count == 54)
+        #expect(PaletteCommand.allCases.count == 56)
     }
 
     @Test func idsRoundTripThroughRawValue() {
@@ -171,7 +173,7 @@ struct PaletteCatalogTests {
         .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .togglePrivate, .toggleSplit,
         .toggleHorizontalSplit, .toggleScratch, .find,
         .previousSession, .nextSession, .previousAttentionSession, .nextAttentionSession,
-        .firstSession, .lastSession, .insertSecret,
+        .firstSession, .lastSession, .insertSecret, .keyboardShortcuts,
     ]
 
     @Test func everyCommandIsLiveWhenNothingIsMissingOrCovering() {
@@ -263,6 +265,7 @@ struct PaletteCatalogTests {
         #expect(PaletteCommand.resetFontSize.builtinAction == .resetFontSize)
         #expect(PaletteCommand.dashboard.builtinAction == .dashboard)
         #expect(PaletteCommand.showArtifacts.builtinAction == .showArtifacts)
+        #expect(PaletteCommand.keyboardShortcuts.builtinAction == .keyboardShortcuts)
         #expect(PaletteCommand.reopenRecent.builtinAction == .reopenRecent)
         #expect(PaletteCommand.undoClose.builtinAction == .undoClose)
         #expect(PaletteCommand.toggleWorkspaceFilter.builtinAction == .toggleWorkspaceFilter)

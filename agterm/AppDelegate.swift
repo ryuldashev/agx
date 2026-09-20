@@ -274,7 +274,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let className = NSStringFromClass(type(of: window))
         return className.contains("SwiftUI")
-            && window.title == "Agterm"
+            && window.title == Brand.productName
             && window.styleMask.contains(.titled)
             && window.canBecomeKey
     }
@@ -307,7 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard counts.windows > 0 else { return .terminateNow }
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Quit Agterm?"
+        alert.messageText = "Quit \(Brand.productName)?"
         alert.informativeText = QuitPrompt.message(windows: counts.windows, sessions: counts.sessions)
         alert.addButton(withTitle: "Quit")
         alert.addButton(withTitle: "Cancel")

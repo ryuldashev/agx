@@ -14,9 +14,24 @@ worth it.
 **Connected agents** (`Settings ▸ Agents`) — a named list of local agent CLIs, each just a display
 name and a shell line, so anything runnable qualifies. A "Found on This Mac" section probes `PATH`
 for the CLIs it knows (Claude Code, Codex, Gemini, Copilot, Cursor, OpenCode, Crush, Aider, Amp,
-Goose, Kimi, Qwen, Droid, Mimo, Hermes) and offers one-click Connect. The probe adds `~/.local/bin`,
+Goose, Kimi, Qwen, Droid, Mimo, Hermes, Pi) and offers one-click Connect. The probe adds `~/.local/bin`,
 `~/.bun/bin` and the Homebrew prefixes itself: the GUI is launched by launchd, whose `PATH` has none
 of the directories agents actually install into.
+
+**Agent profiles** (`Resources/agent-status/agents/<binary>/agent.json`, ADR-0003) — one folder per
+agent CLI holds everything agx knows about it: a manifest (how it takes a brief — `claude "$b"` vs
+`gemini -i "$b"` vs `opencode --prompt "$b"` — its resume line with `{id}`, which hook file its status
+hooks go into and in which dialect, how `agx context` reaches it, its config directory, its
+folder-trust file) and, beside it, the agent's own adapter when it needs one (`codex/status.sh`,
+`opencode/plugin.js`, `pi/extension.ts`). `AgentCatalog.swift` decodes the manifests; the installer,
+`ScheduledLaunch` (schedule + failover), the restore pin and `scripts/agx` (python, same files) read
+them, and no Swift or python code names an agent. The core knows three integration kinds — `jsonHooks`
+(Claude/Gemini shape or Cursor's flat shape), `tomlHooks` (Codex's `[[hooks.*]]` block), `plugin`
+(copy once the agent's directory exists) — and nothing else. A manifest with only a name and binary
+is launch-only: seeded positionally, no glyph, no resume — the graceful floor. Depth today: Claude Code
+and Gemini CLI (hooks + resume + context), Codex (hooks + resume + context via its adapter), OpenCode
+(plugin status, `--prompt` seed, `--session` resume), Cursor and Mimo (seed + resume; their hooks wait
+for a live pane). Measured facts per CLI — `docs/reference/agents/<binary>.md`.
 
 **⌥ names the chrome** — holding ⌥ alone drops a panel under the title bar listing every visible chrome
 control as icon + the short token used to talk about it + its shortcut, so a button can be reported by name
@@ -77,12 +92,14 @@ agent-facing side of the control API: `agx context` describes the UI an in-pane 
 opens a peer session seeded with a brief, `agx schedule` wraps scheduled sessions, `agx run` runs a command in
 the pane's overlay. It is bundled at `Contents/Resources/agx`, finds `agtermctl` as its `../MacOS` sibling,
 and Help ▸ Install Command Line Tool links it into `/usr/local/bin` beside `agtermctl` (one admin prompt for
-both). Help ▸ Install Agent Status Hooks adds two Claude Code `SessionStart` hooks from
-`Resources/agent-status/` with the same marker-guarded merge as the status hooks: `agx-session-restore.sh` pins
-`claude --resume <session_id> --fork-session` as the pane's restore command, `agx-session-context.sh` injects
-`agx context` as additional context. Both are gated on `AGTERM_ENABLED=1`, use python3 rather than jq, print
-nothing on failure and always exit 0, so outside agx they cost one `test` and can never block a turn. The
-installer bakes the bundled `agtermctl`/`agx` paths into the wrappers, so nothing needs to be on PATH.
+both). Help ▸ Install Agent Status Hooks adds two `SessionStart` hooks per hook-capable profile from
+`Resources/agent-status/` with the same marker-guarded merge as the status hooks: `agx-session-restore.sh
+--resume-line '<profile template>'` pins the agent's resume line for the session id on stdin as the pane's
+restore command, `agx-session-context.sh --format claude|codex|cursor` injects `agx context` as additional
+context in that agent's envelope. Codex's adapter calls both from its `session-start` action. All are gated
+on `AGTERM_ENABLED=1`, use python3 rather than jq, print nothing on failure and always exit 0, so outside agx
+they cost one `test` and can never block a turn. The installer bakes the bundled `agtermctl`/`agx` paths into
+the wrappers, so nothing needs to be on PATH.
 
 **Artifacts (2026-09-18).** View ▸ Artifacts (⌘⇧A, `show_artifacts`) lists the files and links agents
 showed the user, so a PDF from a closed conversation opens in two clicks without an LLM. `artifact.*`
@@ -200,7 +217,8 @@ New files (no upstream conflict surface):
 
 ```
 agtermCore/Sources/agtermCore/Brand.swift              fork identity, one place
-agtermCore/Sources/agtermCore/AgentCatalog.swift       known agents + PATH probe
+agtermCore/Sources/agtermCore/AgentCatalog.swift       agent.json loader + PATH probe
+agterm/Resources/agent-status/agents/<binary>/        one manifest (+ adapter) per agent
 agtermCore/Sources/agtermCore/WorkspaceDefaults.swift  the seed and its precedence rules
 agtermCore/Sources/agtermCore/AppStore+Defaults.swift  store read/write + shared resolver
 agtermCore/Sources/agtermCore/AppStore+ControlTree.swift  extracted from AppStore.swift (line budget)

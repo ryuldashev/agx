@@ -173,6 +173,7 @@ final class AgentFailoverCoordinator {
             return nil
         }
         Self.logger.notice("handoff \(session.id.uuidString, privacy: .public) → \(agent.name, privacy: .public) session \(created.id.uuidString, privacy: .public)")
+        ActionJournal.shared.log("state", ["failover": "handoff", "session": session.id.uuidString, "agent": agent.name])
         return created
     }
 

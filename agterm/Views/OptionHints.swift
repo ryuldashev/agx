@@ -1,3 +1,4 @@
+import agtermCore
 import AppKit
 import SwiftUI
 
@@ -30,7 +31,10 @@ final class OptionHintTracker {
             // ⌥ ALONE: any combination is a shortcut being typed (⌘⌥N, ⌃⌥↑), and flashing the panel
             // mid-chord reads as a glitch.
             let next = event.modifierFlags.intersection([.command, .option, .control, .shift]) == .option
-            if let self, !self.pinned, self.down != next { self.down = next }
+            if let self, !self.pinned, self.down != next {
+                self.down = next
+                if next { ActionJournal.shared.log("state", ["hints": "on"]) }
+            }
             return event
         }
         // ⌥⇥ switches app without delivering the release here, so the panel would stay pinned over the chrome.

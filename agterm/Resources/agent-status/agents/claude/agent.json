@@ -1,0 +1,82 @@
+{
+  "order": 0,
+  "name": "Claude Code",
+  "binary": "claude",
+  "icon": {
+    "glyph": "✳",
+    "tint": "#D97757"
+  },
+  "resume": "claude --resume {id} --fork-session",
+  "configDirectory": ".claude",
+  "context": "sessionStartHook",
+  "trust": {
+    "kind": "claudeProjects",
+    "file": "~/.claude.json"
+  },
+  "status": {
+    "kind": "jsonHooks",
+    "file": ".claude/settings.json",
+    "dialect": "claude",
+    "hooks": [
+      {
+        "event": "UserPromptSubmit",
+        "script": "agterm-agent-status.sh",
+        "args": [
+          "active",
+          "--blink"
+        ]
+      },
+      {
+        "event": "PostToolUse",
+        "script": "agterm-agent-status.sh",
+        "args": [
+          "active",
+          "--blink"
+        ]
+      },
+      {
+        "event": "Stop",
+        "script": "agterm-agent-status.sh",
+        "args": [
+          "completed",
+          "--auto-reset"
+        ]
+      },
+      {
+        "event": "Notification",
+        "matcher": "permission_prompt",
+        "script": "agterm-agent-status.sh",
+        "args": [
+          "blocked"
+        ]
+      },
+      {
+        "event": "SessionStart",
+        "script": "agx-session-restore.sh",
+        "args": [
+          "--resume-line",
+          "claude --resume {id} --fork-session"
+        ]
+      },
+      {
+        "event": "SessionStart",
+        "script": "agx-session-context.sh",
+        "args": [
+          "--format",
+          "claude"
+        ]
+      },
+      {
+        "event": "PostToolUse",
+        "matcher": "Bash|SendUserFile",
+        "script": "agx-artifacts.sh",
+        "args": []
+      },
+      {
+        "event": "StopFailure",
+        "script": "agx-agent-failure.sh",
+        "args": []
+      }
+    ]
+  }
+}

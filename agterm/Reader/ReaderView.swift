@@ -14,12 +14,15 @@ struct ReaderView: NSViewRepresentable {
     let onPopOut: () -> Void
     /// The document took first responder: the owner marks the right pane focused, as a shell click would.
     let onFocus: () -> Void
+    /// A `.md` link in the document was clicked: the owner shows that file here.
+    let onOpenMarkdown: (String) -> Void
 
     func makeNSView(context _: Context) -> MarkdownReaderView {
         let view = MarkdownReaderView(path: path)
         view.apply(background: background)
         view.onPopOut = onPopOut
         view.onFocusChange = { focused in if focused { onFocus() } }
+        view.onOpenMarkdown = onOpenMarkdown
         return view
     }
 
@@ -28,6 +31,7 @@ struct ReaderView: NSViewRepresentable {
         view.apply(background: background)
         view.onPopOut = onPopOut
         view.onFocusChange = { focused in if focused { onFocus() } }
+        view.onOpenMarkdown = onOpenMarkdown
     }
 
     static func dismantleNSView(_ view: MarkdownReaderView, coordinator _: ()) {
