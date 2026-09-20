@@ -11,7 +11,8 @@ here=$(pwd -P)
 freed_kb=0
 kept=()
 
-git fetch -q origin master 2>/dev/null || true
+# merged = contained in the LOCAL master: that is where merges land, and the push follows later
+main_ref=$(git rev-parse --verify -q master || git rev-parse --verify -q origin/master)
 
 for w in .claude/worktrees/*/; do
   [ -d "$w" ] || continue
@@ -21,7 +22,7 @@ for w in .claude/worktrees/*/; do
   branch=$(git -C "$w" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
   size_kb=$(du -sk "$w" | cut -f1)
 
-  if git merge-base --is-ancestor "$branch" origin/master 2>/dev/null \
+  if git merge-base --is-ancestor "$branch" "$main_ref" 2>/dev/null \
      && [ -z "$(git -C "$w" status --porcelain 2>/dev/null)" ]; then
     git worktree remove --force "$w"
     git branch -D "$branch" >/dev/null 2>&1 || true
@@ -41,7 +42,7 @@ for w in .claude/worktrees/*/; do
     freed_kb=$((freed_kb + before - after))
     echo "cleaned  $w  (idle ${idle_days}d, build output dropped)"
   fi
-  kept+=("$w  $branch  idle ${idle_days}d  ahead $(git rev-list --count origin/master.."$branch" 2>/dev/null || echo ?)")
+  kept+=("$w  $branch  idle ${idle_days}d  ahead $(git rev-list --count "$main_ref".."$branch" 2>/dev/null || echo ?)")
 done
 
 git worktree prune
