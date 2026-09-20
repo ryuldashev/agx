@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.25.0 - unreleased
+## v0.25.0 - 2026-09-20
 
 - **Auto-update.** agx checks for a new version once a day and offers it in-app (agx ▸ Check for
   Updates…): download, verify, "Install and Relaunch" — and your agent panes reattach after the relaunch
@@ -9,11 +9,30 @@
   `update.available` / `update.installing` events; `agx context` names an available update.
   Installs of v0.24.0 do not have the updater yet — install this version once by DMG or
   `brew upgrade --cask agx`, and every version after it arrives by itself.
-- Agent failover: a Claude Code pane that stops on a spent model pool switches to the next model on
-  the Settings ▸ Agents ▸ Failover ladder and continues; an account limit, auth or billing error, or an
-  agent that dies mid-turn hands the task to another connected agent with a brief built from the
-  transcript. `agtermctl session failure`, `failover` event, session node `failover`.
+- **Getting started.** Help ▸ Getting Started… opens a Welcome panel with live setup checks (CLI, hooks,
+  connected agents) and a map of what to try first. Help ▸ agx Guide reads as a day with agents, in
+  the reader pane. ⌘/ shows every keyboard shortcut as it is bound right now.
+- **Agents are profiles, not code.** Every supported CLI (Claude Code, Codex, Gemini, OpenCode, Pi,
+  Cursor, Copilot, Aider, Amp, Crush, Droid, Goose, Hermes, Kimi, Mimo, Qwen) is one manifest that
+  drives its hooks, launch seed, resume line and context delivery. Help ▸ Install Agent Status Hooks
+  shows the result per agent; `agx spawn --agent <any of them>`.
+- **Agent failover.** A Claude Code pane that stops on a spent model pool switches to the next model on
+  the Settings ▸ Agents ▸ Failover ladder and continues; an account limit, auth or billing error, a
+  safeguards flag, or an agent that dies mid-turn hands the task to another connected agent with a
+  brief built from the transcript. `agtermctl session failure`, `failover` event.
+- **Auto-answer.** A permission prompt nobody answers for 45 s gets a Yes from the app — never for a
+  destructive command (`rm -rf`, `push --force`, `sudo`, `reset --hard`, `DROP …`), never for a question
+  meant for you, and never while you are in that session. Per-session `agtermctl session autoanswer`.
+- **Private sessions.** ⌘⇧P opens a session that is never saved: no snapshot, no reopen entry, and the
+  agent's transcript is erased when it closes. 🔒 in the sidebar and the title. `agx spawn --private`,
+  `session.private`.
+- **Artifacts** (⌘⇧A): every file an agent showed you — `open`, `agx reader`, `SendUserFile` — in one
+  window, findable without re-opening the conversation. `agx artifact add|list`.
+- **Insert Secret** (⌥⌘F): a password from the keychain typed into the pane, never printed.
+  `agtermctl secret list|add|remove|insert`.
 - Reader pane: `agx reader <file.md>` renders markdown in the session's right pane, live-reloading.
+- HUD panels are native Liquid Glass; `--reveal` makes a panel a link to a session.
+- The app calls itself agx everywhere (About, quit prompt, window title); upstream agterm is credited.
 
 ## v0.24.0 - 2026-09-09
 
