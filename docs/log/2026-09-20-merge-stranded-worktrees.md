@@ -24,3 +24,14 @@ and then overwritten by the next `make deploy` from master.
 ## Next
 - `make gc` now removes all seven worktrees (all merged). Push master.
 - Sparkle needs the EdDSA key in the keychain (`agx`) before the next `make dist` — see ADR 0004.
+
+## Later the same day
+
+- v0.25.0 published (GitHub release + appcast + cask bump). `/Applications/agx.app` deployed at 0.25.0
+  and relaunched; sessions survived the relaunch.
+- Gotcha fixed in `scripts/release.sh`: `gh release create` mints the tag remotely while `build.sh`
+  reads the nearest local v-tag, so the first `make deploy` after a release stamped the old version.
+  The script now fetches the tag after publishing.
+- Local `.claude/settings.json` (gitignored) allowlists `make deploy|dist|gc` + `./scripts/*.sh` and
+  tells the auto-mode classifier this is the user's own app; note in CLAUDE.md. Allow rules match only
+  a bare command — run scripts from the repo root, not via `cd … &&`.
