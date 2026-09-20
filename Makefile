@@ -27,7 +27,8 @@ run: ## debug build + launch (scripts/run.sh)
 release: ## release build, no launch (scripts/build.sh)
 	./scripts/build.sh
 
-deploy: release ## release build + swap into /Applications
+deploy: release ## release build + swap into /Applications (refuses an unmerged branch; AGTERM_DEPLOY_PREVIEW=1 overrides)
+	@./scripts/deploy-guard.sh
 	rm -rf "$(INSTALL_DIR)/agx.app.new" "$(INSTALL_DIR)/agx.app.old"
 	cp -R "$(RELEASE_APP)" "$(INSTALL_DIR)/agx.app.new"
 	[ -d "$(INSTALL_DIR)/agx.app" ] && mv "$(INSTALL_DIR)/agx.app" "$(INSTALL_DIR)/agx.app.old" || true

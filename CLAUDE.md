@@ -97,6 +97,10 @@ C-boundary concurrency before changing the bridge.
   logging uses `os.Logger`.
 - `scripts/run.sh` activates an existing instance instead of loading a rebuild. Use a distinct isolated
   launch for current code.
+- **A feature exists only once it is merged into `master`.** `make deploy` from a worktree branch installs
+  code the next deploy from master silently removes; that is how four finished features vanished in
+  September 2026. `make deploy` refuses an unmerged branch (`scripts/deploy-guard.sh`); a throwaway preview
+  needs `AGTERM_DEPLOY_PREVIEW=1`, and "deployed" in a log entry never means "done" — merged does.
 - `make deploy` swaps Release into `/Applications`, whose app, PATH CLI, and installed hooks shadow Debug.
   It never deletes the bundle in place: the running instance resolves resources by path, so the outgoing app
   is renamed to `agx.app.old` and kept until the next deploy.
