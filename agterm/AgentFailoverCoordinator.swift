@@ -165,8 +165,10 @@ final class AgentFailoverCoordinator {
             return nil
         }
         let command = ScheduledLaunch.commandLine(launch: agent.launchCommand, briefFile: briefFile.path)
+        // a private session's handoff is private too: the brief carries its transcript digest.
         guard let created = store.addSession(toWorkspace: workspace.id, cwd: cwd, command: command,
-                                             name: "\(session.displayName) → \(agent.name)", select: false) else {
+                                             name: "\(session.displayName) → \(agent.name)",
+                                             isPrivate: session.isPrivate, select: false) else {
             try? FileManager.default.removeItem(at: briefFile)
             return nil
         }

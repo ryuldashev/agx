@@ -6,6 +6,8 @@ public struct PaletteContext: Sendable, Equatable {
     public let sidebarShowsWorkspaceTree: Bool
     public let sidebarShowsFlaggedOnly: Bool
     public let activeSessionFlagged: Bool
+    /// Whether the active session is private (ADR 0005), so the toggle can name what it will do.
+    public let activeSessionPrivate: Bool
     /// Whether ANY workspace is MARKED in the focus set — membership, NOT whether the filter is applied
     /// (`workspaceFilter`): the marked set is what Clear Focus empties and Toggle Workspace Filter applies.
     public let hasMarkedWorkspaces: Bool
@@ -43,6 +45,7 @@ public struct PaletteContext: Sendable, Equatable {
                 sidebarShowsWorkspaceTree: Bool = false,
                 sidebarShowsFlaggedOnly: Bool = false,
                 activeSessionFlagged: Bool = false,
+                activeSessionPrivate: Bool = false,
                 hasMarkedWorkspaces: Bool = false,
                 activeWorkspaceMarked: Bool = false,
                 activeWorkspaceCollapsed: Bool = false,
@@ -61,6 +64,7 @@ public struct PaletteContext: Sendable, Equatable {
         self.sidebarShowsWorkspaceTree = sidebarShowsWorkspaceTree
         self.sidebarShowsFlaggedOnly = sidebarShowsFlaggedOnly
         self.activeSessionFlagged = activeSessionFlagged
+        self.activeSessionPrivate = activeSessionPrivate
         self.hasMarkedWorkspaces = hasMarkedWorkspaces
         self.activeWorkspaceMarked = activeWorkspaceMarked
         self.activeWorkspaceCollapsed = activeWorkspaceCollapsed
@@ -79,13 +83,13 @@ public struct PaletteContext: Sendable, Equatable {
 
 /// Static action-palette rows, in the same order the macOS palette presents them before dynamic rows.
 public enum PaletteCommand: String, CaseIterable, Sendable {
-    case newSession, newWorkspace, openDirectory
+    case newSession, newPrivateSession, newWorkspace, openDirectory
     case renameSession, duplicateSession, renameWorkspace, closeSession, reopenRecent, undoClose, clearStatus
     case previousSession, nextSession, previousAttentionSession, nextAttentionSession
     case previousWorkspace, nextWorkspace
     case firstSession, lastSession, showAttention
     case toggleSplit, toggleHorizontalSplit, closeSplit, toggleScratch, toggleTerminalZoom
-    case toggleSidebar, toggleFlag, focusWorkspace
+    case toggleSidebar, toggleFlag, togglePrivate, focusWorkspace
     case find, quickTerminal, dashboard, toggleFullscreen
     case increaseFontSize, decreaseFontSize, resetFontSize, selectTheme, insertSecret, showArtifacts
     case editKeymap, reloadKeymap, editGhosttyConfig, reloadConfig
@@ -100,7 +104,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
     public func isEnabled(in context: PaletteContext) -> Bool {
         guard isVisible(in: context), !isCoveredByModal(context) else { return false }
         switch self {
-        case .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .toggleSplit,
+        case .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .togglePrivate, .toggleSplit,
              .toggleHorizontalSplit, .toggleScratch,
              .find, .previousSession, .nextSession, .previousAttentionSession, .nextAttentionSession,
              .firstSession, .lastSession, .insertSecret:
@@ -179,6 +183,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
     public func title(in context: PaletteContext) -> String {
         switch self {
         case .newSession: return "New Session"
+        case .newPrivateSession: return "New Private Session"
         case .newWorkspace: return "New Workspace"
         case .openDirectory: return "Open Directory…"
         case .renameSession: return "Rename Session"
@@ -204,6 +209,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .toggleTerminalZoom: return "Toggle Terminal Zoom"
         case .toggleSidebar: return "Toggle Sidebar"
         case .toggleFlag: return context.activeSessionFlagged ? "Unflag Session" : "Flag Session"
+        case .togglePrivate: return context.activeSessionPrivate ? "Make Session Public" : "Make Session Private"
         case .focusWorkspace: return "Focus Workspace"
         case .find: return "Find…"
         case .quickTerminal: return "Quick Terminal"
@@ -236,6 +242,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
     public var builtinAction: BuiltinAction? {
         switch self {
         case .newSession: return .newSession
+        case .newPrivateSession: return .newPrivateSession
         case .newWorkspace: return .newWorkspace
         case .openDirectory: return .openDirectory
         case .renameSession: return .renameSession
@@ -261,6 +268,7 @@ public enum PaletteCommand: String, CaseIterable, Sendable {
         case .toggleTerminalZoom: return .toggleTerminalZoom
         case .toggleSidebar: return .toggleSidebar
         case .toggleFlag: return .toggleFlag
+        case .togglePrivate: return .togglePrivate
         case .focusWorkspace: return .focusWorkspace
         case .find: return .toggleSearch
         case .quickTerminal: return .quickTerminal

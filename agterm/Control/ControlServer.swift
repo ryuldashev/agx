@@ -437,7 +437,7 @@ final class ControlServer {
                 .workspaceFocus,
                 .workspaceFilter, .workspaceCollapse, .workspaceExpand, .workspaceDefaults,
                 .sessionSplit, .sessionSplitClose, .sessionScratch, .sessionFocus, .sessionResize, .surfaceZoom,
-                .sessionStatus, .sessionFlag, .sessionSeen, .sessionRestore, .notify,
+                .sessionStatus, .sessionFlag, .sessionPrivate, .sessionSeen, .sessionRestore, .notify,
                 .fontInc, .fontDec, .fontReset, .keymapReload, .keymapList, .configReload, .themeSet, .themeList,
                 .sidebar, .sidebarMode, .sidebarExpand, .sidebarCollapse, .sessionType, .sessionCopy,
                 .sessionPaste, .sessionSelectAll,
@@ -683,6 +683,7 @@ final class ControlServer {
         guard let session = store.addSession(toWorkspace: workspaceID, cwd: seed.cwd,
                                              command: seed.command, name: options.name,
                                              wait: options.wait ?? false, durable: options.durable ?? false,
+                                             isPrivate: options.private ?? false,
                                              at: index, select: !options.noSelect) else {
             return ControlResponse(ok: false, error: "could not create session")
         }

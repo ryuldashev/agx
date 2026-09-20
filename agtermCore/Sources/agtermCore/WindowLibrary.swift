@@ -85,6 +85,8 @@ public final class WindowLibrary {
     @ObservationIgnored public let directory: URL
     /// Forwarded from every store's `sessionDiscardSink`; the app sets it once at library creation.
     @ObservationIgnored public var sessionDiscardSink: ((Session) -> Void)?
+    /// Forwarded from every store's `privateSessionSink`; the app sets it once at library creation.
+    @ObservationIgnored public var privateSessionSink: ((Session) -> Void)?
     @ObservationIgnored private let recentClosedStore: RecentClosedStore
     /// One bounded run-identified ring shared by every window store for this library/app lifetime.
     @ObservationIgnored private let controlEventRing: ControlEventRing
@@ -717,7 +719,8 @@ public final class WindowLibrary {
                     payload: draft.payload
                 ))
             },
-            sessionDiscardSink: { [weak self] session in self?.sessionDiscardSink?(session) }
+            sessionDiscardSink: { [weak self] session in self?.sessionDiscardSink?(session) },
+            privateSessionSink: { [weak self] session in self?.privateSessionSink?(session) }
         )
     }
 

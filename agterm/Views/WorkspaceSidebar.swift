@@ -98,7 +98,7 @@ struct WorkspaceSidebar: NSViewRepresentable {
         // reload; a touch inside viewFor wouldn't register it. The badge-visibility toggle
         // (GhosttyApp.notificationBadgeEnabled) is NOT observable and drives a re-reconcile via
         // .agtermAppearanceChanged, like toolbarMode.
-        _ = store.workspaces.map { ($0.id, $0.name, $0.unseenCount, $0.sessions.map { ($0.id, $0.displayName, $0.hasSplit, $0.splitAxis, $0.unseenCount, $0.agentIndicator, $0.flagged) }) }
+        _ = store.workspaces.map { ($0.id, $0.name, $0.unseenCount, $0.sessions.map { ($0.id, $0.displayName, $0.hasSplit, $0.splitAxis, $0.unseenCount, $0.agentIndicator, $0.flagged, $0.isPrivate) }) }
         _ = store.selectedSessionID
         _ = store.sidebarSelectionIDs
         // sidebarMode flips the whole data source (tree ↔ flat flagged list), so a mode change must rebuild.
@@ -368,6 +368,9 @@ struct WorkspaceSidebar: NSViewRepresentable {
             /// Whether the session is flagged (tree-mode filled-icon variant). A change re-badges just this
             /// row via `reloadItem`. Always false for workspace rows.
             let flagged: Bool
+            /// Whether the session is private (the lock icon replaces the terminal/split glyph). False for
+            /// workspace rows.
+            let isPrivate: Bool
             /// Whether the workspace is in the focus set (the black-weight grid icon). MEMBERSHIP only,
             /// independent of `focusEnabled`, so marking re-renders just that row even while the filter is
             /// off (with it on the shape changes too and the rebuild branch takes over). False for sessions.
@@ -474,6 +477,7 @@ struct WorkspaceSidebar: NSViewRepresentable {
             return RowContent(label: workspace.name, hasSplit: false, splitAxis: .leftRight,
                               unseen: effectiveUnseen(workspace.unseenCount),
                               indicator: collapsed ? collapsedRollup(for: workspace) : AgentIndicator(), flagged: false,
+                              isPrivate: false,
                               focusMember: store.focusedWorkspaceIDs.contains(workspace.id),
                               sessionCount: collapsed ? workspace.sessions.count : 0)
         }
@@ -486,7 +490,7 @@ struct WorkspaceSidebar: NSViewRepresentable {
                        splitAxis: session.splitAxis,
                        unseen: effectiveUnseen(session.unseenCount),
                        indicator: effectiveIndicator(forSession: session.id), flagged: session.flagged,
-                       focusMember: false, sessionCount: 0)
+                       isPrivate: session.isPrivate, focusMember: false, sessionCount: 0)
         }
 
         /// Rebuilds `roots` from the store, reusing cached node instances by id so NSOutlineView item
@@ -791,6 +795,8 @@ struct WorkspaceSidebar: NSViewRepresentable {
         lazy var flaggedSessionIcon = Self.rowIcon("terminal.fill")
         lazy var flaggedSplitSessionIcon = Self.rowIcon("rectangle.split.2x1.fill")
         lazy var flaggedHorizontalSplitSessionIcon = Self.rowIcon("rectangle.split.1x2.fill")
+        /// A private session's leading glyph: the lock replaces the terminal/split icon (ADR 0005).
+        lazy var privateSessionIcon = Self.rowIcon("lock.fill")
 
         private static func rowIcon(_ symbolName: String, weight: NSFont.Weight = .regular) -> NSImage? {
             let config = NSImage.SymbolConfiguration(pointSize: 13, weight: weight)

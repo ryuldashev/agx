@@ -153,7 +153,7 @@ extension AppStore {
                                    workspaceIndex: Int,
                                    sessionIndex: Int,
                                    id: UUID = UUID()) -> UUID? {
-        guard let recentClosedStore else { return nil }
+        guard let recentClosedStore, !session.isPrivate else { return nil }
         recentClosedStore.record(RecentClosedItem(
             id: id,
             kind: .session,

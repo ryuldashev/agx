@@ -582,6 +582,11 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
 - Auto-reset clears both session entered and session left. Status renders on selected sessions too.
 - `session.flag on|off|toggle|clear` is idempotent; clear ignores target and clears the store.
   Read `flagged`.
+- `session.private on|off|toggle` (`ControlToggleMode`) flips `Session.isPrivate` through
+  `AppStore.setPrivate`; `session.new --private` sets it at creation. Read `private` (nil when false).
+  Private sessions are filtered out of `snapshot()`, recent-closed and `DurablePane.shouldWrap`; the app's
+  `PrivateSessionSweeper` erases agent transcripts on close via host-free `PrivateSessionCleanup`
+  (ADR 0005).
 - `session.seen` clears unseen without selection/focus/status or persistence. Read nonzero `unseen`.
 
 ## Keymap, config, theme, and sidebar

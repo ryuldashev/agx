@@ -93,8 +93,9 @@ final class RecentClosedControlTests {
         #expect(RecentClosedResolve.resolve("2a", items: [item]) == .resolved(item.id))
     }
 
-    @Test func resolvesTheEntryIDAndItsPrefix() {
-        let item = sessionItem(title: "s")
+    @Test func resolvesTheEntryIDAndItsPrefix() throws {
+        // a fixed id: a random one whose 8-char prefix is all digits would resolve as an index instead
+        let item = sessionItem(title: "s", id: try #require(UUID(uuidString: "3FB2C7D4-0000-0000-0000-000000000002")))
         let items = [item]
         #expect(RecentClosedResolve.resolve(item.id.uuidString, items: items) == .resolved(item.id))
         #expect(RecentClosedResolve.resolve(String(item.id.uuidString.prefix(8)).lowercased(),

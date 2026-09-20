@@ -150,6 +150,8 @@ exits — the read side of `session new --wait`; omitted for a plain or non-hold
 `session new --durable` or the Durable agent panes setting; omitted otherwise),
 `attached` (with `durable`: whether this launch reattached the running program or created a fresh one
 because the restore fallback ran; omitted otherwise),
+`private` (the session is never persisted and its agent transcript is erased on close — `session private`;
+omitted otherwise),
 `overlay` (overlay shown),
 `overlaySizePercent` (an open overlay's size — the
 floating panel's percent of the pane, 1–100; omitted = a full-pane overlay or no overlay, so gate on
@@ -369,7 +371,7 @@ All fourteen are read-only projections of GUI state.
 
 ## session
 
-- `session new [--cwd DIR] [--workspace W] [--workspace-name NAME] [--create-workspace] [--command CMD] [--wait] [--durable] [--name NAME] [--after SID | --before SID] [--no-select] [--window W]`
+- `session new [--cwd DIR] [--workspace W] [--workspace-name NAME] [--create-workspace] [--command CMD] [--wait] [--durable] [--private] [--name NAME] [--after SID | --before SID] [--no-select] [--window W]`
   — create a session and focus it; returns the new id. `--cwd` sets the start directory (default
   `$HOME`). The destination workspace is addressed one of two mutually-exclusive ways: `--workspace`
   (id / unique prefix / `active`, the default) or `--workspace-name` (the sidebar label) — the latter
@@ -395,6 +397,8 @@ All fourteen are read-only projections of GUI state.
   (`session restore` pin, else the creation command). Read it back on `tree`'s `durable`; that pane's
   `foreground` is then the program's own argv, not the client's. `^\` is abduco's detach key: in a
   durable pane it closes the pane, which closes the session and kills the program.
+  `--private` creates the session private (see `session private`): never persisted, never durable, its
+  agent transcript erased on close. `agx spawn --private` passes it through.
   The command is persisted (`SessionSnapshot.initialCommand`) and re-runs on restore when **Restore
   running commands on restart** is on (default off → a restored session is a plain shell); a live
   captured foreground takes precedence over it. `--name`
@@ -586,6 +590,19 @@ error keeps those names for compatibility.
   `active`) and are idempotent; `clear` ignores the target and unflags every session in the window.
   Pair with `sidebar mode flagged` to see just the flagged sessions as a flat `session : workspace`
   list. Unknown mode errors. The tree's `flagged` flag tracks membership.
+- `session private [on|off|toggle] [--target] [--window W]` — make a session private or public. A private
+  session is dropped from `workspaces.json`, window snapshots and Open Recent (a relaunch never brings it
+  back), is never wrapped in a durable session server, and when it closes the app erases the agent
+  transcript that ran in it: Claude Code's `~/.claude/projects/<cwd>/<sid>.jsonl` and `<sid>/`, the
+  `~/claude-archive` copy, its `history.jsonl` lines, `debug/`, `todos/`, `file-history/`, `session-env/`,
+  `tasks/` and `/private/tmp/claude-<uid>/<cwd>/<sid>` entries; Codex's `~/.codex/sessions/**/rollout-*<sid>.jsonl`
+  and `history.jsonl` lines. Only files named by the exact agent session id are touched, and that id is
+  the one the SessionStart hook pins as the restore command — a session without agent hooks has nothing
+  to erase and the close notice says so. A session closed with the app (crash, force-quit) is cleaned on
+  the next launch from `<stateDir>/private-cleanup.json`. Idempotent; unknown mode errors. Read back on the
+  node's `private` (present only when true); `tree` tags the row `(private)`; `agx context` prints a
+  `THIS SESSION IS PRIVATE` block so the agent inside does not copy the conversation into memory, project
+  logs or a spawned session. `off` keeps whatever was written. The copy on claude.ai is out of reach.
 - `session seen [--target] [--window W]` — clear the session's unseen-notification badge without changing
   the selection, focus, or agent status. It is the focus-free counterpart to `notify`: `notify` (and a
   terminal's own OSC 9/777) raise the red badge, and until now the only way to clear it was visiting the

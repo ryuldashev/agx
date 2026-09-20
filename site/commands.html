@@ -489,7 +489,9 @@
                 restart reattaches — <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session new --durable</span> or the Durable agent panes setting; omitted
                 otherwise, and when present <span style="font-family: &quot;JetBrains Mono&quot;, monospace">foreground</span> is the program's own argv),
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">attached</span> (with <span style="font-family: &quot;JetBrains Mono&quot;, monospace">durable</span>: whether this launch reattached the
-                running program, or created a fresh one because the restore fallback ran; omitted otherwise), and
+                running program, or created a fresh one because the restore fallback ran; omitted otherwise),
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">private</span> (the session is never persisted and its
+                transcript is erased on close — <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session private</span>; omitted otherwise), and
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">unseen</span>.
               </p>
               <p style="font-size: 14px; line-height: 1.65; color: #949ba4; margin: 8px 0 0">
@@ -839,7 +841,7 @@
             <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
               <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
                 agtermctl session new [--cwd DIR] [--workspace W | --workspace-name NAME [--create-workspace]] [--command CMD] [--wait]
-                [--durable] [--name NAME] [--after SID | --before SID] [--no-select] [--window W]
+                [--durable] [--private] [--name NAME] [--after SID | --before SID] [--no-select] [--window W]
               </div>
               <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.new</div>
               <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
@@ -907,6 +909,12 @@
                 is replaced by the restore command on the next launch. Read it back on
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">tree</span>'s <span style="font-family: &quot;JetBrains Mono&quot;, monospace">durable</span>, whose
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">foreground</span> is then the program's own argv.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">--private</span> creates the session private: never written to
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">workspaces.json</span>, window snapshots or Open Recent, never
+                durable, and the agent transcript it ran is erased when it closes. Same as
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace; white-space: nowrap">session private on</span> right after creation.
               </p>
             </div>
 
@@ -1332,6 +1340,33 @@
                 selected to begin with.
                 <span style="font-family: &quot;JetBrains Mono&quot;, monospace">clear</span> leaves nothing to move to, so it never
                 does.
+              </p>
+            </div>
+
+            <div style="background: #22272b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; padding: 18px 20px; margin-bottom: 12px">
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 13.5px; color: #6d82f3; line-height: 1.6; word-break: break-word">
+                agtermctl session private [on|off|toggle] [--target T] [--window W]
+              </div>
+              <div style="font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 11.5px; color: #6b727a; margin-top: 6px">session.private</div>
+              <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
+                Make a session private or public. A private session leaves no trace on disk: it is dropped from
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">workspaces.json</span>, window snapshots and Open Recent
+                (so it never comes back after a relaunch), it is never wrapped in a durable session server, and when it closes the app
+                erases the agent transcript that ran in it — Claude Code's
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">~/.claude/projects</span> record, its archive copy,
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">history.jsonl</span> lines, debug log, todos and per-session
+                scratch; Codex's rollout and history lines. Idempotent; unknown mode errors. Read back via the node's
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">private</span> field (present only when true); the
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">tree</span> listing tags the row
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">(private)</span>, and
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">agx context</span> tells the agent inside not to copy the session anywhere.
+              </p>
+              <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
+                The transcript is found by the session id the agent's SessionStart hook pins as the restore command; a session that
+                ran no hooked agent has nothing to erase and the close notice says so. A session that closed with the app (crash,
+                force-quit) is cleaned on the next launch from a pending list in the state directory. Toggling
+                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">off</span> keeps the transcript. The conversation copy on
+                claude.ai is out of the app's reach.
               </p>
             </div>
 

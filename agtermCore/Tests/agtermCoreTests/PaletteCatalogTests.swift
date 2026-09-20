@@ -5,6 +5,7 @@ struct PaletteCatalogTests {
     @Test func titlesMatchThePaletteSourceOrder() {
         #expect(PaletteCommand.allCases.map(\.title) == [
             "New Session",
+            "New Private Session",
             "New Workspace",
             "Open Directory…",
             "Rename Session",
@@ -30,6 +31,7 @@ struct PaletteCatalogTests {
             "Toggle Terminal Zoom",
             "Toggle Sidebar",
             "Flag Session",
+            "Make Session Private",
             "Focus Workspace",
             "Find…",
             "Quick Terminal",
@@ -59,7 +61,7 @@ struct PaletteCatalogTests {
     }
 
     @Test func catalogHasTheExpectedStaticCommandCount() {
-        #expect(PaletteCommand.allCases.count == 52)
+        #expect(PaletteCommand.allCases.count == 54)
     }
 
     @Test func idsRoundTripThroughRawValue() {
@@ -166,8 +168,8 @@ struct PaletteCatalogTests {
     ]
 
     private static let needSession: Set<PaletteCommand> = [
-        .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .toggleSplit, .toggleHorizontalSplit,
-        .toggleScratch, .find,
+        .renameSession, .duplicateSession, .clearStatus, .toggleFlag, .togglePrivate, .toggleSplit,
+        .toggleHorizontalSplit, .toggleScratch, .find,
         .previousSession, .nextSession, .previousAttentionSession, .nextAttentionSession,
         .firstSession, .lastSession, .insertSecret,
     ]

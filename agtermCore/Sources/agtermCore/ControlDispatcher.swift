@@ -37,6 +37,8 @@ public protocol ControlActions {
     func workspaceDefaults(_ target: String?, window: String?,
                            update: ControlWorkspaceDefaultsUpdate?) -> ControlResponse
     func setSessionFlag(_ target: String?, window: String?, mode: String?) -> ControlResponse
+    /// Mark a session private or public (ADR 0005); the dispatcher has already parsed the mode.
+    func setSessionPrivate(_ target: String?, window: String?, mode: ControlToggleMode) -> ControlResponse
     func markSessionSeen(_ target: String?, window: String?) -> ControlResponse
     func setSessionStatus(_ target: String?, window: String?, update: ControlSessionStatusUpdate) -> ControlResponse
     /// Write a pane's PERSISTED restore-command override (consumed on the NEXT launch, never this run).
@@ -188,7 +190,8 @@ public struct ControlDispatcher {
         case .eventsRead:
             return dispatchEventsRead(request)
         case .sessionNew, .sessionDuplicate, .sessionSelect, .sessionGo, .sessionClose, .sessionRename,
-                .sessionReveal, .sessionMove, .sessionFlag, .sessionSeen, .sessionStatus, .sessionRestore:
+                .sessionReveal, .sessionMove, .sessionFlag, .sessionPrivate, .sessionSeen, .sessionStatus,
+                .sessionRestore:
             return dispatchSessionCommand(request)
         case .sessionSplit, .sessionSplitClose, .sessionScratch, .sessionFocus, .sessionResize,
                 .surfaceZoom, .sessionType,
@@ -231,12 +234,8 @@ public struct ControlDispatcher {
             return await dispatchSecretCommand(request)
         case .artifactAdd, .artifactList, .artifactRemove, .artifactPin, .artifactHide, .artifactOpen, .artifactShow:
             return dispatchArtifactCommand(request)
-        case .updateCheck:
-            return actions.updateCheck()
-        case .updateStatus:
-            return actions.updateStatus()
-        case .updateInstall:
-            return actions.updateInstall()
+        case .updateCheck, .updateStatus, .updateInstall:
+            return dispatchUpdateCommand(request)
         }
     }
 
@@ -310,6 +309,7 @@ public struct ControlDispatcher {
                 command: args?.command,
                 wait: args?.wait,
                 durable: args?.durable,
+                private: args?.private,
                 name: args?.name,
                 after: args?.after,
                 before: args?.before,
@@ -383,6 +383,8 @@ public struct ControlDispatcher {
             return actions.moveSession(request.target, window: args?.window, move: move)
         case .sessionFlag:
             return actions.setSessionFlag(request.target, window: request.args?.window, mode: request.args?.mode)
+        case .sessionPrivate:
+            return dispatchSessionPrivate(request)
         case .sessionSeen:
             return actions.markSessionSeen(request.target, window: request.args?.window)
         case .sessionStatus:

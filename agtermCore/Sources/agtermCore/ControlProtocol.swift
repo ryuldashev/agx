@@ -25,6 +25,7 @@ public enum Command: String, Codable, Sendable {
     case sessionType = "session.type"
     case sessionStatus = "session.status"
     case sessionFlag = "session.flag"
+    case sessionPrivate = "session.private"
     case sessionSeen = "session.seen"
     case sessionRestore = "session.restore"
     case sessionBackground = "session.background"
@@ -261,6 +262,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     public var wait: Bool?
     /// `session.new --command … --durable`: run the program under a detached abduco server (ADR 0001).
     public var durable: Bool?
+    /// `session.new --private`: create the session private (ADR 0005) — never persisted, erased on close.
+    public var `private`: Bool?
     /// For `session.overlay.open`, the percent of the pane (1...100) a *floating* overlay panel occupies in
     /// both dimensions; omitted gives the default full-pane overlay. Also the new size for
     /// `session.overlay.resize` (mutually exclusive with `full`), and the caller's OVERRIDE of the HUD panel's
@@ -366,7 +369,8 @@ public struct ControlArgs: Codable, Sendable, Equatable {
                 createWorkspace: Bool? = nil, collapsed: Bool? = nil, minimized: Bool? = nil,
                 noSelect: Bool? = nil,
                 text: String? = nil, select: Bool? = nil, mode: String? = nil, axis: String? = nil,
-                command: String? = nil, wait: Bool? = nil, durable: Bool? = nil, sizePercent: Int? = nil,
+                command: String? = nil, wait: Bool? = nil, durable: Bool? = nil, `private`: Bool? = nil,
+                sizePercent: Int? = nil,
                 full: Bool? = nil,
                 follow: Bool? = nil, message: String? = nil, detail: String? = nil, spinner: String? = nil,
                 reveal: String? = nil, items: [ControlPickItem]? = nil, prompt: String? = nil,
@@ -403,6 +407,7 @@ public struct ControlArgs: Codable, Sendable, Equatable {
         self.command = command
         self.wait = wait
         self.durable = durable
+        self.private = `private`
         self.sizePercent = sizePercent
         self.full = full
         self.follow = follow

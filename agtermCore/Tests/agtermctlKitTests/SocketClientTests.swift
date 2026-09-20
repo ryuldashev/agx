@@ -240,6 +240,8 @@ struct SocketClientTests {
             new_session                 cmd+n
             open_directory              cmd+o
             rename_session              -
+            new_private_session         cmd+shift+p
+            toggle_private              -
             duplicate_session           -
             close_session               cmd+w
             reopen_recent               cmd+shift+t
@@ -837,6 +839,16 @@ struct SocketClientTests {
         let out = SocketClient.formatResponse(ControlResponse(ok: true, result: ControlResult(tree: tree)), json: false)
         let lines = out.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         #expect(lines[1] == "  * shell  [s2]  /tmp", "only the failing state earns a tag; nil must stay quiet too")
+    }
+
+    @Test func formatTreeTagsAPrivateSession() {
+        let session = ControlSessionNode(id: "s9", name: "shell", cwd: "/tmp", active: true, split: false,
+                                         private: true)
+        let workspace = ControlWorkspaceNode(id: "w9", name: "work", active: true, sessions: [session])
+        let tree = ControlTree(workspaces: [workspace])
+        let out = SocketClient.formatResponse(ControlResponse(ok: true, result: ControlResult(tree: tree)), json: false)
+        let lines = out.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        #expect(lines[1] == "  * shell (private)  [s9]  /tmp")
     }
 
     @Test func formatTreeShowsScratchTag() {

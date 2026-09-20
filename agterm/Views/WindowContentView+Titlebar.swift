@@ -11,10 +11,13 @@ extension WindowContentView {
     /// selected. Non-private: the body's `WindowAccessor` uses it as the OS window title, always the real
     /// name, regardless of the Interface toggles that gate only the on-screen `titleText`.
     var windowTitle: String {
-        let session = store.activeSession?.displayName ?? "Agterm"
+        let session = (activeSessionPrivate ? "🔒 " : "") + (store.activeSession?.displayName ?? "Agterm")
         guard let name = customWindowName else { return session }
         return "\(session) — \(name)"
     }
+
+    /// The active session is private (ADR 0005): the lock leads both the OS title and the visible label.
+    private var activeSessionPrivate: Bool { store.activeSession?.isPrivate == true }
 
     /// The titlebar subtitle (second line): the focused pane's `subtitleDetail` — the terminal title for a
     /// remote (SSH) session whose local cwd is stale, else its cwd. Normal mode only; compact/hidden drop it.
@@ -49,7 +52,12 @@ extension WindowContentView {
     var titleLabel: some View {
         VStack(alignment: .leading, spacing: 1) {
             if !titleText.isEmpty {
-                Text(titleText).fontWeight(.semibold)
+                HStack(spacing: 4) {
+                    if activeSessionPrivate {
+                        Image(systemName: "lock.fill").accessibilityLabel("Private session")
+                    }
+                    Text(titleText).fontWeight(.semibold)
+                }
             }
             if !windowSubtitle.isEmpty {
                 Text(windowSubtitle)

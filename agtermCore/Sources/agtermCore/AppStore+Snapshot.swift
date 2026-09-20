@@ -23,8 +23,9 @@ extension AppStore {
     /// Builds a `Snapshot` of the current tree; each session captures its live `currentCwd` (or `initialCwd`
     /// if no PWD report arrived). Runs on `@MainActor`; the result is `Sendable`, safe to hand to a writer.
     public func snapshot() -> Snapshot {
+        // a private session (ADR 0005) is never written: not as a row, not as the selection, not in recency.
         let workspaceSnapshots = workspaces.map { workspace in
-            let sessions = workspace.sessions.map(sessionSnapshot)
+            let sessions = workspace.sessions.filter { !$0.isPrivate }.map(sessionSnapshot)
             // only a collapsed workspace writes the flag, so an all-expanded tree matches a legacy snapshot.
             return WorkspaceSnapshot(id: workspace.id, name: workspace.name, sessions: sessions,
                                      collapsed: workspace.isExpanded ? nil : true,
@@ -33,11 +34,13 @@ extension AppStore {
         // TREE order keeps the on-disk list deterministic (not the Set's hash order); an unmarked store omits
         // both focus keys, matching a file written before the set existed. `focusedWorkspaceID` stays unused.
         let focusIDs = workspaces.map(\.id).filter(focusedWorkspaceIDs.contains)
-        return Snapshot(selectedSessionID: selectedSessionID, workspaces: workspaceSnapshots,
+        let privateIDs = Set(workspaces.flatMap(\.sessions).filter(\.isPrivate).map(\.id))
+        let selected = selectedSessionID.flatMap { privateIDs.contains($0) ? nil : $0 }
+        return Snapshot(selectedSessionID: selected, workspaces: workspaceSnapshots,
                         sidebarWidth: sidebarWidth, sidebarVisible: sidebarVisible, sidebarMode: sidebarMode,
                         focusedWorkspaceIDs: focusIDs.isEmpty ? nil : focusIDs,
                         focusEnabled: focusEnabled ? true : nil,
-                        sessionRecency: sessionRecency.items)
+                        sessionRecency: sessionRecency.items.filter { !privateIDs.contains($0) })
     }
 
     func sessionSnapshot(_ session: Session) -> SessionSnapshot {
@@ -55,7 +58,8 @@ extension AppStore {
     }
 
     func workspaceSnapshot(_ workspace: Workspace) -> WorkspaceSnapshot {
-        WorkspaceSnapshot(id: workspace.id, name: workspace.name, sessions: workspace.sessions.map(sessionSnapshot),
+        WorkspaceSnapshot(id: workspace.id, name: workspace.name,
+                          sessions: workspace.sessions.filter { !$0.isPrivate }.map(sessionSnapshot),
                           collapsed: workspace.isExpanded ? nil : true,
                           defaults: workspace.defaults.persisted)
     }
@@ -89,6 +93,8 @@ extension AppStore {
         session.backgroundWatermark = snapshot.backgroundWatermark
         session.restoreCommand = snapshot.restoreCommand
         session.splitRestoreCommand = session.isSplit ? snapshot.splitRestoreCommand : nil
+        // a reattached durable pane never re-pins, so the persisted pin is the only source of its agent id.
+        noteAgentSession(fromRestoreCommand: snapshot.restoreCommand, forSession: session)
         session.pendingTitle = snapshot.title
         // into the TRANSIENT slots, leaving the persisted fields nil: `snapshot()` serializes those, so
         // arming them would let any save before the surface spawns rewrite the argv the launch strip

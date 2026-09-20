@@ -6,6 +6,7 @@ public enum BuiltinAction: String, CaseIterable, Sendable {
     case newWindow = "new_window", renameWindow = "rename_window", deleteWindow = "delete_window"
     case newWorkspace = "new_workspace", renameWorkspace = "rename_workspace", deleteWorkspace = "delete_workspace"
     case newSession = "new_session", openDirectory = "open_directory", renameSession = "rename_session"
+    case newPrivateSession = "new_private_session", togglePrivate = "toggle_private"
     case duplicateSession = "duplicate_session"
     case closeSession = "close_session", reopenRecent = "reopen_recent", undoClose = "undo_close", clearStatus = "clear_status"
     case increaseFontSize = "increase_font_size", decreaseFontSize = "decrease_font_size", resetFontSize = "reset_font_size"
@@ -36,6 +37,7 @@ public enum BuiltinAction: String, CaseIterable, Sendable {
         case .newWindow: return Chord(mods: [.command, .option], key: "n")
         case .newWorkspace: return Chord(mods: [.command, .shift], key: "n")
         case .newSession: return Chord(mods: [.command], key: "n")
+        case .newPrivateSession: return Chord(mods: [.command, .shift], key: "p")
         case .openDirectory: return Chord(mods: [.command], key: "o")
         case .closeSession: return Chord(mods: [.command], key: "w")
         case .reopenRecent: return Chord(mods: [.command, .shift], key: "t")
@@ -67,7 +69,7 @@ public enum BuiltinAction: String, CaseIterable, Sendable {
         case .nextAttentionSession: return Chord(mods: [.control, .option], key: "down")
         case .renameWindow, .deleteWindow, .renameWorkspace, .deleteWorkspace, .renameSession, .duplicateSession,
              .clearStatus, .firstSession, .lastSession, .selectTheme, .toggleFlaggedView, .focusWorkspace,
-             .toggleWorkspaceFilter, .previousWorkspace, .nextWorkspace, .toggleWorkspaceCollapse:
+             .toggleWorkspaceFilter, .previousWorkspace, .nextWorkspace, .toggleWorkspaceCollapse, .togglePrivate:
             return nil
         }
     }

@@ -17,7 +17,7 @@ struct Session: ParsableCommand {
         abstract: "Session commands.",
         subcommands: [New.self, Duplicate.self, Close.self, Select.self, Go.self, Rename.self, Reveal.self, Move.self, TypeText.self,
                       Split.self, Scratch.self, Focus.self, Resize.self, Copy.self, Paste.self, SelectAll.self,
-                      Text.self, Status.self, Restore.self, FlagCommand.self,
+                      Text.self, Status.self, Restore.self, FlagCommand.self, PrivateCommand.self,
                       Seen.self, Search.self, Background.self, Overlay.self, Hud.self, Reader.self, Failure.self,
                       AutoAnswer.self]
     )
@@ -31,6 +31,7 @@ struct Session: ParsableCommand {
         @Option(name: .long, help: "Run this command as the session's process instead of the login shell (no echoed command line; the session closes when it exits).") var command: String?
         @Flag(name: .long, help: "With --command, hold the session open after the command exits (press any key to close) instead of closing immediately.") var wait = false
         @Flag(name: .long, help: "With --command, run the program under a detached session server an app restart reattaches (default while Settings > Durable agent panes is on).") var durable = false
+        @Flag(name: .long, help: "Create the session private: never persisted or restored, and the agent's transcript, history and logs are erased by session id when it closes.") var `private` = false
         @Option(name: .long, help: "Initial session name (defaults to the auto basename).") var name: String?
         @Option(name: .long, help: "Place the new session right AFTER this anchor session (id/prefix/active); the anchor carries its own workspace, replacing --workspace.") var after: String?
         @Option(name: .long, help: "Place the new session right BEFORE this anchor session (id/prefix/active); mirror of --after.") var before: String?
@@ -65,7 +66,7 @@ struct Session: ParsableCommand {
                 ControlArgs(name: name, cwd: cwd, workspace: workspace, workspaceName: workspaceName,
                             createWorkspace: createWorkspace ? true : nil, noSelect: noSelect ? true : nil,
                             command: command, wait: wait ? true : nil, durable: durable ? true : nil,
-                            after: after, before: before)))
+                            private: `private` ? true : nil, after: after, before: before)))
         }
     }
 

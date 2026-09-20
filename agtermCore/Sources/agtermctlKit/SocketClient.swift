@@ -419,7 +419,7 @@ struct SocketClient {
                 // the whole complaint in #416 — it is listed, named, and does nothing.
                 let realizedTag = session.realized == false ? " (not realized)" : ""
                 let tags = splitTag + realizedTag + (session.overlay ? " (overlay)" : "")
-                    + (session.scratch ? " (scratch)" : "")
+                    + (session.scratch ? " (scratch)" : "") + (session.private == true ? " (private)" : "")
                 let titleSuffix = session.title.map { "  title: \($0)" } ?? ""
                 lines.append("  \(smark) \(session.name)\(tags)  [\(session.id)]  \(session.cwd)\(titleSuffix)")
             }

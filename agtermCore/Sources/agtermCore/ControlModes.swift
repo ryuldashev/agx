@@ -134,6 +134,8 @@ public struct ControlSessionCreateOptions: Equatable, Sendable {
     public let wait: Bool?
     /// Run the program under a detached abduco server; the dispatcher rejects it without a `--command`.
     public let durable: Bool?
+    /// Create the session private (ADR 0005): never persisted, its agent's files erased on close.
+    public let `private`: Bool?
     public let name: String?
     /// Anchor to place the new session right AFTER (id / prefix / `active`); it carries its own workspace,
     /// so this bypasses `workspace`/`workspaceName`. Mutually exclusive with `before`.
@@ -144,7 +146,8 @@ public struct ControlSessionCreateOptions: Equatable, Sendable {
     public let noSelect: Bool
 
     public init(window: String?, cwd: String?, workspace: String?, workspaceName: String?,
-                createWorkspace: Bool?, command: String?, wait: Bool? = nil, durable: Bool? = nil, name: String?,
+                createWorkspace: Bool?, command: String?, wait: Bool? = nil, durable: Bool? = nil,
+                `private`: Bool? = nil, name: String?,
                 after: String? = nil, before: String? = nil, noSelect: Bool = false) {
         self.window = window
         self.cwd = cwd
@@ -154,6 +157,7 @@ public struct ControlSessionCreateOptions: Equatable, Sendable {
         self.command = command
         self.wait = wait
         self.durable = durable
+        self.private = `private`
         self.name = name
         self.after = after
         self.before = before

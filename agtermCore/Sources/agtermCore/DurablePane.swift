@@ -30,9 +30,12 @@ public enum DurablePane {
     }
 
     /// Whether a spawn wraps: the setting, a `session.new --durable` request, or a server that already
-    /// exists for the session — a restart must reattach even after the setting was turned off.
-    public static func shouldWrap(settingOn: Bool, requested: Bool, serverExists: Bool, line: String?) -> Bool {
-        line != nil && (settingOn || requested || serverExists)
+    /// exists for the session — a restart must reattach even after the setting was turned off. A private
+    /// session (ADR 0005) never wraps: a server outliving the app would keep its program writing after the
+    /// session is gone, and the session is not persisted to be reattached anyway.
+    public static func shouldWrap(settingOn: Bool, requested: Bool, serverExists: Bool, line: String?,
+                                  isPrivate: Bool = false) -> Bool {
+        line != nil && !isPrivate && (settingOn || requested || serverExists)
     }
 
     /// The libghostty `command` (run through `sh -c`): `abduco -A -f <socket> /bin/zsh -lc '<wrapper>'`.
