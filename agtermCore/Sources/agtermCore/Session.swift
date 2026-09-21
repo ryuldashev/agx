@@ -275,9 +275,11 @@ public final class Session: Identifiable {
     /// conversation even when the restore command was never pinned. Ephemeral.
     @ObservationIgnored public var agentTranscriptPath: String?
 
-    /// The markdown reader in the SPLIT pane, nil when none is up. While set, the right pane renders the
-    /// document instead of its shell (the shell, if one exists, stays alive unhosted, as a hidden split's
-    /// does) and the split is shown. Control-channel only and ephemeral, never persisted.
+    /// The markdown reader in the SPLIT pane, nil when none is up. While set AND `isSplit`, the right pane
+    /// renders the document instead of its shell (the shell, if one exists, stays alive unhosted, as a
+    /// hidden split's does). It SURVIVES a plain split-hide (`toggleSplit`/⌘D) latently — the pane un-renders
+    /// but the spec stays, so a re-show restores the same document — and is cleared only by a full teardown
+    /// (`closeReader`, `closeSplit`). Control-channel only and ephemeral, never persisted.
     public var readerSpec: ReaderSpec?
 
     /// Bumped on every `openReader` so the deck keys the pane's view identity on it: a replacement keeps

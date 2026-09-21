@@ -182,15 +182,22 @@ extension WindowContentView {
         let isSplit = store.activeSession?.isSplit ?? false
         let hasSplit = store.activeSession?.hasSplit ?? false
         let splitFocused = store.activeSession?.splitFocused ?? false
+        let readerActive = store.activeSession?.readerActive ?? false
         let axis = store.activeSession?.splitAxis ?? .leftRight
         let shortcutAction: BuiltinAction = axis == .topBottom ? .toggleHorizontalSplit : .toggleSplit
         // filled = pane visible, outline = hidden: no split is an empty two-pane outline, a shown split fills
         // both, and a collapsed one fills the visible leading or trailing half on the current axis.
         // `splitFocused` identifies that visible pane. `a11y` mirrors all seven states for XCUITest, which
-        // cannot read the symbol name: none, both, both-horizontal, left, right, top, and bottom.
+        // cannot read the symbol name: none, both, both-horizontal, left, right, top, and bottom — plus the
+        // two reader states, since the right pane then holds a document, not a shell.
         let symbol: String
         let a11y: String
-        if !hasSplit {
+        if readerActive {
+            // the reader owns the right pane: a distinct glyph so the button reads as "the document panel",
+            // filled while it shows, outline while it is latent behind a hidden split. Press round-trips it.
+            symbol = isSplit ? "sidebar.right" : "rectangle.righthalf.inset.filled"
+            a11y = isSplit ? "reader" : "reader-hidden"
+        } else if !hasSplit {
             symbol = "rectangle.split.2x1"; a11y = "none"
         } else if isSplit {
             symbol = axis == .topBottom ? "rectangle.split.1x2.fill" : "rectangle.split.2x1.fill"
@@ -208,7 +215,8 @@ extension WindowContentView {
             // a Label (icon + title) so the toolbar's "Icon and Text" mode has text; hidden in icon-only mode.
             Label("Split", systemImage: symbol)
         }
-        .help(helpHint(isSplit ? "Hide split" : (hasSplit ? "Show split" : "Split right"), shortcutAction))
+        .help(helpHint(readerActive ? (isSplit ? "Hide reader" : "Show reader")
+                        : (isSplit ? "Hide split" : (hasSplit ? "Show split" : "Split right")), shortcutAction))
         .disabled(store.activeSession == nil)
         .accessibilityValue(a11y)
         .accessibilityIdentifier("split-toggle")

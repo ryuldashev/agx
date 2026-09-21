@@ -109,15 +109,30 @@ struct AppStoreReaderTests {
         #expect(!session.readerActive)
     }
 
-    @Test func hidingOrClosingTheSplitTakesTheReaderWithIt() throws {
+    @Test func hidingTheSplitKeepsTheReaderLatentAndReShowRestoresIt() throws {
         let store = makeStore()
         let ws = store.addWorkspace(name: "work")
         let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
 
         store.openReader(session.id, spec: ReaderSpec(path: "/a.md"))
         store.setSplitVisibility(session.id, shown: false)
-        #expect(!session.readerActive)
-        #expect(!session.readerShowedSplit)
+        // the pane un-renders but the reader survives latent behind the hidden split, and read-back reflects
+        // that it is off screen; focus is pinned to the primary pane so hiding never maximizes the reader.
+        #expect(session.readerActive, "hiding the split keeps the reader latent for a re-show")
+        #expect(!session.splitFocused)
+        let hiddenNode = try #require(store.controlTree().workspaces[0].sessions.first)
+        #expect(hiddenNode.reader == nil, "a hidden latent reader reads as down")
+
+        store.setSplitVisibility(session.id, shown: true)
+        #expect(session.isSplit)
+        let shownNode = try #require(store.controlTree().workspaces[0].sessions.first)
+        #expect(shownNode.reader == ControlReaderNode(path: "/a.md"), "re-showing restores the same document")
+    }
+
+    @Test func closingTheSplitTakesTheReaderDown() throws {
+        let store = makeStore()
+        let ws = store.addWorkspace(name: "work")
+        let session = try #require(store.addSession(toWorkspace: ws.id, cwd: "/repo"))
 
         store.openReader(session.id, spec: ReaderSpec(path: "/a.md"))
         store.closeSplit(session.id)

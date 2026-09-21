@@ -527,8 +527,12 @@ side, and reads `lastAppliedIsDark` when bare. Refuse it outside XCUITest; provi
   unless `--size-percent` says otherwise. The shell keeps focus (`splitFocused = false`); the deck's focus
   routing never names the reader.
 - Close restores what open changed: a split the reader showed is closed outright when no shell ever ran in
-  the right pane, hidden otherwise; a preexisting split stays. Hiding or closing the split by any other
-  route (⌘D, `session.split.close`) takes the reader with it, because the pane it lives in is gone.
+  the right pane, hidden otherwise; a preexisting split stays. A plain split-HIDE (`session.split --hide`,
+  the ⌘D/split-button toggle) keeps `readerSpec` set but LATENT — the pane un-renders, yet a re-show
+  restores the same document instead of a bare shell, so the titlebar's split glyph round-trips the reader
+  (it shows a reader-specific symbol and "Hide/Show reader" while one is up). A full teardown
+  (`session.split.close`, `closeSplit`, `session.reader.close`) is what clears the reader. `tree.reader` is
+  gated on `split` being true, so a latent hidden reader reads as down — "reader up ⟺ on screen".
 - Focus: the web view is the responder on macOS, so `ReaderWebView.becomeFirstResponder` reports a click
   as `splitFocused = true` the way a surface's `onFocusChange` does, and the deck's `paneDim` washes the
   reader when the shell has focus. ⌘+/⌘−/⌘0 go to `MarkdownReaderView.focused()` before the terminal:

@@ -808,7 +808,10 @@ error keeps those names for compatibility.
   Reader app and closes the reader here. Read it back from the session node's `reader` object (`path`)
   beside `split`/`splitRatio`; poll-only, never persisted.
 - `session reader close [--target] [--window W]` — give the pane back. Errors `no reader` when none is
-  up. ⌘D and `session split close` close the reader too.
+  up. `session split close` (and the titlebar's Close Split) take the reader down for good. A plain
+  split-HIDE — `session split --hide`, ⌘D, or the titlebar split button — keeps the reader LATENT instead:
+  the pane un-renders, the split glyph shows a reader symbol with "Show reader", and the next press
+  restores the same document. `reader` reads back only while it is on screen (`split` true).
 - `session failure <error> [--message TEXT] [--transcript PATH] [--handoff] [--target] [--window W]` —
   report the agent's failure and let the app act (`session.failure`). `error` is one shell token (the
   agent's error type); `--message` is sanitized like `session type` text; `--transcript` is resolved

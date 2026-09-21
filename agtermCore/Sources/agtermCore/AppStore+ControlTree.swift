@@ -122,10 +122,13 @@ extension AppStore {
                                              delaySeconds: autoAnswerDelaySeconds)
     }
 
-    /// The tree's `reader`: the document in the split pane, omitted when no reader is up. Its width is the
-    /// node's `splitRatio`, so nothing is repeated here.
+    /// The tree's `reader`: the document VISIBLE in the split pane, omitted when no reader is up. Gated on
+    /// `isSplit` so a reader kept latent behind a hidden split (the split-button/⌘D round-trip) reads as
+    /// down, not up — read-back stays "reader up ⟺ on screen". Its width is the node's `splitRatio`, so
+    /// nothing is repeated here.
     private func readerNode(_ session: Session) -> ControlReaderNode? {
-        session.readerSpec.map { ControlReaderNode(path: $0.path) }
+        guard session.isSplit else { return nil }
+        return session.readerSpec.map { ControlReaderNode(path: $0.path) }
     }
 
     /// The tree's `hud`: the live panel's spec carrying the slot's EFFECTIVE size on BOTH axes and the

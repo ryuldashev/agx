@@ -39,9 +39,12 @@ extension AppStore {
             ActionJournal.shared.log("state", ["split": shown ? "on" : "off", "session": session.id.uuidString])
         }
         session.isSplit = shown
-        // hiding the split un-renders the pane the reader lives in, so it goes with it; the `closeReader`
-        // that would have restored the split has nothing left to restore.
-        if !shown { session.readerSpec = nil; session.readerShowedSplit = false }
+        // hiding the split un-renders the pane the reader lives in, but the reader is KEPT latent so a
+        // re-show restores the same document rather than a bare shell — the split-button/⌘D round-trip. A
+        // full teardown (`closeSplit`, `closeReader`) is what clears `readerSpec`. Focus is pinned to the
+        // primary pane so hiding a reader-split never maximizes the reader (the hidden-right-focused branch),
+        // making the button consistent regardless of which pane held focus.
+        if !shown, session.readerSpec != nil { session.splitFocused = false }
         // a NEW split focuses the new (right) pane; RE-showing a hidden one keeps the pane focused before
         // hiding, so a hide/show round-trip (the tmux-style zoom script) doesn't jerk focus right. hiding
         // leaves `hasSplit`/`splitFocused` set — indicators persist, the focused pane shows maximized — and
@@ -316,7 +319,9 @@ extension AppStore {
     @discardableResult public func openReader(_ sessionID: UUID, spec: ReaderSpec) -> Bool {
         guard let session = session(withID: sessionID) else { return false }
         let replacing = session.readerActive
-        if !replacing, !session.isSplit {
+        // show the split whenever it is hidden — a fresh reader OR a latent one whose split the button hid;
+        // a live document that is already on screen needs no reshow.
+        if !session.isSplit {
             session.readerShowedSplit = true
             setSplitVisibility(session, shown: true)
         }

@@ -1877,8 +1877,8 @@
               <p style="font-size: 15px; line-height: 1.65; color: #cbc6bc; margin: 10px 0 0">
                 Give the pane back. A split the reader showed is taken down with it; a split that was there before stays, its
                 shell back in the right pane. Errors <span style="font-family: &quot;JetBrains Mono&quot;, monospace">no reader</span> when none is up, so it
-                is not idempotent. Hiding or closing the split by any other route (⌘D,
-                <span style="font-family: &quot;JetBrains Mono&quot;, monospace">session split close</span>) and closing the session close the reader too.
+                is not idempotent. Closing the split (<span style="font-family: &quot;JetBrains Mono&quot;, monospace">session split close</span>)
+                or the session takes the reader down for good; a plain split-hide (⌘D, the split button) keeps it latent instead, so the next press restores the same document.
               </p>
               <p style="font-size: 13.5px; line-height: 1.6; color: #949ba4; margin: 8px 0 0">
                 Read the panel back from the session node's
